@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { ActivityIndicator, Pressable, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../../state";
@@ -15,6 +15,8 @@ import { timeAgo } from "@/core/when";
 import { PlatformMark } from "../DeviceMark";
 import { UnlinkSheet } from "../UnlinkSheet";
 import { useLinks } from "../api";
+import { Orbit } from "../Orbit";
+import type { DeviceLinksState } from "@/core/contracts/deviceLinks";
 import { NETFLIX_GATE, NETFLIX_LOGIN, NETFLIX_VIEWED, NetflixWeb, type NetflixWebRef, type NfxReady } from "./bridge";
 import { clearLocal, linkNetflix, netflixOf, readHistory, readLocal, unlinkNetflix, writeLocal, type NfxLocal } from "./sync";
 import { requestNetflixSignOut, requestNetflixSync, useNetflixSync } from "./NetflixSyncHost";
@@ -23,7 +25,7 @@ import { requestNetflixSignOut, requestNetflixSync, useNetflixSync } from "./Net
  * ====== 🆕 صفحةُ نتفليكس — الفكرةُ «ب»، لوحةُ الملخّص (التصاميمُ المعتمدة ٢٥ نوفمبر: «اعتمد») ======
  *
  * - **غيرُ مربوطة**: ورقةُ الموافقة بنقاطها الأربع (بلا تحذير — أحمد «شيل التحذير»)، ثمّ صفحةُ دخول نتفليكس نفسُها كاملةَ الشاشة،
- *   ثمّ «تم» ⇐ يُقرأ السجلُّ ليُعدّ، ثمّ سؤالُ الاستيراد («استيراد الكل» · «من الآن فقط» بشرح كلٍّ منهما).
+ *   ثمّ اختيارُ الملفّ (بلا «تم») تحت مدار الربط ⇐ يُقرأ السجلُّ ليُعدّ، ثمّ سؤالُ الاستيراد («استيراد الكل» · «من الآن فقط» بشرح كلٍّ منهما).
  * - **مربوطة**: رأسٌ في سطر، والأرقامُ الثلاثة، وبطاقةُ المزامنة (زرٌّ صغير · شريطٌ أثناءها · «توقّفت المزامنة» بعد انتهاء الجلسة)،
  *   ثمّ «السجلّ» (ما دخل · لم نطابقه · بدأته ولم تكمله) و«الربط» (غيّر الملفّ الشخصي · فك الربط).
  * - **للمجانيّ**: الربطُ لـLoopz+ (أحمد «٣ب») — بابُ الاشتراك.
@@ -119,7 +121,9 @@ export function NetflixScreen() {
   const sheets = (
     <>
       {overlay === "consent" ? <ConsentSheet onClose={() => (nfx ? setOverlay(null) : router.back())} onContinue={() => openLogin("link")} /> : null}
-      {overlay === "login" ? <LoginOverlay start={why === "profile" ? NETFLIX_GATE : NETFLIX_LOGIN} onClose={() => setOverlay(null)} onReady={onLoggedIn} /> : null}
+      {overlay === "login" ? <LoginOverlay start={why === "profile" ? NETFLIX_GATE : NETFLIX_LOGIN} d={d} onClose={() => setOverlay(null)} onReady={onLoggedIn} /> : null}
+      {/* 🆕 السؤالُ يطلع فوق مدار الربط نفسِه — لا تعود صفحةُ نتفليكس بينهما (التصميمُ المعتمد «و١») */}
+      {overlay === "ask" && found ? <LinkingCover d={d} reading={false} /> : null}
       {overlay === "ask" && found ? <AskSheet found={found} busy={busy} onClose={() => setOverlay(null)} onChoose={(a) => void choose(a)} /> : null}
       {overlay === "unlink" ? <UnlinkSheet name="Netflix" works={nfx?.works ?? 0} onClose={() => setOverlay(null)} onConfirm={unlink} /> : null}
       {overlay === "added" ? (
@@ -305,7 +309,7 @@ function ConsentSheet({ onClose, onContinue }: { onClose: () => void; onContinue
  * - رأينا «مَن يشاهد؟» ثمّ الرئيسيّة ⇐ اختار ملفَّه: إلى صفحة السجلّ، فتقرأ الملفَّ المختار.
  * - الرئيسيّةُ بلا «مَن يشاهد؟» (كان مسجّلاً من قبل فدخلت نتفليكس بآخر ملفّ) ⇐ نفتح «مَن يشاهد؟» مرّةً، فلا يُقرأ ملفٌّ لم يختره.
  */
-function LoginOverlay({ start, onClose, onReady }: { start: string; onClose: () => void; onReady: (web: NetflixWebRef, r: NfxReady) => Promise<void> }) {
+function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: DeviceLinksState | undefined; onClose: () => void; onReady: (web: NetflixWebRef, r: NfxReady) => Promise<void> }) {
   const { t, tokens } = useApp();
   const insets = useSafeAreaInsets();
   const web = useRef<NetflixWebRef>(null);
@@ -313,13 +317,16 @@ function LoginOverlay({ start, onClose, onReady }: { start: string; onClose: () 
   const [note, setNote] = useState<string | null>(null);
   const gateSeen = useRef(false);
   const sentToGate = useRef(false);
+  /* 🆕 شاشةُ التحميل (مدارُ الربط «و١»، أحمد ٢٥ نوفمبر): تغطّي نتفليكس لحظةَ اختفاء «مَن يشاهد؟» وتبقى حتى السؤال —
+     فلا يرى المشتركُ رئيسيّةَ نتفليكس ولا صفحةَ السجلّ البيضاء. والصفحةُ تعمل تحتها كما هي */
+  const [cover, setCover] = useState(false);
   return (
     <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: tokens.bg, paddingTop: insets.top }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: tokens.border }}>
         <Pressable onPress={onClose} hitSlop={8} accessibilityLabel={t.closeLabel} style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>
           <Icon name="close" size={18} color={tokens.muted} />
         </Pressable>
-        <Text size={13} muted style={{ flex: 1, lineHeight: 18 }}>{note ?? (waiting ? t.nfxReading : t.nfxLoginHint)}</Text>
+        <Text size={13} muted style={{ flex: 1, lineHeight: 18 }}>{note ?? (cover || waiting ? "" : t.nfxLoginHint)}</Text>
       </View>
       <View style={{ flex: 1 }}>
         <NetflixWeb
@@ -333,12 +340,19 @@ function LoginOverlay({ start, onClose, onReady }: { start: string; onClose: () 
           onPageState={(s) => {
             if (s === "gate") {
               gateSeen.current = true;
-              /* أرسلناه إلى السجلّ فسألت نتفليكس «مَن يشاهد؟»: لا ملفَّ مختاراً بعد — ينتظر اختيارَه من جديد */
+              /* أرسلناه إلى السجلّ فسألت نتفليكس «مَن يشاهد؟»، أو ظهرت خاناتُ الرمز: لا ملفَّ مختاراً بعد — ترتفع التغطية
+                 وينتظر اختيارَه من جديد */
               if (waiting) setWaiting(false);
+              setCover(false);
+              return;
+            }
+            if (s === "left") {
+              setCover(true);
               return;
             }
             if (s === "browse" && !waiting) {
               if (gateSeen.current || sentToGate.current) {
+                setCover(true);
                 setWaiting(true);
                 setNote(null);
                 web.current?.go(NETFLIX_VIEWED);
@@ -352,13 +366,35 @@ function LoginOverlay({ start, onClose, onReady }: { start: string; onClose: () 
             if (s === "signed-out" || s === "no-profile") {
               /* عاد إلى الدخول أو لا ملفّ: يبدأ من جديد — والاختيارُ القادم يُرى من أوّله */
               setWaiting(false);
+              setCover(false);
               gateSeen.current = false;
               sentToGate.current = false;
               setNote(t.nfxNotSignedIn);
             }
           }}
         />
+        {cover ? <LinkingCover d={d} reading /> : null}
       </View>
+    </View>
+  );
+}
+
+/**
+ * 🆕 **شاشةُ التحميل — مدارُ الربط** (التصميمُ «و١»، أحمد ٢٥ نوفمبر «١أ نفذ»): مدارُ المشترك كما في صفحة الربط، أجهزتُه باهتة،
+ * ونتفليكس تتوهّج في خانتها بخطٍّ متقطّعٍ تجري عليه النقاط، وتحته حبّةُ «نقرأ سجلّك…». وخلف سؤال الاستيراد تبقى بلا الحبّة.
+ */
+function LinkingCover({ d, reading }: { d: DeviceLinksState | undefined; reading: boolean }) {
+  const { t, tokens } = useApp();
+  const { width } = useWindowDimensions();
+  return (
+    <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: tokens.bg, alignItems: "center", justifyContent: "center", gap: 22 }}>
+      {d ? <Orbit d={d} width={width} linking="netflix" onSlot={() => undefined} onHold={() => undefined} /> : null}
+      {reading ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 14, paddingVertical: 7 }}>
+          <ActivityIndicator size="small" color={tokens.accent} />
+          <Text size={13} weight="700">{t.nfxReading}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }

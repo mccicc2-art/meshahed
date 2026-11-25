@@ -1,5 +1,5 @@
-import React from "react";
-import { I18nManager, Pressable, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Easing, I18nManager, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import Svg, { Circle, Defs, Line, RadialGradient, Stop } from "react-native-svg";
 import { useApp } from "../state";
@@ -74,6 +74,7 @@ export function Orbit({
   onHoldPlatform,
   hot,
   hotSlot,
+  linking,
 }: {
   d: DeviceLinksState;
   width: number;
@@ -87,15 +88,18 @@ export function Orbit({
   hot?: boolean;
   /** 🆕 أقربُ خانةٍ فارغةٍ إلى الإصبع أثناء السحب — تضيء بـ«أفلت هنا» (أحمد ٦ نوفمبر) */
   hotSlot?: number | null;
+  /** 🆕 **مدارُ الربط الجاري** (شاشةُ التحميل «و١»، أحمد ٢٥ نوفمبر): المنصّةُ تأخذ خانتها (أوّلَ فارغة إن لم تكن مربوطة)،
+   *  وتتوهّج بخطٍّ متقطّعٍ تجري عليه نقاطٌ إلى القلب، وما سواها باهتٌ — والمدارُ للعرض وحده (لا لمس) */
+  linking?: PlatformKind;
 }) {
   const { t, tokens } = useApp();
-  const slots = slotsOf(d);
+  const slots = withLinking(slotsOf(d), linking);
   const cx = width / 2;
   const cy = R + TILE / 2 + 4;
   const pos = slotPoints(slots.length, width);
   const limit = d.limit ?? 0;
   return (
-    <View accessible={false} style={{ height: ORBIT_H, width }}>
+    <View accessible={false} pointerEvents={linking ? "none" : "auto"} style={{ height: ORBIT_H, width }}>
       <Svg width={width} height={ORBIT_H} style={{ position: "absolute" }}>
         <Defs>
           <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
@@ -107,14 +111,19 @@ export function Orbit({
         <Circle cx={cx} cy={cy} r={R} fill="none" stroke={hot ? tokens.accent : tokens.border} strokeOpacity={hot ? 0.7 : 1} />
         <Circle cx={cx} cy={cy} r={HUB / 2 + 12} fill="none" stroke={tokens.accent} strokeOpacity={0.25} />
         {slots.map((s, i) =>
-          s.type === "device" || s.type === "platform" ? (
-            <Line key={i} x1={cx} y1={cy} x2={pos[i].x} y2={pos[i].y} stroke={tokens.accent} strokeOpacity={0.7} strokeWidth={1.5} />
+          linking && s.type === "platform" && s.platform === linking ? (
+            <Line key={i} x1={cx} y1={cy} x2={pos[i].x} y2={pos[i].y} stroke={tokens.accent} strokeWidth={2} strokeDasharray="5 6" />
+          ) : s.type === "device" || s.type === "platform" ? (
+            <Line key={i} x1={cx} y1={cy} x2={pos[i].x} y2={pos[i].y} stroke={tokens.accent} strokeOpacity={linking ? 0.18 : 0.7} strokeWidth={1.5} />
           ) : null,
         )}
       </Svg>
       <View style={{ position: "absolute", ...physLeft(cx - HUB / 2), top: cy - HUB / 2, width: HUB, height: HUB, borderRadius: HUB / 2, borderWidth: 1.5, borderColor: tokens.accent, backgroundColor: tokens.bg, alignItems: "center", justifyContent: "center" }}>
         <Image source={MARK} style={{ width: HUB * 0.62, height: HUB * 0.62 }} contentFit="contain" />
       </View>
+      {linking
+        ? slots.map((s, i) => (s.type === "platform" && s.platform === linking ? <TravelDots key="dots" from={{ x: pos[i].x, y: pos[i].y }} to={{ x: cx, y: cy }} color={tokens.accent} /> : null))
+        : null}
       {slots.map((s, i) => {
         const left = pos[i].x - TILE / 2;
         const top = pos[i].y - TILE / 2;
@@ -130,7 +139,7 @@ export function Orbit({
               accessibilityLabel={`${name}، ${s.waiting ? t.linksWaiting : t.stremioLinked}`}
               accessibilityActions={[{ name: "menu", label: t.linksUnlink }]}
               onAccessibilityAction={(e) => e.nativeEvent.actionName === "menu" && onHold(s.kind)}
-              style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center" }}
+              style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center", opacity: linking ? 0.35 : 1 }}
             >
               {/* 🆕 الصحُّ الأخضرُ لما اتّصل فعلاً (وصلت منه رسالة)، والساعةُ الرمليّةُ لرابطٍ صدر ولم يتّصل — أحمد ٥ نوفمبر */}
               <DeviceMark kind={s.kind} size={TILE} state={s.waiting ? "waiting" : "on"} />
@@ -148,8 +157,12 @@ export function Orbit({
               delayLongPress={350}
               accessibilityRole="button"
               accessibilityLabel={`Netflix، ${t.stremioLinked}`}
-              style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center" }}
+              style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center", opacity: linking && s.platform !== linking ? 0.35 : 1 }}
             >
+              {linking === s.platform ? (
+                /* توهّجُ المنصّة الجارية بأحمرها — حلقةٌ خلف الشارة لا ظلٌّ (ظلُّ أندرويد لا يُلوَّن) */
+                <View style={{ position: "absolute", top: -6, width: TILE + 12, height: TILE + 12, borderRadius: radius.md + 6, backgroundColor: "#E5091433" }} />
+              ) : null}
               <PlatformMark size={TILE} state="on" />
               <DeviceLabel name="Netflix" />
             </Pressable>
@@ -163,7 +176,7 @@ export function Orbit({
             onPress={() => onSlot(s)}
             accessibilityRole="button"
             accessibilityLabel={locked ? t.linksPlusSlot : t.linksEmptySlot}
-            style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center" }}
+            style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center", opacity: linking ? 0.35 : 1 }}
           >
             <View
               style={{
@@ -199,6 +212,51 @@ export function Orbit({
       })}
       <View accessible accessibilityLabel={t.linksOrbitLabel(d.used, limit || d.used)} style={{ position: "absolute", left: 0, right: 0, top: 0, height: 1 }} />
     </View>
+  );
+}
+
+/** 🆕 المنصّةُ الجارية في المدار — خانتُها إن كانت مربوطة (إعادةُ الدخول، تغييرُ الملفّ)، وإلّا أوّلُ خانةٍ فارغة، وإلّا الأخيرة */
+function withLinking(slots: Slot[], linking?: PlatformKind): Slot[] {
+  if (!linking || slots.some((s) => s.type === "platform" && s.platform === linking)) return slots;
+  const out = [...slots];
+  const at = out.findIndex((s) => s.type === "empty");
+  out[at >= 0 ? at : out.length - 1] = { type: "platform", platform: linking };
+  return out;
+}
+
+/** 🆕 ثلاثُ نقاطٍ تجري من المنصّة إلى القلب بلا توقّف — الإزاحةُ تحويلٌ (فيزيائيّ لا ينقلب) فتطابق الخطَّ المرسوم */
+function TravelDots({ from, to, color }: { from: { x: number; y: number }; to: { x: number; y: number }; color: string }) {
+  const p = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.timing(p, { toValue: 1, duration: 1400, easing: Easing.linear, useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, [p]);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  return (
+    <>
+      {[0, 1 / 3, 2 / 3].map((off) => {
+        /* كلُّ نقطةٍ متأخّرةٌ بثلث الدورة — تبدأ عند المنصّة وتخبو قبل القلب */
+        const t = Animated.modulo(Animated.add(p, off), 1);
+        return (
+          <Animated.View
+            key={off}
+            style={{
+              position: "absolute",
+              ...physLeft(from.x - 3.5),
+              top: from.y - 3.5,
+              width: 7,
+              height: 7,
+              borderRadius: 4,
+              backgroundColor: color,
+              opacity: t.interpolate({ inputRange: [0, 0.15, 0.75, 1], outputRange: [0, 1, 1, 0] }),
+              transform: [{ translateX: Animated.multiply(t, dx) }, { translateY: Animated.multiply(t, dy) }],
+            }}
+          />
+        );
+      })}
+    </>
   );
 }
 

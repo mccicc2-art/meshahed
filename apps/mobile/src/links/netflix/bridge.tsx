@@ -30,7 +30,8 @@ export const NETFLIX_GATE = `${NETFLIX_ORIGIN}/ProfilesGate`;
 const DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 export type NfxReady = { guid: string; name: string; historyId: string | null; seasonId: string | null; moviesId: string | null };
-export type NfxPageState = "signed-out" | "page" | "no-profile" | "error" | "gate" | "browse";
+/** 🆕 `left`: «مَن يشاهد؟» اختفت لتوّها بعد أن ظهرت — يُقال فوراً لتغطّي شاشةُ التحميل نتفليكس، و`browse` يؤكّد بعده */
+export type NfxPageState = "signed-out" | "page" | "no-profile" | "error" | "gate" | "left" | "browse";
 
 /** السكربتُ المحقون بعد كلِّ تحميل — لا يقرأ حقلاً في صفحة الدخول ولا يلمس نموذجاً */
 export function netflixBootScript(): string {
@@ -53,12 +54,14 @@ export function netflixBootScript(): string {
     return out;
   };
   var watch = function () {
-    var last = "", calm = 0;
+    var last = "", calm = 0, had = false;
     setInterval(function () {
       var q = location.pathname || "/";
       if (q.indexOf("/login") === 0 || q.indexOf("/signup") === 0 || q === "/") { calm = 0; return; }
       var gate = !!document.querySelector('[data-uia="profile-gate-screen"],[data-uia*="profile-lock" i],[data-uia*="pin-entry" i],[data-uia*="pin-input" i],[data-uia*="pin-number" i],input[inputmode="numeric"],input[maxlength="1"]');
       var nav = !!document.querySelector('[data-uia="navigation"],[data-uia="navigation+logo"]');
+      if (gate) had = true;
+      else if (had) { had = false; post({ t: "state", state: "left", path: q }); }
       var s = gate ? "gate" : nav && q.indexOf("/browse") === 0 ? "browse" : "";
       if (s === "browse") { calm++; if (calm < 3) return; } else calm = 0;
       if (s && s !== last) { last = s; post({ t: "state", state: s, path: q }); }
