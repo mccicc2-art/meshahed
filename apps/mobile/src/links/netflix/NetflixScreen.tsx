@@ -6,6 +6,7 @@ import { useApp } from "../../state";
 import { Button, Text } from "../../ui";
 import { Icon, type IconName } from "../../icons";
 import { haptic } from "../../haptics";
+import { mark } from "../../perfMarks";
 import { radius } from "../../theme";
 import type { ToastHostRef } from "../../HoldHost";
 import { Sheet } from "../../library/Sheet";
@@ -307,6 +308,9 @@ function ConsentSheet({ onClose, onContinue }: { onClose: () => void; onContinue
  * الشخصيّ هو الانتهاء. السكربتُ يقول حالَ الصفحة («gate»: «مَن يشاهد؟» أو رمزُ القفل · «browse»: الرئيسيّةُ مستقرّة)، وهنا القرار:
  * - رأينا «مَن يشاهد؟» ثمّ الرئيسيّة ⇐ اختار ملفَّه: إلى صفحة السجلّ، فتقرأ الملفَّ المختار.
  * - الرئيسيّةُ بلا «مَن يشاهد؟» (كان مسجّلاً من قبل فدخلت نتفليكس بآخر ملفّ) ⇐ نفتح «مَن يشاهد؟» مرّةً، فلا يُقرأ ملفٌّ لم يختره.
+ * - 🆕 T553 **لحظةَ دخول صفحاتها الداخليّة بعد الدخول** (أحمد ٢٥ نوفمبر «ما ابغاها تجي»): نتفليكس بعد الرمز تفتح رئيسيّتَها بآخر ملفّ، وكانت تبقى
+ *   أمامه نحو ستّ ثوانٍ (تحميلُها الثقيل + انتظارُ استقرارها + التحويل) — فيغطّيها غطاءٌ قصيرٌ (خلفيّةُ التطبيق ومؤشّرٌ صغير) ونطلب
+ *   «مَن يشاهد؟» فوراً، ويرتفع حين تظهر. وله حدٌّ (عشرُ ثوانٍ) يرتفع بعده فلا يعلق أمام شاشةٍ فارغة، ومدّتُه تُقاس.
  */
 function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: DeviceLinksState | undefined; onClose: () => void; onReady: (web: NetflixWebRef, r: NfxReady) => Promise<void> }) {
   const { t, tokens } = useApp();
@@ -319,6 +323,26 @@ function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: Device
   /* 🆕 شاشةُ التحميل (مدارُ الربط «و١»، أحمد ٢٥ نوفمبر): تغطّي نتفليكس لحظةَ اختفاء «مَن يشاهد؟» وتبقى حتى السؤال —
      فلا يرى المشتركُ رئيسيّةَ نتفليكس ولا صفحةَ السجلّ البيضاء. والصفحةُ تعمل تحتها كما هي */
   const [cover, setCover] = useState(false);
+  /* 🆕 T553 — الغطاءُ القصير بين الدخول و«مَن يشاهد؟»: متى بدأ (لقياس مدّته)، وهل كانت آخرُ صفحةٍ داخليّة (لنعرف أنّه دخل لتوّه) */
+  const [gap, setGap] = useState(false);
+  const gapAt = useRef(0);
+  const gapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasInner = useRef(false);
+  const endGap = useCallback((result: string) => {
+    if (!gapAt.current) return;
+    if (gapTimer.current) clearTimeout(gapTimer.current);
+    gapTimer.current = null;
+    /* داخل قياس `nfx.sync` بنوعٍ خاصّ («gate») — لا اسمَ جديدَ في قائمة الخادم، ويُفصل عن المزامنات بنوعه */
+    mark("nfx.sync", Date.now() - gapAt.current, { kind: "gate", result });
+    gapAt.current = 0;
+    setGap(false);
+  }, []);
+  useEffect(
+    () => () => {
+      if (gapTimer.current) clearTimeout(gapTimer.current);
+    },
+    [],
+  );
   return (
     <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: tokens.bg, paddingTop: insets.top }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: tokens.border }}>
@@ -332,6 +356,21 @@ function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: Device
           ref={web}
           url={start}
           mode="visible"
+          onNav={(u) => {
+            /* 🆕 T553 — دخل لتوّه صفحةً داخليّة (الرئيسيّة أو «مَن يشاهد؟»، وقد تسبقها لغةُ البلد `/sa/…`) ولم يرَ «مَن يشاهد؟» بعد:
+               غطاءٌ وطلبُها فوراً. الحكمُ بالدخول إلى الداخل لا بمغادرة صفحةٍ بعينها — مسارُ صفحة رمز البريد لم يُقَس. وإن ضاع
+               الطلبُ (الصفحةُ تتبدّل) فالفرعُ القديم («browse» بلا «مَن يشاهد؟») يطلبها، والغطاءُ يحجب ما بينهما */
+            /* المسارُ بنصٍّ لا بـ`URL` — `pathname` فيه ناقصٌ على بعض نسخ React Native */
+            const path = u.replace(/^https?:\/\/[^/]+/i, "").split(/[?#]/)[0] || "/";
+            const inner = /^(\/[a-z]{2}(-[a-z]{2})?)?\/(browse|profilesgate|profiles)(\/|$)/i.test(path);
+            const entered = inner && !wasInner.current;
+            wasInner.current = inner;
+            if (!entered || gateSeen.current || waiting || gapAt.current) return;
+            gapAt.current = Date.now();
+            setGap(true);
+            gapTimer.current = setTimeout(() => endGap("timeout"), 10_000);
+            if (!/\/profilesgate(\/|$)/i.test(path)) web.current?.go(NETFLIX_GATE);
+          }}
           onReady={(r) => {
             if (!waiting) return;
             void onReady(web.current as NetflixWebRef, r);
@@ -339,6 +378,7 @@ function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: Device
           onPageState={(s) => {
             if (s === "gate") {
               gateSeen.current = true;
+              endGap("gate");
               /* أرسلناه إلى السجلّ فسألت نتفليكس «مَن يشاهد؟»، أو ظهرت خاناتُ الرمز: لا ملفَّ مختاراً بعد — ترتفع التغطية
                  وينتظر اختيارَه من جديد */
               if (waiting) setWaiting(false);
@@ -347,6 +387,7 @@ function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: Device
             }
             if (s === "pin") {
               /* رمزُ قفل الملفّ: العضوُ يكتبه بنفسه — التغطيةُ ترتفع ولا يُحسب اختيارٌ بعد */
+              endGap("pin");
               if (waiting) setWaiting(false);
               setCover(false);
               return;
@@ -357,6 +398,8 @@ function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: Device
             }
             if (s === "browse" && !waiting) {
               if (gateSeen.current || sentToGate.current) {
+                /* «مَن يشاهد؟» لم تظهر بعد طلبها (ملفٌّ واحد؟): مدارُ القراءة يحلّ محلَّ الغطاء القصير */
+                endGap("browse");
                 setCover(true);
                 setWaiting(true);
                 setNote(null);
@@ -367,6 +410,7 @@ function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: Device
               }
               return;
             }
+            if (s === "signed-out") endGap("out");
             if (!waiting) return;
             if (s === "signed-out" || s === "no-profile") {
               /* عاد إلى الدخول أو لا ملفّ: يبدأ من جديد — والاختيارُ القادم يُرى من أوّله */
@@ -378,7 +422,11 @@ function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: Device
             }
           }}
         />
-        {cover ? <LinkingCover d={d} reading /> : null}
+        {cover ? <LinkingCover d={d} reading /> : gap ? (
+          <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: tokens.bg, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator size="small" color={tokens.accent} />
+          </View>
+        ) : null}
       </View>
     </View>
   );
