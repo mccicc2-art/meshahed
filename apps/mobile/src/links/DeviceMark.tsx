@@ -1,10 +1,11 @@
 import React from "react";
-import { View } from "react-native";
+import { PixelRatio, View } from "react-native";
 import Svg, { Defs, Image as SvgImage, LinearGradient, Mask, Path, Rect, Stop } from "react-native-svg";
 import { useApp } from "../state";
 import { Icon, iconSource, type IconName } from "../icons";
 import { Text } from "../ui";
 import { radius } from "../theme";
+import { SYSTEM_FONT_CAP, useFontScale } from "../fontScale";
 import type { DeviceKind, PlatformKind } from "@/core/contracts/deviceLinks";
 
 /**
@@ -22,7 +23,7 @@ const LOGO: Partial<Record<DeviceKind, { d: string; color: string; scale: number
   plex: { d: PLEX, color: "#EBAF00", scale: 0.82 },
   emby: { d: EMBY, color: "#52B54B", scale: 0.62 },
 };
-/* 🆕 Nuvio — رمزُ «تشغيل» العامُّ بلا صبغ (D-1646: لا شعارَ بلا إذنٍ مكتوب، ولا ألوانَ ندّعيها) */
+/* Nuvio يُرسم كلمةً بتدرّج ألوانه (T560، أدناه) — رمزُه هنا يكمل الجدولَ ولا يُرى */
 const GENERIC: Record<DeviceKind, IconName> = { stremio: "play", nuvio: "play", plex: "tv", jellyfin: "film", emby: "tv", kodi: "tv" };
 /**
  * 🆕 T354 — **Jellyfin بألوانه لا بشعاره** (أحمد ٩ نوفمبر: «نفذ المقترح … ما راح نرسل»): دليلُ هويّتهم يقصر الشعارَ على المشاريع
@@ -101,6 +102,8 @@ export function DeviceMark({
             ™
           </Text>
         </>
+      ) : kind === "nuvio" ? (
+        <NuvioWord size={Math.max(7, Math.round(size * 0.17))} />
       ) : logo ? (
         <Svg width={size * logo.scale} height={size * logo.scale} viewBox="0 0 24 24">
           <Path d={logo.d} fill={logo.color} />
@@ -123,6 +126,42 @@ export function DeviceMark({
       )}
       <StateBadge state={state} />
     </View>
+  );
+}
+
+/**
+ * 🆕 T560 — **«NUVIO» كلمةً بتدرّج ألوانهم** (أحمد ٢٦ نوفمبر: «اكتب اسمه مثل حركة نتفليكس .. وخل الكتابة بالوانه» ثمّ «نفذ»):
+ * كتابةٌ بخطّ التطبيق لا شعارُهم (لا شعارَ بلا إذنٍ مكتوب — D-1646)، والألوانُ من شعارهم نفسِه (سماويٌّ ⇐ بنفسجيّ، مقيسةٌ من
+ * `assets/brand` في مستودعهم). **والنهاريُّ درجةٌ أعمقُ من اللونين نفسيهما**: سماويُّهم على الأبيض تباينُه ١٫٧ فلا يُقرأ — والأزرقُ
+ * فالبنفسجيُّ ٥٫٠ — كما صار أصفرُ لوبز ذهبيّاً داكناً نهاراً (D-846).
+ * 🔑 **رسمٌ لا نصّ** لسبب `PlanWordmark` نفسِه: تدرّجُ الحروف في RN يحتاج وحدةً أصليّة (بناءٌ مدفوع)، ونصُّ SVG لا يضمن خطَّ Poppins.
+ * فالحروفُ حروفُ `Poppins-700.ttf` (ما يرسم به `Text` وزنَ ٨٠٠، كلمةُ NETFLIX جارتُها) مساراتٍ بـfontTools، بتباعدٍ ٤٠ من ١٠٠٠ بين
+ * الحروف (≈ `letterSpacing: 0.4` في كلمة نتفليكس)، والصندوقُ صعودُ الخطّ وهبوطُه — فتقف حيث تقف تلك الكلمة وبمقاسها.
+ */
+const NUVIO_D =
+  "M690 0H519L233 -433V0H62V-702H233L519 -267V-702H690ZM1022 -702V-282Q1022 -219 1053 -185Q1084 -151 1144 -151Q1204 -151 1236 -185Q1268 -219 1268 -282V-702H1439V-283Q1439 -189 1399 -124Q1359 -59 1291.5 -26Q1224 7 1141 7Q1058 7 992.5 -25.5Q927 -58 889 -123.5Q851 -189 851 -283V-702ZM2258 -702 2009 0H1795L1546 -702H1728L1902 -172L2077 -702ZM2540 -702V0H2369V-702ZM2675 -353Q2675 -456 2723.5 -538Q2772 -620 2854.5 -666Q2937 -712 3036 -712Q3135 -712 3217.5 -666Q3300 -620 3347.5 -538Q3395 -456 3395 -353Q3395 -250 3347 -167.5Q3299 -85 3217 -39Q3135 7 3036 7Q2937 7 2854.5 -39Q2772 -85 2723.5 -167.5Q2675 -250 2675 -353ZM3221 -353Q3221 -446 3170.5 -501.5Q3120 -557 3036 -557Q2951 -557 2900.5 -502Q2850 -447 2850 -353Q2850 -260 2900.5 -204.5Q2951 -149 3036 -149Q3120 -149 3170.5 -205Q3221 -261 3221 -353Z";
+/** تقدُّمُ «NUVIO» من `hmtx` مع التباعد — وصعودُ الخطّ وهبوطُه من ١٠٠٠ */
+const NUVIO_W = 3428;
+const NUVIO_ASC = 1050;
+const NUVIO_DESC = 350;
+const NUVIO_DARK = ["#4BD8EC", "#B048F0"] as const;
+const NUVIO_DAY = ["#2E6BD6", "#9A3FE0"] as const;
+
+function NuvioWord({ size }: { size: number }) {
+  const { themeId } = useApp();
+  const k = useFontScale();
+  const fs = size * k * Math.min(PixelRatio.getFontScale(), SYSTEM_FONT_CAP);
+  const [c0, c1] = themeId === "daylight" ? NUVIO_DAY : NUVIO_DARK;
+  return (
+    <Svg width={(NUVIO_W / 1000) * fs} height={((NUVIO_ASC + NUVIO_DESC) / 1000) * fs} viewBox={`0 ${-NUVIO_ASC} ${NUVIO_W} ${NUVIO_ASC + NUVIO_DESC}`} accessibilityRole="text" accessibilityLabel="Nuvio">
+      <Defs>
+        <LinearGradient id="nuvioWord" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={NUVIO_W} y2="0">
+          <Stop offset="0" stopColor={c0} />
+          <Stop offset="1" stopColor={c1} />
+        </LinearGradient>
+      </Defs>
+      <Path d={NUVIO_D} fill="url(#nuvioWord)" />
+    </Svg>
   );
 }
 

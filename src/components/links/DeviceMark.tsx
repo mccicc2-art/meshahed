@@ -22,7 +22,7 @@ const LOGO: Partial<Record<DeviceKind, { d: string; color: string; scale: number
   plex: { d: PLEX, color: "#EBAF00", scale: 0.76 },
   emby: { d: EMBY, color: "#52B54B", scale: 0.62 },
 };
-/* 🆕 Nuvio — رمزُ «تشغيل» العامُّ بلا صبغ (D-1646: لا شعارَ بلا إذنٍ مكتوب، ولا ألوانَ ندّعيها) */
+/* Nuvio يُرسم كلمةً بتدرّج ألوانه (T560، أدناه) — رمزُه هنا يكمل الجدولَ ولا يُرى */
 const GENERIC: Record<DeviceKind, IconName> = { stremio: "play", nuvio: "play", plex: "tv", jellyfin: "film", emby: "tv", kodi: "tv" };
 const TINT: Partial<Record<DeviceKind, readonly [string, string]>> = { jellyfin: ["#AA5CC3", "#00A4DC"], stremio: ["#8B80F5", "#685CEE"] };
 
@@ -61,6 +61,22 @@ export function DeviceMark({ kind, size = 56, state = "idle" }: { kind: DeviceKi
             ™
           </span>
         </>
+      ) : kind === "nuvio" ? (
+        /* 🆕 T560 — «NUVIO» كلمةً بتدرّج ألوانهم كتطبيق الجوّال (لا شعارَ بلا إذن — D-1646). والنهاريُّ درجةٌ أعمق: سماويُّهم على الأبيض
+           تباينُه ١٫٧. `light-dark()` يقرأ `color-scheme` الذي يكتبه الثيمُ على `:root`، والسطرُ قبله لمتصفّحٍ لا يعرفها (درجةُ
+           النهار، تُقرأ على الداكن أيضاً) */
+        <span
+          dir="ltr"
+          className="font-extrabold tracking-[0.4px] [-webkit-background-clip:text] [background-clip:text] text-transparent"
+          style={{
+            fontSize: Math.max(7, Math.round(size * 0.17)),
+            backgroundImage: "linear-gradient(90deg, #2E6BD6, #9A3FE0)",
+            ["--nuvio-word" as string]: "linear-gradient(90deg, light-dark(#2E6BD6, #4BD8EC), light-dark(#9A3FE0, #B048F0))",
+          }}
+          aria-label="Nuvio"
+        >
+          <span className="[background-image:var(--nuvio-word)] [-webkit-background-clip:text] [background-clip:text]">NUVIO</span>
+        </span>
       ) : logo ? (
         <svg width={size * logo.scale} height={size * logo.scale} viewBox="0 0 24 24">
           <path d={logo.d} fill={logo.color} />
