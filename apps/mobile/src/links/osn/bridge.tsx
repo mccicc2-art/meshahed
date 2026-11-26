@@ -66,8 +66,24 @@ export function osnBootScript(): string {
       } catch (e) { post({ t: "api", id: id, status: 0, body: "" }); }
     }
   };
+  /* 🆕 المهمّة ٥٥٨ — أزرارُ الدخول بجوجل وأبل وفيسبوك تُخفى (أحمد ٢٦ نوفمبر «٢ب»): جوجل ترفض الدخول من متصفّحٍ داخل تطبيق
+     («تعذّر تسجيل الدخول»، فيديو خالد)، والباقيان كذلك على الأرجح — فلا يُعرض بابٌ مسدود. يُعرف الزرُّ باسم المزوّد في نصّه أو وصفه،
+     ويُخفى هو وحده؛ البريدُ والجوالُ يبقيان */
+  var hideSocial = function () {
+    var els = document.querySelectorAll("button, a, [role=button]");
+    for (var i = 0; i < els.length; i++) {
+      var e = els[i];
+      if (e.getAttribute("data-lz-hidden")) continue;
+      var s = ((e.textContent || "") + " " + (e.getAttribute("aria-label") || "") + " " + (e.getAttribute("title") || "")).toLowerCase();
+      var img = e.querySelector("img[alt], svg[aria-label]");
+      if (img) s += " " + (img.getAttribute("alt") || img.getAttribute("aria-label") || "").toLowerCase();
+      /* زرٌّ قصيرُ النصّ وحده — غلافٌ كبيرٌ يحوي الاسمَ ضمن غيره (النموذجُ كلُّه) لا يُخفى */
+      if ((e.textContent || "").trim().length <= 60 && /google|apple|facebook|جوجل|أبل|فيسبوك/.test(s)) { e.style.display = "none"; e.setAttribute("data-lz-hidden", "1"); }
+    }
+  };
   tick();
-  setInterval(tick, 500);
+  hideSocial();
+  setInterval(function () { tick(); hideSocial(); }, 500);
   return true;
 })();`;
 }
@@ -89,11 +105,13 @@ type Props = {
   onReady?: (r: OsnReady, path: string) => void;
   onPageState?: (s: OsnPageState, path: string) => void;
   onNav?: (url: string) => void;
+  /** 🆕 المهمّة ٥٥٨ — حاول فتحَ صفحة دخول جوجل أو أبل أو فيسبوك: تُمنع، ويُقال له لماذا */
+  onSocialBlocked?: () => void;
   /** فكُّ الربط: تُمسح الجلسةُ بدل أن تُقرأ */
   signOut?: boolean;
 };
 
-export const OsnWeb = forwardRef<OsnWebRef, Props>(function OsnWeb({ url, mode, onReady, onPageState, onNav, signOut }, ref) {
+export const OsnWeb = forwardRef<OsnWebRef, Props>(function OsnWeb({ url, mode, onReady, onPageState, onNav, onSocialBlocked, signOut }, ref) {
   const web = useRef<WebView<object>>(null);
   const seq = useRef(0);
   const pending = useRef(new Map<number, (v: unknown) => void>());
@@ -163,8 +181,15 @@ export const OsnWeb = forwardRef<OsnWebRef, Props>(function OsnWeb({ url, mode, 
         onLoadStart={onLoadStart}
         onNavigationStateChange={(n: WebViewNavigation) => onNav?.(n.url)}
         originWhitelist={["https://*"]}
-        /* صفحاتُ OSN+ ودخولُها وحدها: رابطٌ إلى غيرها لا يُفتح هنا. ⚠️ نطاقاتُ الدخول (جوجل · أبل) لم تُقَس — تُضاف بعد أوّل تجربة */
-        onShouldStartLoadWithRequest={(r) => /^https:\/\/([a-z0-9-]+\.)*(osnplus\.com|osn\.com|anghcdn\.co|anghami\.com|accounts\.google\.com|appleid\.apple\.com)(\/|$)/i.test(r.url) || r.url === "about:blank"}
+        /* صفحاتُ OSN+ وحدها: رابطٌ إلى غيرها لا يُفتح هنا. 🆕 المهمّة ٥٥٨ — دخولُ جوجل وأبل وفيسبوك يُمنع ويُقال لماذا: جوجل رفضته
+           داخل التطبيق (فيديو خالد ٢٦ نوفمبر)، والصفحةُ إن فُتحت تنتهي بـ«تعذّر تسجيل الدخول» */
+        onShouldStartLoadWithRequest={(r) => {
+          if (/^https:\/\/([a-z0-9-]+\.)*(google\.com|apple\.com|facebook\.com)(\/|$)/i.test(r.url)) {
+            onSocialBlocked?.();
+            return false;
+          }
+          return /^https:\/\/([a-z0-9-]+\.)*(osnplus\.com|osn\.com|anghcdn\.co|anghami\.com)(\/|$)/i.test(r.url) || r.url === "about:blank";
+        }}
         javaScriptEnabled
         domStorageEnabled
         thirdPartyCookiesEnabled={false}

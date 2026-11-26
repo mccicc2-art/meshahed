@@ -3845,6 +3845,9 @@ const ar = {
   osnImportLaterNote: "يمكنك الاستيراد لاحقاً من صفحة OSN+.",
   osnStoppedSub: "خرجت OSN+ من حسابك على هذا الجهاز. ما دخل مكتبتك باقٍ.",
   osnProfileSub: "طلبت OSN+ اختيار الملف الشخصي قبل قراءة السجلّ، فتوقّفت المزامنة.",
+  /* 🆕 المهمّة ٥٥٨ — جوجل ترفض الدخول من متصفّحٍ داخل تطبيق (فيديو خالد ٢٦ نوفمبر): البريدُ أو الجوالُ وحدهما */
+  osnLoginHint: "ادخل بالبريد أو رقم الجوال، ثم اختر ملفك",
+  osnSocialBlocked: "جوجل وأبل لا يسمحان بالدخول من داخل التطبيقات. ادخل بالبريد أو رقم الجوال.",
 };
 
 export type Dict = typeof ar;
@@ -6755,6 +6758,8 @@ const en: Dict = {
   osnImportLaterNote: "You can import later from the OSN+ page.",
   osnStoppedSub: "OSN+ signed you out on this device. Everything already in your library stays.",
   osnProfileSub: "OSN+ asked to pick a profile before reading your history, so syncing stopped.",
+  osnLoginHint: "Sign in with email or phone, then pick your profile",
+  osnSocialBlocked: "Google and Apple don't allow signing in from inside apps. Sign in with email or phone.",
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };

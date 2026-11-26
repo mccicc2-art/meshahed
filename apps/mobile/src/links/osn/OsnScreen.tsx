@@ -59,6 +59,8 @@ function OsnLogin({ d, onClose, onFound }: PlatformLoginProps) {
   const done = useRef(false);
   const [cover, setCover] = useState(false);
   const [gap, setGap] = useState(false);
+  /* 🆕 المهمّة ٥٥٨ — بابُ دخولٍ ممنوع (جوجل · أبل · فيسبوك): السطرُ العلويّ يقول لماذا بدل الإرشاد */
+  const [social, setSocial] = useState(false);
   const gapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endGap = useCallback(() => {
     if (gapTimer.current) clearTimeout(gapTimer.current);
@@ -96,7 +98,7 @@ function OsnLogin({ d, onClose, onFound }: PlatformLoginProps) {
         <Pressable onPress={onClose} hitSlop={8} accessibilityLabel={t.closeLabel} style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>
           <Icon name="close" size={18} color={tokens.muted} />
         </Pressable>
-        <Text size={13} muted style={{ flex: 1, lineHeight: 18 }}>{cover ? "" : t.nfxLoginHint}</Text>
+        <Text size={13} muted style={{ flex: 1, lineHeight: 18 }}>{cover ? "" : social ? t.osnSocialBlocked : t.osnLoginHint}</Text>
       </View>
       <View style={{ flex: 1 }}>
         <OsnWeb
@@ -104,6 +106,7 @@ function OsnLogin({ d, onClose, onFound }: PlatformLoginProps) {
           url={OSN_PROFILES}
           mode="visible"
           onReady={onReady}
+          onSocialBlocked={() => setSocial(true)}
           onPageState={(s) => {
             if (s === "gate") {
               gateSeen.current = true;
