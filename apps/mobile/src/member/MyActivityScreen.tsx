@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, Platform, ScrollView, View } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +18,8 @@ import { TabSlide, useTabAim } from "../TabSlide";
 import type { MoveWatchDayBody, ToggleMovieBody, TrackResult, UnmarkEpisodesBody } from "../contracts";
 import type { MyActivityPayload } from "@/core/contracts/profile";
 import { useHomeDoor } from "../homeDoor";
+import { HistoryShareSheet } from "./HistoryShareSheet";
+import { Icon } from "../icons";
 
 /**
  * ====== «النشاط» أصليّاً — سجلُّك أنت (🆕 D-1213، ١ أكتوبر ٢٠٢٦) ======
@@ -47,6 +49,8 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
   const refresh = usePullRefresh([myActivityKey], 0);
   const qc = useQueryClient();
   const toast = useRef<ToastHostRef>(null);
+  /* 🆕 «شارك سجلّك» من رأس السجلّ («٤ب») — بطاقةُ الأسبوع أو الشهر */
+  const [sharing, setSharing] = useState(false);
 
   /**
    * 🆕 D-1504 — **«ما شفتها، احذفها من السجل»**: لا مسارَ جديد — مسارا التتبّع اللذان يلغيان التأشيرَ اليوم.
@@ -121,7 +125,17 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       {/* D-1624 — الشريطُ الواحد */}
       <View style={{ paddingTop: insets.top }}>
-        <TopBar title={t.activityTitle} onBack={back} onBackLong={home} backLabel={t.closeLabel} />
+        <TopBar
+          title={t.activityTitle}
+          onBack={back}
+          onBackLong={home}
+          backLabel={t.closeLabel}
+          end={
+            <Pressable onPress={() => setSharing(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.historyShareTitle} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+              <Icon name="share" size={22} color={tokens.fg} />
+            </Pressable>
+          }
+        />
       </View>
 
       {!q.data ? (
@@ -177,6 +191,7 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
           />
         </View>
       )}
+      {sharing ? <HistoryShareSheet onClose={() => setSharing(false)} /> : null}
       <ToastHost hostRef={toast} bottom={insets.bottom + 24} />
     </View>
   );

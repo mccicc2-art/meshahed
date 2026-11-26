@@ -47,6 +47,7 @@ const ROLE_N: Record<Role, number> = { c0: 0, c1: 1, S: 2, E: 3 };
 /** الجانبُ البادئ فعليّاً: يمينٌ في العربيّة ويسارٌ في الإنجليزيّة — والتحويلاتُ لا تنقلب مع الاتّجاه فنقلبها نحن */
 const START = I18nManager.isRTL ? 1 : -1;
 const MS = 420;
+const SPRING = { damping: 20, stiffness: 170, mass: 0.9 };
 const EASE = Easing.bezier(0.2, 0.9, 0.2, 1);
 
 type Target = { x: number; y: number; r: number; s: number; dim: number; z: number };
@@ -86,7 +87,7 @@ export function RateDeck({
   tray: readonly { key: string; poster: string | null; v: number }[];
   metaOf: (r: RateQueueItem) => string;
 }) {
-  const { t, tokens, locale } = useApp();
+  const { t, locale } = useApp();
   const reduced = useReducedMotion();
   const [box, setBox] = useState({ w: 0, h: 0 });
   const onLayout = useCallback((e: LayoutChangeEvent) => {
@@ -94,7 +95,7 @@ export function RateDeck({
     setBox((b) => (Math.abs(b.w - width) < 1 && Math.abs(b.h - height) < 1 ? b : { w: width, h: height }));
   }, []);
   /* البطاقةُ تملأ ما يتّسع: ٦٢٪ من العرض، أو ما يبقى بعد الاسم وسطر الإرشاد — أيّهما أصغر */
-  const H = box.w ? Math.max(150, Math.min(box.w * 0.62 * 1.5, box.h - 16 - 28 - 84)) : 0;
+  const H = box.w ? Math.max(150, Math.min(box.w * 0.62 * 1.5, box.h - 16 - 28 - 52)) : 0;
   const W = H / 1.5;
 
   const cur = useMemo(() => decks[ci] ?? [], [decks, ci]);
@@ -158,9 +159,11 @@ export function RateDeck({
         later(x, y);
         return;
       }
-      const toStart = Math.sign(x) === START;
-      if (!cancel && side && Math.abs(x) > 80) {
-        const ni = toStart ? ci - 1 : ci + 1;
+      /* 🔴 أحمد ٢٦ نوفمبر بتسجيل: «إذا حركت يمين يطلع يسار — اعكس الحركة». السحبُ يدفع البطاقةَ كصفحةٍ تُقلَّب: تدفعها نحو جانبٍ
+         فتأتي الرزمةُ من الجانب الآخر (يساراً في العربيّة تأتي الأفلامُ من اليمين) — والتي دُفعت تستقرّ حيث دفعتها */
+      const bringStart = Math.sign(x) === -START;
+      if (!cancel && side && Math.abs(x) > 70) {
+        const ni = bringStart ? ci - 1 : ci + 1;
         if (ni >= 0 && ni < RATE_DECKS.length) {
           /* الإزاحةُ لا تُصفَّر هنا: البطاقةُ التي سُحبت تنطلق إلى جانبها من حيث تركها الإصبع (أثرُ دورها في `DeckCard`)، ثمّ تُصفَّر */
           haptic.pick();
@@ -241,8 +244,6 @@ export function RateDeck({
     [top, onRate, onRated, launch, reduced],
   );
 
-  const startName = startDeck ? t.rateQueueDeckNames[ci - 1] : null;
-  const endName = endDeck ? t.rateQueueDeckNames[ci + 1] : null;
   const rest = RATE_DECKS.map((_, i) => i).filter((i) => i !== ci && (decks[i]?.length ?? 0) > 0);
 
   return (
@@ -277,8 +278,6 @@ export function RateDeck({
               <View style={{ alignItems: "center", paddingHorizontal: 24, gap: 2 }}>
                 <Text size={19} weight="700" numberOfLines={1} style={{ textAlign: "center" }}>{top.title}</Text>
                 <Text size={14} muted numberOfLines={1}>{metaOf(top)}</Text>
-                <Text size={12} muted numberOfLines={1} style={{ marginTop: 6, color: tokens.disabled }}>{t.rateQueueGestures(startName, endName)}</Text>
-                <Text size={12} numberOfLines={1} style={{ color: tokens.disabled }}>{t.rateQueueHold}</Text>
               </View>
             ) : (
               <View style={{ position: "absolute", top: 0, bottom: 0, start: 0, end: 0, alignItems: "center", justifyContent: "center", gap: 10, paddingHorizontal: 24 }}>
@@ -350,14 +349,16 @@ function DeckCard({
       rot.value = rot.value + dx.value * 0.05;
     }
     was.current = role;
-    const d = reduced ? 0 : MS;
-    const cfg = { duration: d, easing: EASE };
     roleN.value = ROLE_N[role];
-    x.value = withTiming(to.x, cfg);
-    y.value = withTiming(to.y, cfg);
-    rot.value = withTiming(to.r, cfg);
-    sc.value = withTiming(to.s, cfg);
-    dim.value = withTiming(to.dim, cfg);
+    /* «حسّن الموشن»: نابضٌ لا منحنى ثابت — البطاقةُ تكمل اندفاعَ الإصبع ثمّ تستقرّ بلا قفزة */
+    const move = <T extends number>(sv: SharedValue<number>, v: T) => {
+      sv.value = reduced ? v : withSpring(v, SPRING);
+    };
+    move(x, to.x);
+    move(y, to.y);
+    move(rot, to.r);
+    move(sc, to.s);
+    dim.value = withTiming(to.dim, { duration: reduced ? 0 : MS, easing: EASE });
     op.value = withTiming(1, { duration: reduced ? 0 : 300 });
   }, [role, W, reduced, x, y, rot, sc, dim, op, roleN, dx, dy]);
 
@@ -366,11 +367,12 @@ function DeckCard({
     "worklet";
     const n = roleN.value;
     if (n < 2) return 0;
-    const toStart = Math.sign(dx.value) === START;
-    const blocked = (toStart && canStart.value === 0) || (!toStart && canEnd.value === 0);
-    const mine = (n === 2 && toStart) || (n === 3 && !toStart);
+    /* الجارةُ القادمةُ هي التي في الجهة المقابلة لاتّجاه السحب */
+    const bringStart = Math.sign(dx.value) === -START;
+    const blocked = (bringStart && canStart.value === 0) || (!bringStart && canEnd.value === 0);
+    const mine = (n === 2 && bringStart) || (n === 3 && !bringStart);
     if (!mine || blocked || Math.abs(dx.value) <= Math.abs(dy.value)) return 0;
-    return interpolate(Math.abs(dx.value), [0, 180], [0, 1], Extrapolation.CLAMP);
+    return interpolate(Math.abs(dx.value), [0, W * 0.9], [0, 1], Extrapolation.CLAMP);
   };
   const style = useAnimatedStyle(() => {
     const n = roleN.value;
@@ -379,20 +381,27 @@ function DeckCard({
     let tr = rot.value;
     let ts = sc.value;
     if (n === 0) {
-      /* الوسطُ يتبع الإصبع — ونحو جانبٍ لا رزمةَ فيه بربع المسافة (مقاومةٌ تقول «لا شيء هنا») */
-      const toStart = Math.sign(dx.value) === START;
-      const blocked = (toStart && canStart.value === 0) || (!toStart && canEnd.value === 0);
+      /* الوسطُ يتبع الإصبع — ونحو رزمةٍ غير موجودة بربع المسافة (مقاومةٌ تقول «لا شيء هنا») */
+      const bringStart = Math.sign(dx.value) === -START;
+      const blocked = (bringStart && canStart.value === 0) || (!bringStart && canEnd.value === 0);
       const rx = blocked ? dx.value * 0.25 : dx.value;
       tx += rx;
       ty += Math.min(dy.value, 30);
-      tr += rx * 0.05;
-    } else {
-      /* الجارةُ التي يتّجه إليها الإصبعُ تقترب وتعتدل */
+      tr += rx * 0.04;
+      ts -= interpolate(Math.abs(rx), [0, W], [0, 0.08], Extrapolation.CLAMP);
+    } else if (n >= 2) {
+      /* القادمةُ تنزلق نحو الوسط مع الإصبع وتعتدل وتكبر؛ والأخرى تتراجع قليلاً — فالعينُ ترى إلى أين تذهب قبل الترك */
       const k = near();
-      tx = tx * (1 - k * 0.5);
-      ty = ty - k * 12;
-      tr = tr * (1 - k);
-      ts = ts + k * 0.1;
+      if (k > 0) {
+        tx = tx * (1 - k * 0.85);
+        ty = ty - k * 18;
+        tr = tr * (1 - k);
+        ts = ts + k * 0.14;
+      } else if (Math.abs(dx.value) > Math.abs(dy.value)) {
+        const back = interpolate(Math.abs(dx.value), [0, W], [0, 0.12], Extrapolation.CLAMP);
+        tx = tx * (1 + back);
+        ts = ts - back * 0.3;
+      }
     }
     return {
       opacity: op.value,
@@ -547,11 +556,17 @@ function Scrub({ disabled, onValue, onCommit }: { disabled: boolean; onValue: (v
   const end = useCallback(
     (cancel: boolean) => {
       const k = val.current;
+      setOff(false);
+      /* 🔴 تسجيلُ أحمد ٢٦ نوفمبر: «بعد ما أحدد كم نجمة يختفي الشريط وكأني ما حددت ثم اتسجل تحت» — كان الشريطُ يُفرَّغ لحظةَ الترك
+         والحفظُ ما زال في الطريق. الآن يبقى على ما اخترتَ (رقمُه وكلمتُه) حتى تطير البطاقة، فيُركَّب شريطٌ جديدٌ للتي بعدها
+         (`key` بالعمل)؛ وإن فشل الحفظ عاد فارغاً (`disabled` يعود فيُفرَّغ أدناه) */
+      if (!cancel && k) {
+        onCommit(k);
+        return;
+      }
       val.current = 0;
       setV(0);
-      setOff(false);
-      if (!cancel && k) onCommit(k);
-      else onValue(0);
+      onValue(0);
     },
     [onCommit, onValue],
   );
@@ -587,10 +602,22 @@ function Scrub({ disabled, onValue, onCommit }: { disabled: boolean; onValue: (v
     [disabled, show, end, width, y0, last, away],
   );
 
-  const word = off ? t.rateQueueLetGo : v ? t.rateQueueWords[v] : t.rateQueueSlide;
+  /* فشلُ الحفظ: الشريطُ يعود فارغاً (القفلُ رُفع والعملُ نفسُه ما زال في الوسط) */
+  const wasDisabled = useRef(disabled);
+  useEffect(() => {
+    if (wasDisabled.current && !disabled && val.current) {
+      val.current = 0;
+      setV(0);
+    }
+    wasDisabled.current = disabled;
+  }, [disabled]);
+
+  /* 🆕 أحمد ٢٦ نوفمبر («الكلام زحمة، الغير مهم احذفه وبسّطه»): لا سطرَ تعليماتٍ دائماً فوق الشريط — الأرقامُ تحته تقول ما يُفعل،
+     والكلمةُ تظهر وأنت تسحب وحدَه (والسطرُ بارتفاعه الثابت فلا يقفز الشريط) */
+  const word = off ? t.rateQueueLetGo : v ? t.rateQueueWords[v] : "";
   const inner = Math.max(0, w - PAD * 2);
   return (
-    <View style={{ paddingHorizontal: 14, paddingTop: 4, opacity: disabled ? 0.6 : 1 }}>
+    <View style={{ paddingHorizontal: 14, paddingTop: 4, opacity: disabled && !v ? 0.6 : 1 }}>
       <Text size={15} weight="600" color={v ? tokens.accent : tokens.muted} style={{ textAlign: "center", height: 22 }}>{word}</Text>
       <GestureDetector gesture={g}>
         <View

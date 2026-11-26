@@ -9,6 +9,8 @@ import { useApp } from "../state";
 import { Button, Text, TopBar } from "../ui";
 import { Icon } from "../icons";
 import { Segmented } from "../library/ToolsSheet";
+import { OneTimeHint } from "../library/OneTimeHint";
+import { libraryQuery } from "../library/LibraryScreen";
 import { Sheet } from "../library/Sheet";
 import { StarRow } from "../title/StarRow";
 import { posterFor } from "../poster";
@@ -51,6 +53,7 @@ const SETTLE_MS = 450;
 const UNDO_MS = 3500;
 type Mode = "cards" | "list";
 const keyOf = (r: { kind: string; id: number }) => `${r.kind}-${r.id}`;
+const DECK_HINT = "rate-deck-gestures";
 
 export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
   const { t, tokens, locale } = useApp();
@@ -75,6 +78,8 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
   const [rated, setRated] = useState(0);
   const [tray, setTray] = useState<readonly { key: string; poster: string | null; v: number }[]>([]);
   const [menu, setMenu] = useState<RateQueueItem | null>(null);
+  /* التلميحاتُ المقروءة من كاش المكتبة (ما يكتبه `OneTimeHint` عند الإغلاق) — بلا نداء */
+  const hints = useQuery({ ...libraryQuery, enabled: false }).data?.hints ?? [];
 
   const q = useQuery({
     queryKey: [...RATE_QUEUE_KEY, "all"],
@@ -369,6 +374,8 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
       ) : mode === "cards" ? (
         <View style={{ flex: 1, paddingBottom: insets.bottom + 8 }}>
           {header}
+          {/* الإيماءاتُ تُقال مرّةً واحدة ثمّ تصمت (أحمد: «الكلام زحمة … بسّطه») — لا سطرَي تعليماتٍ دائمين تحت الاسم */}
+          {hints && !hints.includes(DECK_HINT) ? <OneTimeHint id={DECK_HINT} text={t.rateQueueDeckHint} style={{ marginHorizontal: PAGE_PAD, marginBottom: 4 }} /> : null}
           <RateDeck
             decks={decks}
             ci={deck}
@@ -424,7 +431,8 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
           </View>
         </Sheet>
       ) : null}
-      <ToastHost hostRef={toast} bottom={insets.bottom + 24} />
+      {/* في المروحة يعلو الإشعارُ الشريطَ والرفّ — كان يغطّي الشريطَ لحظةَ تقييم البطاقة التالية */}
+      <ToastHost hostRef={toast} bottom={insets.bottom + 24 + (mode === "cards" && q.data?.items.length ? 190 : 0)} />
     </View>
   );
 }

@@ -102,7 +102,7 @@ function pieces(w: string, F: Fonts): Piece[] {
 export async function shapedText(
   text: string,
   o: { width: number; size: number; lineHeight: number; maxLines: number; color: string; dir?: "rtl" | "ltr"; face?: ShapeFace; align?: "start" | "center" },
-): Promise<{ src: string; width: number; height: number }> {
+): Promise<{ src: string; width: number; height: number; used: number }> {
   const F = await facesOf(o.face ?? "cairo");
   const dir = o.dir ?? "rtl";
   /* 🔴 البند ٤: ما لا يحمله الخطّان (الإيموجي ومحدِّداتُه) يسقط — وإلّا رُسم مربّعاً فارغاً في الصورة */
@@ -162,6 +162,8 @@ export async function shapedText(
       }
     }
   };
+  /** 🆕 عرضُ أطول سطرٍ فعلاً — لمن يضع شيئاً بعد النصّ مباشرةً (نجمةُ التقييم بعد اسم العمل) */
+  let used = 0;
   shown.forEach((line, li) => {
     const y = o.size + li * o.size * o.lineHeight;
     const groups: { latin: boolean; items: Unit[] }[] = [];
@@ -172,6 +174,7 @@ export async function shapedText(
     }
     /* 🆕 التوسيط: السطرُ يبدأ من نصف ما يفضل عنه — والترتيبُ داخله كما هو */
     const lineW = groups.reduce((a, g) => a + groupW(g.items), 0) + space * (groups.length - 1);
+    used = Math.max(used, Math.min(o.width, lineW));
     const pad = o.align === "center" ? Math.max(0, (o.width - lineW) / 2) : 0;
     if (dir === "rtl") {
       let x = o.width - pad;
@@ -190,7 +193,7 @@ export async function shapedText(
   });
   const height = Math.max(1, Math.ceil(o.size + (shown.length - 1) * o.size * o.lineHeight + o.size * 0.5));
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${height}" viewBox="0 0 ${o.width} ${height}"><path d="${d}" fill="${o.color}"/></svg>`;
-  return { src: `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`, width: o.width, height };
+  return { src: `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`, width: o.width, height, used: Math.ceil(used) };
 }
 
 let iconP: Promise<string> | null = null;

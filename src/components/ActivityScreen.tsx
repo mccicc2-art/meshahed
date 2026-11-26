@@ -11,6 +11,7 @@ import { BackCrumb } from "./BackButton";
 import { HistoryRowMenu } from "./activity/HistoryRowMenu";
 import { WeekAside, sourceName } from "./activity/WeekAside";
 import { HISTORY_WORDS } from "./activity/historyWords";
+import { HistoryShareSheet } from "./HistoryShareSheet";
 
 /**
  * **صفحةُ النشاط — ما فعلتَه أنت، يوماً بيوم** (D-537، تصميمُ أحمد
@@ -88,6 +89,8 @@ export function ActivityScreen({
 }) {
   const t = getDict(locale);
   const [scope, setScope] = useState<Scope>(initialScope);
+  /* 🆕 ورقةُ «شارك سجلّك» */
+  const [sharing, setSharing] = useState(false);
   /** `null` = بلا سقف — **وفتحُ السقف لا يُغلق** بتبديل الرقاقة */
   const [limit, setLimit] = useState<number | null>(initial ?? null);
   /** هل نحن في المتصفّح؟ **فتُقسَم الأيامُ بساعته لا بـUTC** */
@@ -136,6 +139,16 @@ export function ActivityScreen({
           <p className="mt-1 text-sm text-muted">{w.sub}</p>
         </header>
       )}
+      {/* 🆕 «شارك سجلّك» («٤ب»: الزرُّ في رأس السجلّ) — لصاحب السجلّ وحدَه */}
+      {editable && (
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setSharing(true)} className="inline-flex items-center gap-2 min-h-11 px-3 rounded-full text-sm font-semibold text-muted hover:text-foreground">
+            <Icon name="share" size={18} />
+            {t.historyShareTitle}
+          </button>
+        </div>
+      )}
+      {sharing && <HistoryShareSheet locale={locale} onClose={() => setSharing(false)} />}
 
       {/* «ت٥أ» (أحمد ٢٦ نوفمبر، استوديو المشاركة): صفُّ الفلتر عائلةُ المقسّم بخطٍّ أصفر يتمرّر — لا كبسولات */}
       <div className={chipRow}>

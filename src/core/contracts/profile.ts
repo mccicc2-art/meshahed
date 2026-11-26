@@ -89,6 +89,13 @@ export type ProfileActivity = {
 /** 🆕 D-1213 — `GET /api/v1/me/activity`: سجلُّك أنت كاملاً (شاشةُ `/activity`) بصفِّ ملفِّ الشخص نفسِه — مكوّنٌ واحدٌ يرسمهما */
 export type MyActivityPayload = { items: ProfileActivity[] };
 
+/** 🆕 `GET /api/v1/me/history-card` — أعمالُ بطاقة سجلّ المشاهدة بترتيبها (الأوّلُ بطلُها)، ليُخفي العضوُ منها ما يشاء قبل المشاركة */
+export type HistoryCardPayload = {
+  period: "week" | "month";
+  range: string;
+  titles: { key: string; kind: "tv" | "movie"; id: number; title: string; poster_path: string | null; episodes: number }[];
+};
+
 /** 🆕 D-1357 (V-C · C1) — `GET /api/v1/me/ratings`: صفُّ «تقييماتي» كما ترسمه صفحةُ `/ratings` — التقييمُ من ١٠، والتعليقُ نصٌّ داخله */
 export type MyRating = { kind: "tv" | "movie"; id: number; title: string | null; poster_path: string | null; rating: number; review: string | null };
 export type MyRatingsPayload = {

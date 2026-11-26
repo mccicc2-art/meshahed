@@ -40,6 +40,8 @@ import { hm, reportLead } from "@/core/statsFormat";
 import { asTimeZone } from "@/core/zone";
 import { yearCardElement, YEAR_CARD } from "@/lib/yearCard";
 import { countedUnit, yearPersona } from "@/core/yearPersona";
+import { historyCardElement, HISTORY_CARD, type HistoryCardWork } from "@/lib/historyCard";
+import { asHistoryPeriod, cardArt, historyTitles, myRatingsFor, parseHide, type HistoryPeriod } from "@/lib/historyShare";
 
 export const runtime = "nodejs";
 
@@ -78,6 +80,10 @@ export async function GET(request: Request) {
   /* 🆕 «حصاد 2026» (أحمد ٢٦ نوفمبر «ق٧أ»): بطاقةُ القصّة ١٠٨٠×١٩٢٠ — ومشاركةُ تقرير «السنة» تأتي إليها */
   if (q.get("kind") === "year") {
     return yearImage(locale);
+  }
+  /* 🆕 بطاقةُ سجلّ المشاهدة («ن٥ ب»): الأسبوعُ أو الشهر، وما أخفاه صاحبُها */
+  if (q.get("kind") === "history") {
+    return historyImage(locale, asHistoryPeriod(q.get("p")), parseHide(q.get("hide")));
   }
 
   const [profile, follows, followStats, summary, episodes, watchedMovies, ratings, favs, animeFlags] =
@@ -462,4 +468,85 @@ async function yearImage(locale: Locale) {
     ...YEAR_CARD,
     headers: { "Cache-Control": "private, no-store" },
   });
+}
+
+const UNITS = {
+  ep: { one: "حلقة واحدة", two: "حلقتان", few: "حلقات", many: "حلقةً", hundred: "حلقة", en1: "episode", enN: "episodes" },
+  tv: { one: "مسلسل واحد", two: "مسلسلان", few: "مسلسلات", many: "مسلسلاً", hundred: "مسلسل", en1: "show", enN: "shows" },
+  mv: { one: "فيلم واحد", two: "فيلمان", few: "أفلام", many: "فيلماً", hundred: "فيلم", en1: "movie", enN: "movies" },
+  work: { one: "عملٌ آخر", two: "عملان آخران", few: "أعمالٍ أخرى", many: "عملاً آخر", hundred: "عملٍ آخر", en1: "more title", enN: "more titles" },
+};
+
+/**
+ * 🆕 **بطاقةُ سجلّ المشاهدة** («ن٥ ب»، `lib/historyCard`): البطلُ أكثرُ عملٍ دقائقَ بعد ما أُخفي، ثمّ رفٌّ من أربعة، ثمّ الباقي
+ * باسمه («اذكر اسمه بالضبط»): واحدٌ أو اثنان باسميهما، وما زاد عددٌ بتمييزه. مدّةٌ فارغةٌ لا صورةَ لها (`409`).
+ */
+async function historyImage(locale: Locale, period: HistoryPeriod, hide: Set<string>) {
+  const profile = await getProfile();
+  const tz = asTimeZone(profile?.timezone);
+  const { range, titles: all } = await historyTitles(period, locale, tz);
+  const titles = all.filter((x) => !hide.has(x.key));
+  if (!titles.length) return new Response("nothing to share", { status: 409 });
+  const en = locale === "en";
+
+  const [hero, ...others] = titles;
+  const shelfRaw = others.slice(0, 4);
+  const after = others.slice(4);
+  const [ratings, avatar, heroArtInfo, ...shelfArt] = await Promise.all([
+    myRatingsFor(titles.slice(0, 7).map((x) => ({ tmdbId: x.tmdbId, mediaType: x.mediaType }))),
+    dataUrl(profile?.avatar_url ?? null),
+    cardArt(hero),
+    ...shelfRaw.map(cardArt),
+  ]);
+  const restNames = after.length && after.length <= 2 ? await Promise.all(after.map((x) => cardArt(x).then((a) => a.title))) : [];
+  const [heroArt, ...shelfPosters] = await Promise.all([
+    dataUrl(posterUrl(heroArtInfo.poster, "w780")),
+    ...shelfArt.map((a) => dataUrl(posterUrl(a.poster, "w342"))),
+  ]);
+  const work = (x: (typeof titles)[number], title: string, poster: string | null): HistoryCardWork => ({
+    title,
+    poster,
+    episodes: x.episodes,
+    movie: x.mediaType === "movie",
+    rating: ratings.get(x.key) ?? null,
+  });
+  const rest = !after.length
+    ? null
+    : restNames.length
+      ? (en ? "And " : "و") + restNames.join(en ? " & " : " و")
+      : (() => {
+          const u = countedUnit(after.length, UNITS.work, locale);
+          return en ? `And ${after.length} ${u.unit}` : `و${u.value ?? ""} ${u.unit}`.replace("و ", "و");
+        })();
+
+  const episodes = titles.reduce((n, x) => n + x.episodes, 0);
+  const movies = titles.filter((x) => x.mediaType === "movie").length;
+  const shows = titles.length - movies;
+  const stats = [
+    { n: episodes, w: UNITS.ep },
+    { n: shows, w: UNITS.tv },
+    { n: movies, w: UNITS.mv },
+  ]
+    .filter((x) => x.n > 0)
+    .map((x) => countedUnit(x.n, x.w, locale));
+
+  const el = await historyCardElement({
+    locale,
+    month: period === "month",
+    range,
+    name: profile?.nickname?.trim() || profile?.username || "Loopz",
+    username: profile?.username ?? null,
+    avatar,
+    heroArt,
+    hero: work(hero, heroArtInfo.title, null),
+    shelf: shelfRaw.map((x, i) => work(x, shelfArt[i]?.title ?? x.title, shelfPosters[i] ?? null)),
+    rest,
+    stats,
+    workLine: (w) => {
+      if (w.movie) return en ? "Movie" : "فيلم";
+      const u = countedUnit(w.episodes, UNITS.ep, locale);
+      return u.value ? `${u.value} ${u.unit}` : u.unit;
+    },
+  });
+  return new ImageResponse(el, { ...HISTORY_CARD, headers: { "Cache-Control": "private, no-store" } });
 }

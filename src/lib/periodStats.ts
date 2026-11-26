@@ -187,6 +187,8 @@ export interface PeriodStats {
   completionPct: number;
 
   topTitles: StatTitle[];
+  /** 🆕 كلُّ أعمال المدّة بالترتيب نفسِه (الأكثرُ دقائقَ أوّلاً) — بطاقةُ سجلّ المشاهدة تُخفي منها ما يختاره صاحبُها وتعدّ الباقي */
+  allTitles: StatTitle[];
   releaseYears: { decade: number; pct: number }[];
 
   taste: {
@@ -705,6 +707,7 @@ export async function buildPeriodStats(
     },
     completionPct,
     topTitles: touched.sort((a, b) => b.minutes - a.minutes).slice(0, 10),
+    allTitles: touched,
     releaseYears: [...decadeMin]
       .sort((a, b) => a[0] - b[0])
       .map(([decade, v]) => ({ decade, pct: pctOf(v, decadeTotal) })),
