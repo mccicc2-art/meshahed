@@ -37,6 +37,7 @@ export function OsnScreen() {
         importLaterNote: t.osnImportLaterNote,
         stoppedSub: t.osnStoppedSub,
         profileSub: t.osnProfileSub,
+        added: t.osnAdded,
       },
     }),
     [t],

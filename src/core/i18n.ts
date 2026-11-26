@@ -3848,6 +3848,13 @@ const ar = {
   /* 🆕 المهمّة ٥٥٨ — جوجل ترفض الدخول من متصفّحٍ داخل تطبيق (فيديو خالد ٢٦ نوفمبر): البريدُ أو الجوالُ وحدهما */
   osnLoginHint: "ادخل بالبريد أو رقم الجوال، ثم اختر ملفك",
   osnSocialBlocked: "جوجل وأبل لا يسمحان بالدخول من داخل التطبيقات. ادخل بالبريد أو رقم الجوال.",
+  /* 🆕 المهمّة ٥٥٩ — رسالةُ الإضافة باسم OSN+ (كانت تقول «Netflix» لمزامنة OSN+، فيديو خالد ٢٦ نوفمبر) */
+  osnAdded: (episodes: number, movies: number) =>
+    episodes && movies
+      ? `أُضيفت من OSN+ ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")} و${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
+      : movies
+        ? `أُضيف من OSN+ ${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
+        : `أُضيفت من OSN+ ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")}`,
 };
 
 export type Dict = typeof ar;
@@ -6760,6 +6767,12 @@ const en: Dict = {
   osnProfileSub: "OSN+ asked to pick a profile before reading your history, so syncing stopped.",
   osnLoginHint: "Sign in with email or phone, then pick your profile",
   osnSocialBlocked: "Google and Apple don't allow signing in from inside apps. Sign in with email or phone.",
+  osnAdded: (episodes: number, movies: number) =>
+    episodes && movies
+      ? `Added from OSN+: ${enCount(episodes, "episode", "episodes")} and ${enCount(movies, "movie", "movies")}`
+      : movies
+        ? `Added from OSN+: ${enCount(movies, "movie", "movies")}`
+        : `Added from OSN+: ${enCount(episodes, "episode", "episodes")}`,
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };

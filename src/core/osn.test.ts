@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildOsnRecords, chunks, isWatched, parseBookmarks, parseMovies, parseSeasonEpisodes, parseSeries, seriesToRead } from "./osn.ts";
+import { buildOsnRecords, chunks, isNoise, isWatched, parseBookmarks, parseMovies, parseSeasonEpisodes, parseSeries, seriesToRead } from "./osn.ts";
 
 /* عيّناتٌ بشكل ردود OSN+ كما قيست في ٢٦ نوفمبر (`claude/STUDY-OSN-S0-2026-11-26.md`) — بلا معرّف ملفٍّ شخصيّ */
 const LATEST = {
@@ -81,8 +81,10 @@ test("buildOsnRecords: المكتملةُ تدخل بحلقتها واسمها،
   const out = buildOsnRecords([...eps, ...mv], parseSeries(SERIES), parseSeasonEpisodes(EPISODES), parseMovies(MOVIES));
   assert.equal(out.records.length, 2, "الثامنةُ (اكتملت) والتاسعةُ (٩٧٪)");
   assert.deepEqual(out.records[0], { kind: "ep-name", show: "House Of The Dragon", s: 1, e: 8, at: new Date(1665000000000).toISOString(), year: 2022, nfx: { show: "osn-1581", title: "The Lord of the Tides" } });
-  assert.equal(out.partial.length, 2, "الثانيةُ (ثانيتان) والفيلمُ (٦٦ ثانية)");
-  assert.equal(out.partial.find((p) => p.show === null)?.title, "Gone Girl");
+  assert.equal(out.partial.length, 1, "الفيلمُ (٦٦ ثانية) — والثانيةُ (ثانيتان) فتحٌ لا مشاهدة");
+  assert.equal(out.partial[0].title, "Gone Girl");
+  assert.equal(out.partial[0].id, "23251");
+  assert.deepEqual(out.recorded, ["12198", "9018"]);
   assert.equal(out.newest, 1795648144338);
 });
 
@@ -100,4 +102,22 @@ test("seriesToRead و chunks", () => {
   assert.deepEqual(seriesToRead(latest, null), ["1581"]);
   assert.deepEqual(seriesToRead(latest, 1700000000000), []);
   assert.deepEqual(chunks([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]]);
+});
+
+test("isNoise: دون دقيقة أو مدّةٌ غيرُ معقولة — لا «بدأته»", () => {
+  assert.equal(isNoise({ positionSec: 0, runtimeSec: 2147484, done: false }), true, "الحلقةُ التالية التي بدأت وحدها");
+  assert.equal(isNoise({ positionSec: 30, runtimeSec: 3000, done: false }), true);
+  assert.equal(isNoise({ positionSec: 66, runtimeSec: 8937, done: false }), false);
+  assert.equal(isNoise({ positionSec: 0, runtimeSec: null, done: true }), false, "«اكتملت» تُصدَّق");
+});
+
+test("buildOsnRecords: ما يُعاد فحصه يُقرأ ولو كان قبل الحدّ", () => {
+  const late = parseBookmarks({
+    bookmarks: [{ content: { movie: { contentId: "23251" } }, clientTimestampMs: "1700000000000", timeInMediaMs: 8500000, contentDurationMs: 8937000, finishedViewing: false }],
+  });
+  const movies = parseMovies(MOVIES);
+  assert.equal(buildOsnRecords(late, new Map(), new Map(), movies, { after: 1800000000000 }).records.length, 0);
+  const again = buildOsnRecords(late, new Map(), new Map(), movies, { after: 1800000000000, recheck: new Set(["23251"]) });
+  assert.equal(again.records.length, 1);
+  assert.deepEqual(again.recorded, ["23251"]);
 });

@@ -190,6 +190,8 @@ export function seriesToRead(latest: OsnBookmark[], after: number | null): strin
 
 /** ما بدأه العضو ولم يبلغ ٩٠٪ — شكلُ `NetflixPartial` نفسُه، لصفّ «بدأته ولم تكمله» */
 export interface OsnPartial {
+  /** 🆕 المهمّة ٥٥٩ — معرّفُ الحلقة أو الفيلم في OSN+: يُعاد السؤالُ عنه في المزامنة التالية */
+  id: string;
   title: string;
   show: string | null;
   season: number | null;
@@ -204,6 +206,19 @@ export interface OsnBuild {
   /** ما لم يُفهم: حلقةٌ بلا مسلسلٍ أو موسمٍ أو رقمٍ مقروء، أو فيلمٌ بلا اسم */
   skipped: number;
   newest: number | null;
+  /** 🆕 المهمّة ٥٥٩ — معرّفاتُ ما دخل المكتبة في هذه القراءة: يخرج من قائمة «بدأته ولم تكمله» */
+  recorded: string[];
+}
+
+/** 🆕 المهمّة ٥٥٩ — أقصرُ تشغيلٍ يُعدّ «بدأته»: ما دونه فتحٌ لا مشاهدة */
+export const OSN_MIN_STARTED_SEC = 60;
+/** مدّةٌ أطولُ من هذا ليست مدّةً — OSN+ يحفظ الحلقةَ التالية التي بدأت وحدها بمدّة 2^31 ملّي ثانية (فيديو خالد ٢٦ نوفمبر) */
+export const OSN_MAX_RUNTIME_SEC = 6 * 3600;
+
+/** علامةٌ لا تدلّ على مشاهدة: لم تكتمل، وموضعُها دون دقيقة أو مدّتُها مجهولةٌ أو غيرُ معقولة */
+export function isNoise(b: Pick<OsnBookmark, "positionSec" | "runtimeSec" | "done">): boolean {
+  if (b.done) return false;
+  return b.positionSec == null || b.positionSec < OSN_MIN_STARTED_SEC || b.runtimeSec == null || b.runtimeSec > OSN_MAX_RUNTIME_SEC;
 }
 
 /**
@@ -218,9 +233,11 @@ export function buildOsnRecords(
   series: Map<string, OsnSeries>,
   episodes: Map<string, OsnEpisode>,
   movies: Map<string, OsnMovie>,
-  opts: { after?: number | null } = {},
+  opts: { after?: number | null; recheck?: Set<string> } = {},
 ): OsnBuild {
   const after = opts.after ?? null;
+  const recheck = opts.recheck ?? new Set<string>();
+  const recorded: string[] = [];
   const records: RawRecord[] = [];
   const partial: OsnPartial[] = [];
   const seen = new Set<string>();
@@ -230,7 +247,13 @@ export function buildOsnRecords(
     if (seen.has(b.id)) continue;
     seen.add(b.id);
     if (b.at > 0 && (newest == null || b.at > newest)) newest = b.at;
-    if (after != null && b.at <= after) continue;
+    /* 🆕 المهمّة ٥٥٩ — ما كان «بدأته ولم تكمله» يُعاد النظرُ فيه مهما كان وقتُ علامته: OSN+ يحفظ التقديمَ بعد دقيقةٍ من
+       التشغيل (فيديو خالد ٢٦ نوفمبر)، وقد يصل حفظُه بعد المزامنة التي رأته ناقصاً */
+    if (after != null && b.at <= after && !recheck.has(b.id)) continue;
+    if (isNoise(b)) {
+      skipped++;
+      continue;
+    }
     const at = new Date(b.at || Date.now()).toISOString();
     if (b.kind === "episode") {
       const sh = b.seriesId ? series.get(b.seriesId) : undefined;
@@ -242,9 +265,10 @@ export function buildOsnRecords(
         continue;
       }
       if (!isWatched(b)) {
-        partial.push({ title: ep.title || sh.title, show: sh.title, season: s, episode: ep.number, share: watchedShare(b), at });
+        partial.push({ id: b.id, title: ep.title || sh.title, show: sh.title, season: s, episode: ep.number, share: watchedShare(b), at });
         continue;
       }
+      recorded.push(b.id);
       records.push({
         kind: "ep-name",
         show: sh.title,
@@ -261,11 +285,12 @@ export function buildOsnRecords(
         continue;
       }
       if (!isWatched(b)) {
-        partial.push({ title: m.title, show: null, season: null, episode: null, share: watchedShare(b), at });
+        partial.push({ id: b.id, title: m.title, show: null, season: null, episode: null, share: watchedShare(b), at });
         continue;
       }
+      recorded.push(b.id);
       records.push({ kind: "movie-name", name: m.title, at, ...(m.year ? { year: m.year } : {}) });
     }
   }
-  return { records, partial, skipped, newest };
+  return { records, partial, skipped, newest, recorded };
 }

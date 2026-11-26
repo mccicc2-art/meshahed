@@ -58,7 +58,7 @@ export type PlatformDriver = {
   unlink: () => Promise<void>;
   useAdded: (enabled: boolean) => { data?: NetflixAddedList };
   Login: (p: PlatformLoginProps) => React.ReactElement;
-  str: { consentLead: string; consent1Title: string; consent1Sub: string; continue_: string; importLaterNote: string; stoppedSub: string; profileSub: string };
+  str: { consentLead: string; consent1Title: string; consent1Sub: string; continue_: string; importLaterNote: string; stoppedSub: string; profileSub: string; added: (episodes: number, movies: number) => string };
 };
 
 /** صفحةُ دخول نتفليكس بشكل المنصّات: تختار الملفَّ، ثمّ يُعدّ السجلُّ للسؤال */
@@ -102,6 +102,7 @@ export function NetflixScreen() {
         importLaterNote: t.nfxImportLaterNote,
         stoppedSub: t.nfxStoppedSub,
         profileSub: t.nfxProfileSub,
+        added: t.nfxAdded,
       },
     }),
     [t],
@@ -135,10 +136,10 @@ export function PlatformScreen({ drv }: { drv: PlatformDriver }) {
     if (uid) setLocal(drv.readLocal(uid));
     if (sync.last.kind === "auto") return;
     const o = sync.last.outcome;
-    if (o.ok) toast.current?.say(o.episodes + o.movies > 0 ? t.nfxAdded(o.episodes, o.movies) : t.nfxNothingNew, undefined, undefined, o.episodes + o.movies > 0 ? "success" : undefined);
+    if (o.ok) toast.current?.say(o.episodes + o.movies > 0 ? drv.str.added(o.episodes, o.movies) : t.nfxNothingNew, undefined, undefined, o.episodes + o.movies > 0 ? "success" : undefined);
     /* «profile» تقوله بطاقةُ المزامنة بزرّها — لا رسالةَ فوقها */
     else if (o.reason !== "signed-out" && o.reason !== "stopped" && o.reason !== "profile") toast.current?.say(t.nfxSyncFailed);
-  }, [sync.last, uid, t]);
+  }, [sync.last, uid, t, drv]);
 
   /* غيرُ مربوطة ⇐ ورقةُ الموافقة أوّلَ ما تُفتح الصفحة (🆕 T551 — للجميع) */
   const asked = useRef(false);

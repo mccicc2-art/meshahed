@@ -124,7 +124,7 @@ export function OsnSyncHost() {
       }
       set({ job: null, phase: null, pct: 0, last: { at: Date.now(), kind, outcome } });
       if (kind === "auto" && outcome.ok && outcome.episodes + outcome.movies > 0) {
-        toast.current?.say(t.nfxAdded(outcome.episodes, outcome.movies), undefined, undefined, "success");
+        toast.current?.say(t.osnAdded(outcome.episodes, outcome.movies), undefined, undefined, "success");
       }
     },
     [t],
