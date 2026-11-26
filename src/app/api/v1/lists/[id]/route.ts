@@ -5,7 +5,7 @@ import { shapeListMembers } from "@/lib/listMembers";
 import { getDict } from "@/core/i18n";
 import { resolveSmartItems } from "@/lib/listItems";
 import { localizeRows } from "@/lib/localize";
-import { awardWinners } from "@/lib/tmdb";
+import { awardWinners, getMovieFor, getTvFor } from "@/lib/tmdb";
 import { curatedName, curatedBlurb, universeBySlug } from "@/core/universes";
 import { LOOPZ_PERSON } from "@/core/loopz";
 import { getLocale } from "@/lib/locale";
@@ -148,6 +148,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         cover: mine ? { tmdb_id: data.list.cover_tmdb_id ?? null, media_type: (data.list.cover_media_type as "tv" | "movie" | null) ?? null, backdrop_path: data.list.cover_backdrop ?? null } : null,
         my_review: myReview ? { rating: myReview.rating, body: myReview.body ?? null, has_spoiler: !!myReview.hasSpoiler } : null,
       };
+      /* 🆕 غلافُ الصفحة للجميع (أحمد ٢٦ نوفمبر «ت٣أ» و«س٦أ»): ما اختاره صاحبُها، وإلّا خلفيّةُ أوّل عملٍ فيها (TMDB مخبّأ) */
+      let coverArt: string | null = data.list.cover_backdrop ?? null;
+      const first = payload.items[0];
+      if (!coverArt && first) {
+        coverArt = await (first.kind === "tv" ? getTvFor(first.id, "en-US") : getMovieFor(first.id, "en-US"))
+          .then((x) => x.backdrop_path ?? null)
+          .catch(() => null);
+      }
+      payload.cover_art = coverArt;
       return ok(payload, [listTag(id), "me:lists"]);
     },
     { cacheControl: "private, no-store" },

@@ -310,6 +310,8 @@ export type ListDetailPayload = {
   playlist: boolean | null;
   /** D-1037 — غلافُ قائمتي الحاليّ (لورقة التحرير) */
   cover: { tmdb_id: number | null; media_type: "tv" | "movie" | null; backdrop_path: string | null } | null;
+  /** 🆕 «ت٣أ» — غلافُ الصفحة للجميع: المختارُ وإلّا خلفيّةُ أوّل عمل (`backdrop_path`) — اختياريٌّ لترتيب الكوميتات */
+  cover_art?: string | null;
 };
 
 /* ====== Phase 11-G · G5/G6 — شرطُ الذكيّة ومشاركةُ القائمة أصليّاً ====== */

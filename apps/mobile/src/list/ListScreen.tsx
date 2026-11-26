@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
+import { BackHandler, FlatList, Platform, Pressable, StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Image } from "expo-image";
 import { avatarSource } from "../avatarSource";
 import { useNavigationContainerRef, useRouter } from "expo-router";
@@ -9,26 +9,26 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
-import { Button, Text, TopBar, type ToastTone } from "../ui";
-import { Icon, type IconName } from "../icons";
+import { Button, Text, TopBar, TOP_BAR_H, type ToastTone } from "../ui";
+import { Icon } from "../icons";
 import { radius } from "../theme";
 import { num } from "@/core/i18n";
+import { backdropUrl } from "@/core/media";
 import { LIST_MEMBERS_MAX } from "@/core/contracts/library";
-import { RailCard, RAIL_CARD_W } from "../discover/RailCard";
+import { gridCards, RailCard } from "../discover/RailCard";
 import { HoldHost, ToastHost, type HoldHostRef, type ToastHostRef } from "../HoldHost";
 import { CardStoreContext, createCardStore } from "../cardStore";
 import { marksOf, toWatchState, useCardActs } from "../cardActs";
 import { ListReviewSheet, type MyReview } from "../library/ListReviewSheet";
 import { ReorderSheet } from "../library/ReorderSheet";
-import { Chip } from "../library/Chip";
 import { ListEditSheet } from "./ListEditSheet";
 import { ListCoverSheet } from "./ListCoverSheet";
+import { ListMoreSheet, hasListMore, type ListMoreAction } from "./ListMoreSheet";
 import { ListReviews } from "./ListReviews";
 import { ShareListSheet } from "./ShareListSheet";
 import { ListMembersSheet } from "./ListMembersSheet";
 import { ListInviteSheet } from "./ListInviteSheet";
 import { haptic } from "../haptics";
-import { useRtlRailPin } from "../rtlRailPin";
 import type { HoldAction } from "../library/HoldMenu";
 import type { CardAnchor, CardItem } from "../library/PosterCard";
 import type { CuratedCard } from "../contracts";
@@ -48,9 +48,10 @@ import { useHomeDoor } from "../homeDoor";
  * داخل شاشتين أصليّتين — برأسٍ آخر وانتقالٍ أبطأ وضوءِ شريطٍ يُخمَّن. الآن تُدفع في المكدّس فوق
  * «المكتبة»/«اكتشف» كصفحة العمل (D-956)، والرجوعُ يعيد ما تحتها كما تُرك.
  *
- * 🔑 **التخطيطُ تخطيطُ `ListDetail` بحكم D-678** (حكمُ أحمد بعد أن رأى الشبكةَ ورفضها): الاسمُ والنبذةُ
- * وصاحبُها · سطرُ الحقائق · **الأعمالُ رفٌّ أفقيٌّ** مرقَّمٌ (أو بسنة الفوز — D-995) · **شريطُ الحال** ♥ 💬 ★
- * (تشريحُ `ListCard` نفسُه: القلبُ هو الحفظ، والنجمةُ بابُ رأيي) · ثمّ الآراءُ تحتَه.
+ * 🆕 **T578 — التخطيطُ «أ» من ت٣** (أحمد ٢٦ نوفمبر ٢٠٢٦، يطوي D-678): **الغلافُ يحمل الاسمَ والنبذةَ وصاحبَها وعددَ
+ * الأعمال** · **الأعمالُ كلُّها شبكةٌ** مرقَّمةٌ (أو بسنة الفوز — D-995) · **شريطُ الحال** ♥ 💬 ★ · ثمّ الآراء. سقط سطرُ الحقائق
+ * («مرتّبة» تقولها الأرقام، و«معلنة» لا تعني القارئ) وأزرارُ الأسفل؛ أدواتُ القائمة كلُّها في «⋯» (`ListMoreSheet`)،
+ * وقائمةُ غيرك فيها «احفظ» وحده في الغلاف.
  * 🔑 **لا عنصرَ جديداً**: `RailCard` بطاقةُ «اكتشف» · `HoldHost`/`ToastHost`/`cardStore` (D-1028) ·
  * `useCardActs` (مستخرَجٌ من «اكتشف») · `ListReviewSheet` ورقةُ رأيي القائمة · `ReviewRow` صفُّ رأي العمل.
  *
@@ -65,7 +66,7 @@ const GAP = 10;
 
 const asCard = (it: ListDetailItem): CuratedCard => ({ kind: it.kind, id: it.id, title: it.title, poster_path: it.poster_path, imdb_rating: null }) as CuratedCard;
 const keyOf = (it: ListDetailItem) => `${it.kind}-${it.id}`;
-const layoutOf = (_: unknown, index: number) => ({ length: RAIL_CARD_W + GAP, offset: PAGE_PAD + (RAIL_CARD_W + GAP) * index, index });
+const VEIL = require("../../assets/poster-veil.png");
 
 export function ListScreen({ id, from, invite = false }: { id: string; from: NativeRoot; invite?: boolean }) {
   const { t, tokens, locale, me } = useApp();
@@ -141,7 +142,7 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
 
   /* ====== D-1037 — كتاباتُ المالك ====== تفاؤلٌ في كاش الصفحة؛ `fail` يعيد الجلبَ فيتراجع كلُّ شيء */
   const [busy, setBusy] = useState(false);
-  const [sheet, setSheet] = useState<null | "edit" | "reorder" | "cover" | "share" | "members" | "invite">(null);
+  const [sheet, setSheet] = useState<null | "more" | "edit" | "reorder" | "cover" | "share" | "members" | "invite">(null);
   /* 🆕 T450 — **`invite` يفتح ورقةَ الدعوة مرّةً حين تصل القائمة**: مفتاحُ «ادعُ أصدقاء» في «قائمة جديدة» يصل إلى الورقة نفسِها */
   const invited = useRef(false);
   useEffect(() => {
@@ -366,11 +367,15 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
   }, [d]);
 
   const numbered = d ? d.kind === "ranked" || d.kind === "watch_order" : false;
+  /* 🆕 T578 — **الأعمالُ كلُّها شبكةً** (ت٣ «أ»): كان رفّاً أفقيّاً (D-678) يُخفي أغلبَها خلف السحب؛ حكمُ أحمد ٢٦ نوفمبر أن تظهر
+     كلُّها تحت الغلاف — `gridCards` نفسُها التي تملأ عرضَ شبكتَي الشخص و«عرض الكلّ» */
+  const { width } = useWindowDimensions();
+  const { cols, w: cardW } = gridCards(width, PAGE_PAD, GAP);
   /* 🆕 234 — صورةُ من أضاف العملَ على زاويته (٥أ): من الأعضاء المعروفين وحدَهم — من أُزيل أو أخفى صورتَه بلا صورة */
   const avatarOf = useMemo(() => new Map((d?.members ?? []).map((m) => [m.id, m.avatar])), [d?.members]);
   const renderItem = useCallback(
     ({ item, index }: { item: ListDetailItem; index: number }) => {
-      const card = <RailCard card={asCard(item)} rank={item.badge ?? (numbered ? index + 1 : null)} rankTone={item.badge !== null ? "accent" : undefined} lib={null} onPress={openCard} onHold={hold} />;
+      const card = <RailCard card={asCard(item)} rank={item.badge ?? (numbered ? index + 1 : null)} rankTone={item.badge !== null ? "accent" : undefined} lib={null} onPress={openCard} onHold={hold} width={cardW} />;
       const by = item.added_by ? avatarOf.get(item.added_by) : undefined;
       if (by === undefined) return card;
       return (
@@ -382,223 +387,205 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
         </View>
       );
     },
-    [numbered, openCard, hold, avatarOf, tokens],
+    [numbered, openCard, hold, avatarOf, tokens, cardW],
   );
-  /* D-1490 — صفُّ أعمال القائمة افتراضيٌّ كصفوف الملفّ: على الآيفون بالعربيّ يقف في غير أوّله فيظهر فارغاً أو مقلوباً
-     (أحمد ٢٠ أكتوبر). العلاجُ المشترك نفسُه (D-1478) لا نسخةٌ ثانية */
-  const { props: pinProps } = useRtlRailPin<ListDetailItem>();
 
-  const facts: { icon: IconName; label: string }[] = d
-    ? [
-        { icon: "library", label: d.smart ? t.smartListLabel : t.listCount(d.items.length) },
-        ...(d.kind === "ranked" ? [{ icon: "list" as const, label: t.listTypeRanked }] : d.kind === "watch_order" ? [{ icon: "list" as const, label: t.listTypeWatch }] : []),
-        ...(d.is_public ? [{ icon: "eye" as const, label: d.mine ? t.listPublic : t.listOwnerOther }] : []),
-        /* 🆕 234 — «قائمة مشتركة» حين يكون فيها عضوٌ فعّالٌ مع صاحبها */
-        ...((d.members ?? []).some((m) => m.role === "member") ? [{ icon: "people" as const, label: t.listShared }] : []),
-      ]
-    : [];
-  /* 🆕 234 — سطرُ الأعضاء في خانة الصاحب (الشكلُ «أ»): صاحبُها والفعّالون — المعلّقون في الورقة وحدَها */
+  /* 🆕 234 — سطرُ الأعضاء (الشكلُ «أ»): صاحبُها والفعّالون — المعلّقون في الورقة وحدَها */
   const shown = (d?.members ?? []).filter((m: ListMember) => m.role !== "pending");
   const sharedRow = shown.length > 1;
 
+  /* 🆕 T578 — **الغلافُ يحمل كلَّ شيء** (ت٣ «أ»): الاسمُ والنبذةُ وصاحبُها وعددُ الأعمال فوق الصورة، و«احفظ» لقائمة غيرك في
+     طرف سطرها. القائمةُ بلا غلافٍ تأخذ خلفيّةَ أوّل عمل (`cover_art` من الخادم · س٦)، والغلافُ الذي يُختار الآن يغلب فوراً.
+     **الغلافُ داكنٌ في كلِّ ثيم والكتابةُ فوقه بيضاء** — حكمُ D-1506 في بطل صفحة العمل نفسُه */
+  const art = d ? (d.cover?.backdrop_path ?? d.cover_art ?? null) : null;
+  const coverH = insets.top + Math.round(width * 0.72);
+  /* الشريطُ فوق الغلاف شفّافٌ وأزرارُه بيضاء؛ إذا صعد الغلافُ صار شريطَ الصفحة بلونها واسمِ القائمة (الرجوعُ في مكانه دائماً — D-1624) */
+  const [solid, setSolid] = useState(false);
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next = e.nativeEvent.contentOffset.y > coverH - insets.top - TOP_BAR_H - 8;
+      setSolid((s) => (s === next ? s : next));
+    },
+    [coverH, insets.top],
+  );
+  const barInk = solid ? tokens.fg : "#fff";
+  const WHITE_MUTED = "rgba(255,255,255,0.78)";
+  const count = d ? (d.smart ? t.smartListLabel : t.listCount(d.items.length)) : "";
+
+  const header = (
+    <View>
+      <View style={{ height: coverH, backgroundColor: "#0b0b0b", overflow: "hidden" }}>
+        {art ? <Image source={{ uri: backdropUrl(art, "w780") ?? undefined }} style={[StyleSheet.absoluteFill, { opacity: 0.8 }]} contentFit="cover" cachePolicy="memory-disk" transition={200} /> : null}
+        <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, top: 0, height: insets.top + 96, opacity: 0.55, transform: [{ rotate: "180deg" }] }} contentFit="fill" />
+        <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.round(coverH * 0.62) }} contentFit="fill" />
+        {d ? (
+          <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: PAGE_PAD, paddingBottom: 16, gap: 6 }}>
+            <Text size={26} weight="800" color="#fff" numberOfLines={2} style={{ lineHeight: 34 }}>{d.name}</Text>
+            {d.subtitle ? <Text size={14} color={WHITE_MUTED} numberOfLines={2} style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 34, marginTop: 2 }}>
+              {/* 🆕 234 — **الشكلُ «أ»**: القائمةُ المشتركة صورٌ مكدّسةٌ وأسماؤها، والضغطةُ تفتح ورقةَ الأعضاء */}
+              {sharedRow ? (
+                <Pressable onPress={() => setSheet("members")} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.listMembersTitle(shown.length, LIST_MEMBERS_MAX)} style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, minWidth: 0 }}>
+                  <View style={{ flexDirection: "row" }}>
+                    {shown.slice(0, 3).map((m, i) => (
+                      <View key={m.id} style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", marginStart: i ? -8 : 0, borderWidth: 2, borderColor: "#0b0b0b", backgroundColor: "#2a2a2a" }}>
+                        {m.avatar ? <Image source={avatarSource(m.avatar)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                      </View>
+                    ))}
+                  </View>
+                  <Text size={13} weight="600" color="#fff" numberOfLines={1} style={{ flexShrink: 1 }}>{t.listMembersNames(shown.slice(0, 3).map((m) => m.name), shown.length - 3)}</Text>
+                </Pressable>
+              ) : d.owner ? (
+                <Pressable disabled={!profileHref(d.owner)} onPress={() => { const h = profileHref(d.owner); if (h) openWeb(h); }} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, minWidth: 0 }}>
+                  <View style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", backgroundColor: "#2a2a2a", borderWidth: 1, borderColor: tokens.accent }}>
+                    {d.owner.avatar ? <Image source={avatarSource(d.owner.avatar)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                  </View>
+                  <Text size={13} weight="600" color="#fff" numberOfLines={1} style={{ flexShrink: 1 }}>{d.owner.name}</Text>
+                </Pressable>
+              ) : null}
+              <Text size={13} color={WHITE_MUTED} numberOfLines={1}>{sharedRow || d.owner ? `· ${count}` : count}</Text>
+              {/* 🆕 T578 — **قائمةُ غيرك: زرٌّ واحدٌ بارز «احفظ»** في طرف السطر (كانت رقاقةً في طرف شريط الحال) */}
+              {!d.mine && d.can_save ? (
+                <View style={{ marginStart: "auto" }}>
+                  <Button label={d.saved_by_me ? t.listSavedBtn : t.listSaveChip} size="sm" onPress={() => void toggleSave()} accessibilityState={{ selected: d.saved_by_me }} />
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+      </View>
+
+      {/* 🆕 234 — **الدعوةُ فوق الأعمال** (٢أ): من دعاك، وما تقدر عليه، ثمّ «قبول · لا شكراً» */}
+      {d?.my_membership === "pending" ? (
+        <View style={{ marginHorizontal: PAGE_PAD, marginTop: 16, gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg }}>
+            <View style={{ width: 32, height: 32, borderRadius: 16, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+              {d.owner?.avatar ? <Image source={avatarSource(d.owner.avatar)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text size={14} weight="700" numberOfLines={2}>{t.listInviteBanner(d.owner?.name ?? t.anonymousUser)}</Text>
+              <Text size={12} muted numberOfLines={1}>{t.listInviteBannerSub}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Button label={t.listInviteAccept} busy={responding} onPress={() => void respond(true)} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button label={t.listInviteDecline} variant="ghost" disabled={responding} onPress={() => void respond(false)} />
+            </View>
+          </View>
+        </View>
+      ) : null}
+
+      {/* D-1627 — لا ملصقاتٍ رماديّةً تنتظر؛ والقائمةُ الفارغةُ يُضاف إليها من مكانها */}
+      {d && d.items.length === 0 ? (
+        <View style={{ alignItems: "center", gap: 14, paddingVertical: 48, paddingHorizontal: PAGE_PAD }}>
+          <Text size={13} muted style={{ textAlign: "center" }}>{t.listItemsEmpty}</Text>
+          {(d.mine && !d.smart) || d.can_edit_items ? <Button label={t.listAddTitles} variant="ghost" onPress={addTitles} /> : null}
+        </View>
+      ) : (
+        <View style={{ height: 16 }} />
+      )}
+    </View>
+  );
+
+  const footer = d?.is_public ? (
+    <View>
+      {/* شريطُ الحال — تشريحُ `ListCard`: ♥ الإعجاب (249) · 💬 الآراء · ★ المتوسّط وبابُ رأيي. للمعلنة وحدَها
+          (🆕 T578 — «احفظ» صعد إلى الغلاف) */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 20, marginTop: 6, marginHorizontal: PAGE_PAD, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+        <Pressable disabled={!d.can_save || liking} onPress={() => void toggleLike()} hitSlop={8} accessibilityLabel={d.liked_by_me ? t.listUnlikeLabel : t.listLikeLabel} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Icon name={d.can_save && !d.liked_by_me ? "heart" : "heart-filled"} size={18} color={tokens.accent} />
+          {(d.likes ?? 0) > 0 ? <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(d.likes ?? 0, locale)}</Text> : null}
+        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Icon name="comment" size={18} color={tokens.accent} />
+          <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(d.reviews, locale)}</Text>
+        </View>
+        <Pressable disabled={!d.can_review} onPress={() => setReviewOpen(true)} hitSlop={8} accessibilityLabel={t.listReviewsTitle} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Icon name={d.my_review ? "star-filled" : "star"} size={18} color={tokens.accent} />
+          <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{d.rating !== null ? d.rating.toFixed(1) : num(0, locale)}</Text>
+        </Pressable>
+      </View>
+      <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 20, gap: 12 }}>
+        <Text size={17} weight="700">{t.listReviewsTitle}</Text>
+        {d.can_review ? (
+          <Button label={d.my_review ? `${t.listReviewMine} · ${num(d.my_review.rating, locale)}/${num(10, locale)}` : t.rateTitle} variant="ghost" onPress={() => setReviewOpen(true)} />
+        ) : null}
+        <ListReviews rows={d.review_rows} replies={d.reply_rows} canAct={d.can_review || d.mine} busy={busy} onLike={likeReview} onReply={replyReview} onDeleteReply={deleteReply} />
+      </View>
+    </View>
+  ) : undefined;
+
+  const moreAct = useCallback(
+    (a: ListMoreAction) => {
+      if (a === "add") {
+        setSheet(null);
+        addTitles();
+      } else if (a === "smart") {
+        setSheet(null);
+        router.push({ pathname: "/list/new", params: { edit: id, from: d?.smart_source === "library" ? "library" : "discover" } });
+      } else setSheet(a);
+    },
+    [addTitles, router, id, d?.smart_source],
+  );
+
   return (
     <CardStoreContext.Provider value={store}>
-      <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
-        {/* الترويسة — رجوعٌ · الاسمُ · مشاركة (ترويسةُ صفحتَي العمل والشخص نفسُها) */}
-        {/* D-1624 — الشريطُ الواحد: الرجوعُ في مكانه في كلِّ صفحة، والمشاركةُ في طرفه */}
-        <TopBar
-          title={d?.name ?? ""}
-          onBack={back}
-          onBackLong={home}
-          backLabel={t.closeLabel}
-          bordered
-          end={
-            d ? (
-              <Pressable onPress={() => void share()} hitSlop={8} accessibilityLabel={t.shareLinkLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-                <Icon name="share" size={20} color={tokens.fg} />
-              </Pressable>
-            ) : undefined
-          }
-        />
-
+      <View style={{ flex: 1, backgroundColor: tokens.bg }}>
         {!d && q.isError ? (
-          <View style={{ padding: PAGE_PAD, alignItems: "center", gap: 12, paddingTop: 48 }}>
+          <View style={{ padding: PAGE_PAD, alignItems: "center", gap: 12, paddingTop: insets.top + TOP_BAR_H + 48 }}>
             <Text muted>{t.apiInternal}</Text>
             <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
           </View>
         ) : (
-          <ScrollView contentContainerStyle={{ paddingTop: PAGE_PAD, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
-            {/* 🆕 D-1625 — **شجرةٌ واحدةٌ بخاناتٍ ثابتة** (أحمد ٢ نوفمبر: «كل شي له مكان ثابت سواءا المعلومة موجودة او لا»):
-                كان هيكلٌ بسطرين ثمّ شجرةٌ أخرى يظهر فيها الوصفُ والمالكُ والحقائقُ والرقاقةُ أسطراً متفاوتة فيقفز الصفّ تحتها.
-                الآن لكلٍّ خانتُه من أوّل إطار: الاسمُ سطراً بـ«…»، والوصفُ سطرين محجوزين، وصفُّ المالك ٢٤، وصفُّ الحقائق ٣٢
-                ورقاقةُ التشغيل في طرفه — فإن غابت معلومةٌ بقيت خانتُها فارغةً بمقاسها */}
-            {/* 🆕 234 — **الدعوةُ فوق القائمة** (٢أ — الصورةُ المعتمدة): من دعاك، وما تقدر عليه، ثمّ «قبول · لا شكراً» */}
-            {d?.my_membership === "pending" ? (
-              <View style={{ marginHorizontal: PAGE_PAD, marginBottom: 16, gap: 8 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.bg }}>
-                  <View style={{ width: 32, height: 32, borderRadius: 16, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-                    {d.owner?.avatar ? <Image source={avatarSource(d.owner.avatar)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text size={14} weight="700" numberOfLines={2}>{t.listInviteBanner(d.owner?.name ?? t.anonymousUser)}</Text>
-                    <Text size={12} muted numberOfLines={1}>{t.listInviteBannerSub}</Text>
-                  </View>
-                </View>
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Button label={t.listInviteAccept} busy={responding} onPress={() => void respond(true)} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Button label={t.listInviteDecline} variant="ghost" disabled={responding} onPress={() => void respond(false)} />
-                  </View>
-                </View>
-              </View>
-            ) : null}
-            <View style={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
-              <View style={{ height: 28, justifyContent: "center" }}>
-                {/* D-1627 — الخاناتُ فارغةٌ حتى تصل معلومتُها، لا أشرطةَ رماديّة */}
-                {d ? <Text size={22} weight="700" numberOfLines={1} style={{ lineHeight: 28 }}>{d.name}</Text> : null}
-              </View>
-              <View style={{ height: 42 }}>
-                {d?.subtitle ? <Text size={14} muted numberOfLines={2} style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null}
-              </View>
-              <View style={{ height: 24, justifyContent: "center" }}>
-                {/* 🆕 234 — **الشكلُ «أ»**: في الخانة نفسِها صورٌ مكدّسةٌ وأسماؤها، والضغطةُ تفتح ورقةَ الأعضاء؛ و«+ ادعُ»
-                    في طرفها لصاحبها — فلا سطرَ يُضاف ولا تقفز الصفحة (D-1625) */}
-                {d && (sharedRow || d.can_invite) ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    {sharedRow ? (
-                      <Pressable onPress={() => setSheet("members")} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.listMembersTitle(shown.length, LIST_MEMBERS_MAX)} style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, minWidth: 0 }}>
-                        <View style={{ flexDirection: "row" }}>
-                          {shown.slice(0, 3).map((m, i) => (
-                            <View key={m.id} style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", marginStart: i ? -8 : 0, borderWidth: 2, borderColor: tokens.bg, backgroundColor: tokens.surface2 }}>
-                              {m.avatar ? <Image source={avatarSource(m.avatar)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
-                            </View>
-                          ))}
-                        </View>
-                        <Text size={13} muted numberOfLines={1} style={{ flexShrink: 1 }}>{t.listMembersNames(shown.slice(0, 3).map((m) => m.name), shown.length - 3)}</Text>
-                      </Pressable>
-                    ) : null}
-                    {d.can_invite ? (
-                      <View style={{ marginStart: "auto" }}>
-                        <Chip label={t.listInvite} active={false} size="sm" onPress={() => setSheet((d.members?.length ?? 0) > 1 ? "members" : "invite")} leading={<Icon name="plus" size={13} color={tokens.accent} />} hitSlop={10} />
-                      </View>
-                    ) : null}
-                  </View>
-                ) : d?.owner ? (
-                  <Pressable disabled={!profileHref(d.owner)} onPress={() => { const h = profileHref(d.owner); if (h) openWeb(h); }} style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start" }}>
-                    <View style={{ width: 24, height: 24, borderRadius: 12, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border }}>
-                      {d.owner.avatar ? <Image source={avatarSource(d.owner.avatar)} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
-                    </View>
-                    <Text size={13} muted numberOfLines={1}>{d.owner.name}</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-              {/* D-1037 — مفتاحُ التشغيل: رقاقةٌ (عائلةُ التحكّم القائمة) — لقائمتي ولمحفوظتي وحدَهما؛ في طرف صفّ الحقائق */}
-              <View style={{ height: 32, flexDirection: "row", alignItems: "center", gap: 14 }}>
-                <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", columnGap: 14, overflow: "hidden" }}>
-                  {d
-                    ? facts.map((f) => (
-                        <View key={f.label} style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1, minWidth: 0 }}>
-                          <Icon name={f.icon} size={14} color={tokens.accent} />
-                          <Text size={12} muted numberOfLines={1}>{f.label}</Text>
-                        </View>
-                      ))
-                    : null}
-                </View>
-                {d && d.playlist !== null ? (
-                  <Chip label={t.listPlaylist} active={d.playlist} onPress={() => setPlaylist(!d.playlist)} leading={<Icon name="play" size={13} color={d.playlist ? tokens.onAccent : tokens.muted} />} />
-                ) : null}
-              </View>
-            </View>
-
-            {/* D-1627 — لا صفَّ ملصقاتٍ رماديّاً ينتظر */}
-            {!d ? null : d.items.length === 0 ? (
-              <Text size={13} muted style={{ textAlign: "center", paddingVertical: 56 }}>{t.listItemsEmpty}</Text>
-            ) : (
-              <FlatList
-                {...pinProps}
-                horizontal
-                data={d.items}
-                keyExtractor={keyOf}
-                renderItem={renderItem}
-                getItemLayout={layoutOf}
-                showsHorizontalScrollIndicator={false}
-                style={{ marginTop: 16 }}
-                contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}
-                initialNumToRender={5}
-                windowSize={5}
-              />
-            )}
-
-            {/* شريطُ الحال — تشريحُ `ListCard`: ♥ الإعجاب (249) · 💬 الآراء · ★ المتوسّط وبابُ رأيي · و«احفظ» في طرفه. للمعلنة وحدَها */}
-            {d?.is_public ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 20, marginTop: 16, marginHorizontal: PAGE_PAD, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-                <Pressable disabled={!d.can_save || liking} onPress={() => void toggleLike()} hitSlop={8} accessibilityLabel={d.liked_by_me ? t.listUnlikeLabel : t.listLikeLabel} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Icon name={d.can_save && !d.liked_by_me ? "heart" : "heart-filled"} size={18} color={tokens.accent} />
-                  {(d.likes ?? 0) > 0 ? <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(d.likes ?? 0, locale)}</Text> : null}
-                </Pressable>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Icon name="comment" size={18} color={tokens.accent} />
-                  <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(d.reviews, locale)}</Text>
-                </View>
-                <Pressable disabled={!d.can_review} onPress={() => setReviewOpen(true)} hitSlop={8} accessibilityLabel={t.listReviewsTitle} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Icon name={d.my_review ? "star-filled" : "star"} size={18} color={tokens.accent} />
-                  <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{d.rating !== null ? d.rating.toFixed(1) : num(0, locale)}</Text>
-                </Pressable>
-                {/* 🆕 249 — **«احفظ» مكانَ «انسخها لقوائمي»** بعد إزالة النسخ (صورةُ page-B المعتمدة): الرقاقةُ نفسُها
-                    (`Chip`)، الإشارةُ صفراءُ والكلمةُ رماديّة — ممتلئةً و«محفوظة» حين تكون في قوائمك */}
-                {d.can_save ? (
-                  <View style={{ marginStart: "auto" }}>
-                    <Chip
-                      label={d.saved_by_me ? t.listSavedBtn : t.listSaveChip}
-                      active={false}
-                      size="md"
-                      onPress={() => void toggleSave()}
-                      leading={<Icon name={d.saved_by_me ? "bookmark-filled" : "bookmark"} size={16} color={tokens.accent} />}
-                    />
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
-            {d?.is_public ? (
-              <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 20, gap: 12 }}>
-                <Text size={17} weight="700">{t.listReviewsTitle}</Text>
-                {d.can_review ? (
-                  <Button label={d.my_review ? `${t.listReviewMine} · ${num(d.my_review.rating, locale)}/${num(10, locale)}` : t.rateTitle} variant="ghost" onPress={() => setReviewOpen(true)} />
-                ) : null}
-                <ListReviews rows={d.review_rows} replies={d.reply_rows} canAct={d.can_review || d.mine} busy={busy} onLike={likeReview} onReply={replyReview} onDeleteReply={deleteReply} />
-              </View>
-            ) : null}
-
-            {/* 🆕 234 — **العضو يضيف أعمالاً** (٣أ) — بلا «عدّل القائمة»: الاسمُ والترتيبُ والإعلانُ لصاحبها */}
-            {d && !d.mine && d.can_edit_items ? (
-              <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24, gap: 10 }}>
-                <Button label={t.listAddTitles} variant="ghost" onPress={addTitles} />
-              </View>
-            ) : null}
-            {d?.mine ? (
-              <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 24, gap: 10 }}>
-                <Button label={t.listEditTitle} variant="ghost" onPress={() => setSheet("edit")} />
-                {/* 🆕 T454 — **شرطُ القائمة الذكيّة يُعدَّل في صفحة «قائمة جديدة» نفسِها** (أحمد «أ»)، مكتبةً كانت أو كتالوجاً
-                    — بدل ورقة الشروط ووضع «حدِّث» في «اكتشف» */}
-                {d.smart ? (
-                  <Button
-                    label={t.smartListUpdate(d.name)}
-                    variant="ghost"
-                    onPress={() => router.push({ pathname: "/list/new", params: { edit: id, from: d.smart_source === "library" ? "library" : "discover" } })}
-                  />
-                ) : (
-                  <Button label={t.listAddTitles} variant="ghost" onPress={addTitles} />
-                )}
-              </View>
-            ) : null}
-          </ScrollView>
+          <FlatList
+            key={cols}
+            data={d?.items ?? []}
+            numColumns={cols}
+            keyExtractor={keyOf}
+            renderItem={renderItem}
+            columnWrapperStyle={{ gap: GAP, paddingHorizontal: PAGE_PAD, marginBottom: GAP }}
+            ListHeaderComponent={header}
+            ListFooterComponent={footer}
+            onScroll={onScroll}
+            scrollEventThrottle={32}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+            initialNumToRender={12}
+            windowSize={7}
+          />
         )}
 
-        {sheet === "edit" && d ? <ListEditSheet list={d} busy={busy} onSave={saveMeta} onReorder={() => setSheet("reorder")} onCover={() => setSheet("cover")} onDelete={removeList} onClose={() => setSheet(null)} /> : null}
-        {sheet === "reorder" && d ? <ReorderSheet items={queue} onClose={() => setSheet("edit")} onDone={saveOrder} /> : null}
+        {/* الشريطُ الواحد فوق الغلاف — رجوعٌ · مشاركةٌ · ⋯ (D-1624: الرجوعُ في مكانه في كلِّ صفحة) */}
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, paddingTop: insets.top, backgroundColor: solid ? tokens.bg : "transparent", borderBottomWidth: solid ? 1 : 0, borderBottomColor: tokens.border }}>
+          <TopBar
+            title={solid ? (d?.name ?? "") : ""}
+            onBack={back}
+            onBackLong={home}
+            backLabel={t.closeLabel}
+            color={barInk}
+            end={
+              d ? (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Pressable onPress={() => void share()} hitSlop={8} accessibilityLabel={t.shareLinkLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="share" size={20} color={barInk} />
+                  </Pressable>
+                  {hasListMore(d) ? (
+                    <Pressable onPress={() => setSheet("more")} hitSlop={8} accessibilityLabel={t.listMoreLabel} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+                      <Icon name="dots" size={20} color={barInk} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : undefined
+            }
+          />
+        </View>
+
+        {sheet === "more" && d ? <ListMoreSheet list={d} busy={busy} onAction={moreAct} onPlaylist={setPlaylist} onDelete={removeList} onClose={() => setSheet(null)} /> : null}
+        {sheet === "edit" && d ? <ListEditSheet list={d} busy={busy} onSave={saveMeta} onClose={() => setSheet(null)} /> : null}
+        {sheet === "reorder" && d ? <ReorderSheet items={queue} onClose={() => setSheet(null)} onDone={saveOrder} /> : null}
         {sheet === "share" && d ? (
           <ShareListSheet
             listId={id}
@@ -615,7 +602,7 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
             onError={fail}
           />
         ) : null}
-        {sheet === "cover" && d ? <ListCoverSheet list={d} busy={busy} onPick={saveCover} onClose={() => setSheet("edit")} /> : null}
+        {sheet === "cover" && d ? <ListCoverSheet list={d} busy={busy} onPick={saveCover} onClose={() => setSheet(null)} /> : null}
         {sheet === "members" && d ? (
           <ListMembersSheet
             listId={id}

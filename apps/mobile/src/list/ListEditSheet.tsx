@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { TextInput, View } from "react-native";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Sheet } from "../library/Sheet";
@@ -13,29 +13,22 @@ import { SYSTEM_FONT_CAP } from "../fontScale";
  *
  * **لماذا**: الشريحةُ الأولى (D-1036) أبقت تحريرَ المالك بابَ ويب؛ أحمد سأل «وش يمنع يتحوّل أصليّ؟» —
  * ولا مانع: الدوالُّ الخادميّةُ قائمة. هذه الورقةُ تحمل ما في ورقة `ListDetail` الويبيّة: الاسمُ · النبذةُ ·
- * معلنةٌ/خاصّة · النوع · ثمّ أبوابُ الترتيب والغلاف والحذف.
+ * معلنةٌ/خاصّة · النوع. 🆕 T578 — أبوابُ الترتيب والغلاف والحذف انتقلت إلى ورقة «⋯» (`ListMoreSheet` — ت٣ «أ»).
  *
  * 🔑 **سفليّةٌ لا وسطيّة** (قاعدةُ D-1032): يفتحها صاحبُها بنفسه. **ولا عنصرَ جديداً**: `Sheet` ·
  * `Segmented` (مصدَّرةً من `ToolsSheet` — استخراجٌ لا نسخ) · `Chip` · `Button`؛ وحقلُ النصّ بمقاسات حقل
  * `SmartListSheet`. **ولا نصَّ جديداً**: مفاتيحُ القاموس مفاتيحُ الويب.
- * ⚖️ **الحذفُ بخطوتين في مكانه**: الضغطةُ الأولى تكشف نصَّ العاقبة وزرَّ التأكيد — لا حوارَ ثانياً فوق الورقة،
- * ولا حذفَ بلمسةٍ واحدة (لا رجعةَ فيه). القائمةُ الذكيّة لا نوعَ لها ولا ترتيب (تمتلئ وحدَها — D-823).
+ * القائمةُ الذكيّة لا نوعَ لها ولا ترتيب (تمتلئ وحدَها — D-823).
  */
 export function ListEditSheet({
   list,
   busy,
   onSave,
-  onReorder,
-  onCover,
-  onDelete,
   onClose,
 }: {
   list: ListDetailPayload;
   busy: boolean;
   onSave: (v: Omit<ListUpdateBody, "listId">) => void;
-  onReorder: () => void;
-  onCover: () => void;
-  onDelete: () => void;
   onClose: () => void;
 }) {
   const { t, tokens } = useApp();
@@ -43,7 +36,6 @@ export function ListEditSheet({
   const [subtitle, setSubtitle] = useState(list.subtitle ?? "");
   const [pub, setPub] = useState(list.is_public);
   const [kind, setKind] = useState<"regular" | "ranked" | "watch_order">(list.kind === "ranked" || list.kind === "watch_order" ? list.kind : "regular");
-  const [confirming, setConfirming] = useState(false);
   const field = { minHeight: 44, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, paddingHorizontal: 12, fontSize: 14, color: tokens.fg } as const;
   const clean = name.trim();
 
@@ -77,31 +69,12 @@ export function ListEditSheet({
           <Text size={12} muted>{kind === "ranked" ? t.listTypeRankedHint : kind === "watch_order" ? t.listTypeWatchHint : t.listTypeRegularHint}</Text>
         </View>
       )}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {list.smart || list.items.length < 2 ? null : <Button label={t.listReorder} variant="ghost" onPress={onReorder} />}
-        {list.items.length === 0 ? null : <Button label={t.listCover} variant="ghost" onPress={onCover} />}
-      </View>
       <Button
         label={t.doneLabel}
         busy={busy}
         disabled={!clean}
         onPress={() => onSave({ name: clean, isPublic: pub, subtitle: subtitle.trim() || null, ...(list.smart ? {} : { kind }) })}
       />
-      <View style={{ borderTopWidth: 1, borderTopColor: tokens.divider, paddingTop: 16, gap: 10 }}>
-        {confirming ? (
-          <>
-            <Text size={13} muted style={{ lineHeight: 20 }}>{t.listDeleteBody}</Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <Button label={t.cancelLabel} variant="ghost" onPress={() => setConfirming(false)} />
-              <Button label={t.listDeleteYes} variant="danger" busy={busy} style={{ flex: 1 }} onPress={onDelete} />
-            </View>
-          </>
-        ) : (
-          <Pressable onPress={() => setConfirming(true)} hitSlop={8} style={{ alignSelf: "center", paddingVertical: 4 }}>
-            <Text size={13} color={tokens.error}>{t.listDeleteThis}</Text>
-          </Pressable>
-        )}
-      </View>
     </Sheet>
   );
 }
