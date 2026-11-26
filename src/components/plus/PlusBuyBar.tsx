@@ -76,7 +76,7 @@ export function PlusBuyBar({
   const price = PRICES[plan][p];
   const sub =
     plan === "yearly"
-      ? `${w.firstYear} · ${w.then(PRICES.yearly[p === "en" ? "thenEn" : "thenAr"])}`
+      ? `${w.perYearPlus} · ${w.cancelAny}`
       : plan === "monthly"
         ? `${w.perMonth} · ${w.cancelAny}`
         : w.perYear;

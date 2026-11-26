@@ -7,6 +7,7 @@ import { getT } from "@/lib/locale";
 import { ogFonts } from "@/lib/og";
 import { REVIEW_CARD_SIZE, reviewCardElement } from "@/lib/reviewCard";
 import { SITE_URL } from "@/lib/site";
+import { dataUrl } from "@/lib/fetchableImage";
 
 /**
  * `GET /review/{type}/{id}/{user}/card` — 🆕 T530 **صورةُ مشاركة المراجعة** (توضع في `og:image` من `generateMetadata`):
@@ -41,7 +42,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ type
     : (d?.name ?? d?.title ?? "");
   const date = d?.first_air_date || d?.release_date || "";
   const year = /^\d{4}/.test(date) ? Number(date.slice(0, 4)) : null;
-  const avatar = r.hide_name || !r.avatar_url ? null : r.avatar_url.startsWith("/") ? `${SITE_URL}${r.avatar_url}` : r.avatar_url;
+  /* A-80 (المدقّق ٢٤ نوفمبر) — الصورةُ البعيدة تمرّ بقائمة مضيفي صورنا وبمهلةٍ قبل أن يجلبها الخادم (كبطاقة المشاركة، A-13):
+     قيدُ القاعدة خطٌّ أوّل وهذا الثاني، وصورةٌ لا تُجلب تُترك فيُرسم الحرفُ الأوّل. مسارُ موقعنا النسبيّ يبقى كما كان */
+  const avatar =
+    r.hide_name || !r.avatar_url ? null : r.avatar_url.startsWith("/") ? `${SITE_URL}${r.avatar_url}` : await dataUrl(r.avatar_url);
 
   const el = await reviewCardElement({
     mode,

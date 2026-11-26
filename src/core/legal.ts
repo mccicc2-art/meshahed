@@ -151,7 +151,8 @@ function termsDocRaw(locale: Locale): LegalDoc {
        خمسٌ يوميّاً للمجانيّ وبلا حدّ للمشترك. والنصُّ ليس ملصوقاً في App Store Connect: الوصفُ يربط loopztv.com/terms واتفاقيةُ الترخيص قياسيّةٌ من Apple — فلا شيءَ يُعاد لصقُه هناك (تحقّقٌ من اللوحة ٢٤ نوفمبر) */
     /* 🆕 T547 (٢٥ نوفمبر): الاشتراكُ صار للربط والبحث بلا حدّ والشارة، وكلُّ ما سواه مجّانيّ — والبحثُ بالوصف عشرٌ يوميّاً للمجّانيّ.
        لا شيءَ يُعاد لصقُه في App Store Connect: الوصفُ يربط loopztv.com/terms */
-    updated: ar ? "آخر تحديث: ٢٥ نوفمبر ٢٠٢٦" : "Last updated: 25 November 2026",
+    /* 🆕 T562 (٢٦ نوفمبر): الأسعارُ الجديدة — Plus ٥٩٫٩٩ سنويّاً أو ٩٫٩٩ شهريّاً بلا عرضِ سنةٍ أولى، وGold ٩٩٫٩٩ سنويّاً */
+    updated: ar ? "آخر تحديث: ٢٦ نوفمبر ٢٠٢٦" : "Last updated: 26 November 2026",
     sections: [
       { title: ar ? "ما هو Loopz" : "What Loopz is",
         body: ar

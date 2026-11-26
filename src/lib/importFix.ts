@@ -5,6 +5,9 @@ import { FIX_CAP, planImportFixes, type FixItem, type FixPair } from "@/core/imp
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 
+/** A-81 — أزواجٌ تُصحَّح معاً في الدفعة الواحدة */
+const FIX_BATCH = 15;
+
 /**
  * 🆕 T537 — قراءةُ ما يقرّر التصحيح وكتابتُه — **بجلسة العضو** (RLS تحرس صفوفَه)، والقرارُ نقيٌّ في `core/importFix`.
  * الأزواجُ تأتي من العميل فلا تُصدَّق: الشروطُ تُعاد على الخادم عند العرض وعند التصحيح كليهما.
@@ -70,10 +73,14 @@ export async function applyImportFixes(supabase: Db, userId: string, pairs: FixP
   const items = await findImportFixes(supabase, userId, pairs);
   let fixed = 0;
   let failed = 0;
-  for (const it of items) {
-    const ok = await fixOne(supabase, userId, it).catch(() => false);
-    if (ok) fixed++;
-    else failed++;
+  /* A-81 (المدقّق ٢٥ نوفمبر) — دفعاتٌ متوازيةٌ صغيرة لا واحداً بعد واحد (كما A-30): ٣٠٠ زوجٍ × ثماني نداءاتٍ متتابعة كانت
+     تقترب من مهلة الدالّة فيُقطع زوجٌ في منتصفه. الأزواجُ مستقلّة (عملٌ خاطئٌ واحد لكلّ زوج)، وكلٌّ يتوقّف قبل الحذف إن فشل */
+  for (let i = 0; i < items.length; i += FIX_BATCH) {
+    const oks = await Promise.all(items.slice(i, i + FIX_BATCH).map((it) => fixOne(supabase, userId, it).catch(() => false)));
+    for (const ok of oks) {
+      if (ok) fixed++;
+      else failed++;
+    }
   }
   return { fixed, failed };
 }

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { tvImdbIdStrict } from "@/lib/tmdb";
+import { tvImdbIdStrict, isTmdbSeasonNotFound } from "@/lib/tmdb";
 import { getSeasonForView } from "@/lib/seasonView";
 import { seasonImdbRatings } from "@/lib/omdb";
 import { episodeTmdbFallback } from "@/core/episodeRating";
@@ -39,8 +39,12 @@ export async function GET(
       /* D-1011 — `?r=1`: تقييماتُ IMDb للحلقات وتقييماتي — كما `/api/season?r=1` في الويب */
       const withRatings = req.nextUrl.searchParams.get("r") === "1";
       const [season, watched, imdb, mine] = await Promise.all([
-        /* D-1254 — قائمةُ TMDB + ما حُسب معروضاً ولم يدخلها بعد */
-        getSeasonForView(tvId, seasonNumber),
+        /* D-1254 — قائمةُ TMDB + ما حُسب معروضاً ولم يدخلها بعد.
+           A-79 (المدقّق ٢٤ نوفمبر) — موسمٌ حذفه TMDB يجيب «غير موجود» لا خطأً عامّاً (كما A-68 لمسار العمل) */
+        getSeasonForView(tvId, seasonNumber).catch((e: unknown) => {
+          if (isTmdbSeasonNotFound(e)) return null;
+          throw e;
+        }),
         uid ? getWatchedForShow(tvId) : new Set<string>(),
         /* D-1554 — `null` = لم نعرف (حصّةٌ أو شبكة) فلا بديلَ TMDB؛ `{}` = عرفنا ولا رقم.
            A-27 — والمعرّفُ بالنسخة التي ترمي: فشلُ TMDB جهلٌ يسقط في `.catch`، لا «لا معرّف» */
@@ -49,6 +53,7 @@ export async function GET(
            تمتلئ لحظةَ التقييم ثمّ تفرغ بعد الخروج، لأنّ التطبيقَ لا يطلب `r=1` إلّا بالنجمة العلويّة. قراءةٌ من قاعدتنا لا من OMDb. */
         uid ? getEpisodeRatings(tvId, uid).catch(() => new Map<string, EpisodeRatingRow>()) : Promise.resolve(new Map<string, EpisodeRatingRow>()),
       ]);
+      if (!season) return fail("not_found");
       const payload: SeasonPayload = {
         tv_id: tvId,
         season_number: seasonNumber,

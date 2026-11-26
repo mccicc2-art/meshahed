@@ -52,9 +52,9 @@ export function PlusGateHost({ locale }: { locale: Locale }) {
           <Icon name="sparkle-star" size={18} className="text-accent shrink-0" />
           <div className="min-w-0">
             <p className="text-15 font-bold leading-none">{t.plusPrice}</p>
-            {/* 🆕 **وسطرُ التجديد فرضٌ لا تحسين** (D-786): سعرُ السنة
-                الأولى دائمٌ لكلِّ مشترِكٍ جديد، **وثمنٌ أوّلُ يُعرض بلا
-                ذكر ما بعده هو الوعدُ الذي لا يُسلَّم** (D-217). */}
+            {/* السطرُ الثاني بديلُ الشهريّ (T562، ٢٦ نوفمبر): لا عرضَ
+                سنةٍ أولى بعد اليوم، فالسنويُّ ثمنٌ واحدٌ ثابت، **ومن يُمنع
+                يرى الخيارين معاً** لا الأرخصَ وحده. */}
             <p className="mt-1 text-12 text-muted leading-none">{t.plusPriceRenew}</p>
             <p className="mt-1.5 text-12 text-muted leading-none">{/* T408 — «قريباً، والاشتراك لم يُفتح» لم يعد صادقاً: الاشتراكُ مفتوحٌ من التطبيق (القاموسُ المشترك لا يُلمس — يُطلق تحديثَ التطبيق) */}
             {WORDS[locale === "en" ? "en" : "ar"].gateLine}</p>

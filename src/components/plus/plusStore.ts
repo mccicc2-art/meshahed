@@ -46,10 +46,11 @@ export type PlanKey = "yearly" | "monthly" | "gold";
  * يقرأ السعرَ من المتجر؛ الويبُ لا متجرَ له فيكتبه هنا ويقول إنّ السعرَ في البلد الآخر من المتجر (D-217: لا رقمَ لا يُدفع).
  * أيُّ تغييرٍ في المتجر يتغيّر هنا في السطر نفسِه.
  */
+/* 🆕 T562 — أسعارُ ٢٦ نوفمبر: السنويُّ ثابتٌ بلا عرضِ سنةٍ أولى (أحمد «١أ»)، والذهبيُّ ٩٩٫٩٩ («٢أ») */
 export const PRICES = {
-  yearly: { ar: "99.99 ر.س", en: "SAR 99.99", thenAr: "119.99 ر.س", thenEn: "SAR 119.99" },
-  monthly: { ar: "12.99 ر.س", en: "SAR 12.99" },
-  gold: { ar: "199.99 ر.س", en: "SAR 199.99" },
+  yearly: { ar: "59.99 ر.س", en: "SAR 59.99" },
+  monthly: { ar: "9.99 ر.س", en: "SAR 9.99" },
+  gold: { ar: "99.99 ر.س", en: "SAR 99.99" },
 } as const;
 
 export const WORDS = {
@@ -59,8 +60,8 @@ export const WORDS = {
     planYearly: "Plus سنوي",
     planMonthly: "Plus شهري",
     planGold: "Gold",
-    firstYear: "السنة الأولى",
-    then: (p: string) => `ثم ${p} سنوياً`,
+    /* T562 — بلا عرضِ سنةٍ أولى: السنويُّ «سنوياً» كالذهبيّ، ويُلغى متى شاء كالشهريّ */
+    perYearPlus: "سنوياً",
     perMonth: "شهرياً",
     cancelAny: "ألغِ متى شئت",
     perYear: "سنوياً · سنوي فقط",
@@ -98,8 +99,7 @@ export const WORDS = {
     planYearly: "Plus yearly",
     planMonthly: "Plus monthly",
     planGold: "Gold",
-    firstYear: "first year",
-    then: (p: string) => `then ${p} a year`,
+    perYearPlus: "a year",
     perMonth: "a month",
     cancelAny: "Cancel any time",
     perYear: "a year · yearly only",

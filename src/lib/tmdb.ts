@@ -1753,6 +1753,14 @@ export function isTmdbNotFound(e: unknown): boolean {
   return e instanceof Error && /^TMDB \/(?:tv|movie)\/\d+ failed: 404$/.test(e.message);
 }
 
+/**
+ * A-79 (المدقّق ٢٤ نوفمبر) — **موسمٌ حذفه TMDB** يرمي `TMDB /tv/<id>/season/<n> failed: 404`. دالّةٌ منفصلة لا توسيعٌ
+ * لـ`isTmdbNotFound`: موسمٌ مفقود داخل صفحة عملٍ موجود لا يجعل العملَ كلَّه «غير موجود».
+ */
+export function isTmdbSeasonNotFound(e: unknown): boolean {
+  return e instanceof Error && /^TMDB \/tv\/\d+\/season\/\d+ failed: 404$/.test(e.message);
+}
+
 export function isAnime(tv: {
   genres?: { id: number }[];
   origin_country?: string[];
