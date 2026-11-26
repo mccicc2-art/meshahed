@@ -2701,6 +2701,10 @@ const ar = {
   activityTitle: "النشاط",
   /* 🆕 بطاقةُ سجلّ المشاهدة («ن٥ ب»، «٣أ» يُخفي ما لا يريد قبل المشاركة) */
   historyShareTitle: "شارك سجلّك",
+  /* 🆕 شريطُ الأسبوع في السجلّ («ت٢ ب») */
+  weekOlder: "الأسبوع السابق",
+  weekNewer: "الأسبوع التالي",
+  weekAll: "كلّ الأسبوع",
   historyShareWeek: "هذا الأسبوع",
   historyShareMonth: "هذا الشهر",
   historyShareHint: "أطفئ ما لا تريد أن يظهر في البطاقة — الأوّلُ بطلُها",
@@ -5904,6 +5908,9 @@ const en: Dict = {
   diaryEpisode: (s: number, e: number) => `S${s} \u00b7 E${e}`,
   activityTitle: "Activity",
   historyShareTitle: "Share your history",
+  weekOlder: "Previous week",
+  weekNewer: "Next week",
+  weekAll: "Whole week",
   historyShareWeek: "This week",
   historyShareMonth: "This month",
   historyShareHint: "Switch off what you don't want on the card — the first is its hero",

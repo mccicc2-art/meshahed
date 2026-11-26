@@ -10,10 +10,11 @@ import { Segmented } from "../library/ToolsSheet";
 import { Sheet } from "../library/Sheet";
 import { StatusPill } from "../settings/ui";
 import { num } from "@/core/i18n";
-import { SCOPES, clock, dayKey, dayLabel, episodeOf, groupWeeks, keep, label as scopeLabel, shiftDay, totalsLine, verbOf, watchSummary, weekRange, type ActivityItem, type Scope, type WatchSource } from "@/core/activityDays";
+import { SCOPES, clock, dayKey, dayLabel, episodeOf, groupWeeks, keep, label as scopeLabel, shiftDay, totalsLine, verbOf, weekIndexOf, type ActivityItem, type Scope, type WatchSource } from "@/core/activityDays";
 import type { ProfileActivity } from "@/core/contracts/profile";
 import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
 import { tabSwipeBlocksPress } from "../TabSlide";
+import { WeekStrip } from "./WeekStrip";
 
 /**
  * 🆕 D-1213 — **قائمةُ النشاط مكوّنٌ واحدٌ لشاشتين** (القاعدة ٣): تبويبُ «النشاط» في ملفّ الشخص (N1) وشاشةُ «النشاط»
@@ -125,11 +126,15 @@ export function ActivityList({
   );
   const matching = items.filter((it) => keep(it, scope));
   const today = dayKey(new Date().toISOString(), true);
-  /* 🆕 T526 — أسابيعُ بعناوينها وحصيلتها (`groupWeeks`)، وعلى «مشاهدة» بطاقةُ هذا الأسبوع فوقها بلا عنوانٍ مكرّر */
-  const weeks = groupWeeks(matching, true, t, locale, today);
-  const thisWeek = weeks[0]?.index === 0 ? weeks[0] : null;
-  const card = scope === "watch" && thisWeek ? thisWeek.totals : null;
-  const hours = card && thisWeek ? watchSummary(thisWeek.days.flatMap((d) => d.rows)).hours : null;
+  /* 🆕 «ت٢ ب» — شريطُ الأسبوع في «مشاهدة» و«الكلّ» («س٥أ») مكانَ بطاقة الحصيلة: الضغطُ على يومٍ يصفّي القائمة إليه */
+  const strip = scope === "watch" || scope === "all";
+  const watched = useMemo(() => items.filter((it) => it.kind === "watch"), [items]);
+  const [stripWeek, setStripWeek] = useState(0);
+  const [day, setDay] = useState<string | null>(null);
+  const oldest = useMemo(() => watched.reduce((n, it) => Math.max(n, weekIndexOf(dayKey(it.at, true), today)), 0), [watched, today]);
+  const shown = strip && day ? matching.filter((it) => dayKey(it.at, true) === day) : matching;
+  /* 🆕 T526 — أسابيعُ بعناوينها وحصيلتها (`groupWeeks`) — أسابيعُ تقويميّةٌ من الأحد (ق٢أ) */
+  const weeks = groupWeeks(shown, true, t, locale, today);
   /* سطرُ «افتح المراجعة» في نشاط الملفّ وحدَه («في اكتفتي الملف يبقى أ»)؛ سجلُّك يكتفي بأنّ الصفَّ يُضغط («١ب») */
   const openHint = !onRemove;
   return (
@@ -143,33 +148,21 @@ export function ActivityList({
           onChange={(v) => (v === scope ? undefined : (haptic.pick(), setScope(v as typeof scope)))}
         />
       )}
-      {card ? (
-        /* بطاقةُ الأسبوع: ما ليس صفراً وحدَه (لا «0 أفلام»)، والساعاتُ إن عُرفت المدّة */
-        <View style={{ marginTop: 12, borderRadius: 20, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 16, gap: 8 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-            <Text size={13} muted>{t.activityThisWeek}</Text>
-            <Text size={12} muted>{weekRange(today, 0, locale)}</Text>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 22, rowGap: 4 }}>
-            {[
-              card.episodes ? t.actNEpisodes(card.episodes) : null,
-              card.shows ? t.actNShows(card.shows) : null,
-              card.movies ? t.actNMovies(card.movies) : null,
-              hours ? `${num(hours, locale)} ${t.activityWeekHours}` : null,
-            ]
-              .filter((x): x is string => !!x)
-              .map((x) => (
-                <Text key={x} size={17} weight="700">{x}</Text>
-              ))}
-          </View>
-        </View>
+      {strip && watched.length ? (
+        <WeekStrip items={watched} index={stripWeek} onIndex={setStripWeek} maxIndex={oldest} selected={day} onSelect={setDay} />
+      ) : null}
+      {strip && day ? (
+        /* يومٌ مختار: القائمةُ يومُه وحدَه، و«كلّ الأسبوع» يعيدها */
+        <Pressable onPress={() => (haptic.pick(), setDay(null))} hitSlop={8} accessibilityRole="button" style={{ alignSelf: "flex-end", marginTop: 10 }}>
+          <Text size={13} weight="700" color={tokens.accent}>{t.weekAll}</Text>
+        </Pressable>
       ) : null}
       {weeks.length === 0 ? (
         <Text muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: PAGE_PAD }}>{emptyText}</Text>
       ) : (
         weeks.map((w) => (
           <View key={w.index} style={{ marginTop: 18 }}>
-            {card && w.index === 0 ? null : (
+            {strip && day ? null : (
               <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
                 <Text size={16} weight="800">{w.label}</Text>
                 <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{totalsLine(w.totals, t)}</Text>

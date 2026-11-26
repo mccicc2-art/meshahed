@@ -42,7 +42,7 @@ import { HistoryShareSheet } from "./HistoryShareSheet";
  */
 
 export type { ActivityKind, ActivityItem } from "@/core/activityDays";
-import { SCOPES, clock, episodeOf, groupWeeks, keep, label, nowDayKey, dayKey, shiftDay, totalsLine, verbOf, watchSummary, weekRange, weekTotals, type ActivityItem, type Scope } from "@/core/activityDays";
+import { SCOPES, clock, episodeOf, groupWeeks, keep, label, nowDayKey, dayKey, totalsLine, verbOf, watchSummary, weekRange, weekStartKey, weekTotals, type ActivityItem, type Scope } from "@/core/activityDays";
 
 
 /* الساعةُ مصدرٌ خارجيٌّ عن React — ولا اشتراكَ لأنها لا تُبثّ */
@@ -119,7 +119,8 @@ export function ActivityScreen({
      **ويُحسب بالساعة نفسِها التي تُجمَّع بها المجموعات** — **وطابعٌ
      زمنيٌّ يُقارَن بمنطقةٍ ومفاتيحُ تُجمَّع بأخرى هو كيف يقع صفٌّ في
      يومٍ ويُعدّ في غيره.** */
-  const weekStart = shiftDay(todayKey, -6);
+  /* ⚖️ 🆕 **نُقض «سبعةُ أيّامٍ تنتهي اليوم»**: الأسبوعُ يبدأ بالأحد (أحمد ٢٦ نوفمبر «ق٢أ») كالإحصائيات وبطاقة السجلّ وعناوين الأسابيع */
+  const weekStart = weekStartKey(todayKey);
   const weekRows = matching.filter((it) => dayKey(it.at, local) >= weekStart);
   /* 🆕 T412 — رقاقةُ «مشاهدة» تعرض حصيلتَها بثلاثة أرقام كالتطبيق (D-1504)؛ وغيرُها سطرُ العدّ كما كان */
   const week = scope === "watch" ? watchSummary(weekRows) : null;

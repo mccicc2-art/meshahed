@@ -310,10 +310,26 @@ function daysBetween(from: string, to: string): number {
   return Math.round((at(to) - at(from)) / 86_400_000);
 }
 
-/** مدى الأسبوع رقم `index` — «٢٦ أكتوبر – ١ نوفمبر» */
+/**
+ * 🆕 **أحدُ الأسبوع الذي فيه اليوم** — الأسبوعُ يبدأ بالأحد (قرارُ أحمد ٢٦ نوفمبر، استوديو المشاركة «ق٢أ»)، كأسبوع الإحصائيات
+ * (`statsRange`) وبطاقة السجلّ — فلا يقول السجلُّ «هذا الأسبوع» عن سبعة أيّامٍ وتقول البطاقةُ عن أسبوعٍ آخر.
+ */
+export function weekStartKey(dayKeyStr: string): string {
+  const [y, m, d] = dayKeyStr.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1)).getUTCDay();
+  return shiftDay(dayKeyStr, -dow);
+}
+
+/** رقمُ أسبوعٍ تقويميّ (من الأحد): ٠ هذا الأسبوع، ١ الذي قبله… — وما بعد اليوم (ساعةُ جهازٍ متأخّرة) من هذا الأسبوع */
+export function weekIndexOf(key: string, todayKey: string): number {
+  const d = daysBetween(key, weekStartKey(todayKey));
+  return d <= 0 ? 0 : Math.floor((d - 1) / 7) + 1;
+}
+
+/** مدى الأسبوع رقم `index` — من الأحد إلى السبت: «٢٢ – ٢٨ نوفمبر» */
 export function weekRange(todayKey: string, index: number, locale: Locale): string {
-  const end = shiftDay(todayKey, -7 * index);
-  const start = shiftDay(end, -6);
+  const start = shiftDay(weekStartKey(todayKey), -7 * index);
+  const end = shiftDay(start, 6);
   const fmt = (k: string) => {
     const [y, m, d] = k.split("-").map(Number);
     return new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", { day: "numeric", month: "short" }).format(new Date(y, (m ?? 1) - 1, d ?? 1));
@@ -330,8 +346,8 @@ export function groupWeeks(
 ): WeekGroup[] {
   const byWeek = new Map<number, ActivityItem[]>();
   for (const it of items) {
-    /* صفٌّ بتاريخٍ بعد «اليوم» (ساعةُ جهازٍ متأخّرة) يُعدّ من هذا الأسبوع لا أسبوعاً سالباً */
-    const idx = Math.max(0, Math.floor(daysBetween(dayKey(it.at, local), todayKey) / 7));
+    /* أسابيعُ تقويميّةٌ من الأحد (ق٢أ)؛ وصفٌّ بتاريخٍ بعد «اليوم» يُعدّ من هذا الأسبوع لا أسبوعاً سالباً */
+    const idx = weekIndexOf(dayKey(it.at, local), todayKey);
     const list = byWeek.get(idx);
     if (list) list.push(it);
     else byWeek.set(idx, [it]);
