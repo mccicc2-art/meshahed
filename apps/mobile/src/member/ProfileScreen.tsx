@@ -5,6 +5,7 @@ import { PersonaAltButton } from "../title/TitleCommunity";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { Image } from "expo-image";
 import { useFocusEffect, useNavigationContainerRef, useRouter } from "expo-router";
+import { openStats } from "../statsDoor";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, write } from "../api";
@@ -479,7 +480,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       /* الأنمي بلا أعمالٍ لا يُرسم صفراً — كما كان */
       anime: d.counts.anime > 0 ? { key: "anime", icon: "torii", value: num(d.counts.anime, locale), label: t.discoverTabAnime, href: "#anime" } : null,
       /* 🆕 N3 — بابي أنا `/stats` بمداها الكامل، ولزائري سطحُ العضو (D-650: `/stats` تقرأ صاحبَ الجلسة) */
-      stats: d.viewer.is_me || d.person.username ? { key: "stats", icon: "chart", value: "", label: t.statsPageTitle, href: d.viewer.is_me ? "/stats" : `/u/${d.person.username}/stats` } : null,
+      stats: d.viewer.is_me || d.person.username ? { key: "stats", icon: "chart", value: "", label: d.viewer.is_me ? t.drawerReport : t.statsPageTitle, href: d.viewer.is_me ? "/stats" : `/u/${d.person.username}/stats` } : null,
     };
     /* 🆕 D-1630 — الخاناتُ وترتيبُها اختيارُ صاحب الملفّ (`stats_pick`)؛ خادمٌ أقدم بلا الحقل ⇒ الترتيبُ القديمُ وبابُ الإحصائيات برايته */
     const pick = d.display.stats_pick ?? (["shows", "movies", "anime", ...(d.display.stats_link ? (["stats"] as const) : [])] as const);
@@ -489,7 +490,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
   const onStat = useCallback(
     (href: string) => {
       if (href.startsWith("#")) return setGrid(href.slice(1) as Grid);
-      if (href === "/stats") return router.push({ pathname: "/stats", params: { from: fromOut } });
+      /* 🆕 ت٤ «ج» — خانتي «إحصائياتك» تمرّ من الباب الواحد (القصّةُ أوّلَ مرّةٍ في الأسبوع) */
+      if (href === "/stats") return openStats(router, fromOut);
       const m = /^\/u\/([^/]+)\/stats$/.exec(href);
       if (m) return router.push({ pathname: "/member-stats/[username]", params: { username: decodeURIComponent(m[1]), from: fromOut } });
       openWeb(href);

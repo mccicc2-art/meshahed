@@ -178,6 +178,8 @@ function Shell() {
         <Stack.Screen name="ratings" options={{ headerShown: false }} />
         {/* 🆕 «بانتظار تقييمك» بلا ترويسة النظام (لقطةُ أحمد: شريطُ «rate-queue» فوق رأسها) — رأسُها في الشاشة نفسِها */}
         <Stack.Screen name="rate-queue" options={{ headerShown: false }} />
+        {/* 🆕 قصّةُ «إحصائياتك» (ت٤ «ج») — تظهر تلاشياً كالقصص لا دفعاً من الجانب، ورأسُها أشرطتُها */}
+        <Stack.Screen name="stats-story" options={{ headerShown: false, animation: "fade" }} />
         {/* 🆕 D-1366 — «تقريرك» أصليّاً (V-C · C5) */}
         <Stack.Screen name="reports" options={{ headerShown: false }} />
         {/* 🆕 D-1367 — «الإحصائيات الكاملة» أصليّةً (V-C · C5 · ب) */}

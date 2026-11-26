@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions, type ViewInstance } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, Share, View, useWindowDimensions, type ViewInstance } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,7 +13,6 @@ import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
 import { shell, type NativeRoot } from "../shell";
 import { CONFIG } from "../config";
 import { haptic } from "../haptics";
-import { posterFor } from "../poster";
 import { span, afterPaint } from "../perfMarks";
 import { usePullRefresh } from "../pullRefresh";
 import { IdentityBadges, identityFlags } from "../IdentityBadges";
@@ -289,18 +288,7 @@ function HeroCard({ d, rangeLabel }: { d: MemberStatsPayload; rangeLabel: string
   return (
     <View style={{ borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, overflow: "hidden" }}>
       <View style={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 16 }}>
-        {d.hero_posters.length ? (
-          <>
-            <View style={[StyleSheet.absoluteFill, { flexDirection: "row" }]} pointerEvents="none">
-              {d.hero_posters.map((p) => {
-                const uri = posterFor(p, 180);
-                return uri ? <Image key={p} source={{ uri }} style={{ flex: 1 }} contentFit="cover" cachePolicy="memory-disk" /> : <View key={p} style={{ flex: 1 }} />;
-              })}
-            </View>
-            {/* الحجابُ لونُ البطاقة نفسُه (`--art-veil`) — يصحّ في «النهاري» من الرمز */}
-            <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tokens.surface, opacity: 0.72 }]} />
-          </>
-        ) : null}
+        {/* 🆕 ت٤ «ب» + «٤ب» (أحمد ٢٦ نوفمبر) — **سطحٌ نظيف**: الملصقاتُ الثلاثةُ خلف الاسم والأرقام سقطت؛ الأرقامُ تُقرأ بلا صورٍ تحتها */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <View style={{ width: 48, height: 48, borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: tokens.accent + "B3", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
             {!d.person.hide_name && d.person.avatar_url ? (
@@ -327,7 +315,7 @@ function HeroCard({ d, rangeLabel }: { d: MemberStatsPayload; rangeLabel: string
         ) : null}
         {/* وقتُ المشاهدة في الزاوية المقابلة (D-721/D-724) */}
         <View style={{ marginTop: 28, alignItems: "flex-end" }}>
-          <Text size={30} weight="600" style={{ lineHeight: 34, fontVariant: ["tabular-nums"] }}>{fmtWatchTime(d.totals.minutes, t)}</Text>
+          <Text size={34} weight="800" color={tokens.accent} style={{ lineHeight: 40, fontVariant: ["tabular-nums"] }}>{fmtWatchTime(d.totals.minutes, t)}</Text>
           <Text size={12} muted style={{ marginTop: 4 }}>{`${t.statWatchTime} · ${rangeLabel}`}</Text>
         </View>
       </View>
@@ -394,16 +382,8 @@ function TasteCard({
         {cells.map((c, i) => {
           const all = taste.all[c.key];
           const opens = all.total > c.rows.length;
-          const posters = taste.posters[c.key];
           return (
             <View key={c.key} style={{ width: "50%", paddingEnd: i % 2 === 0 ? 8 : 0, paddingStart: i % 2 === 1 ? 8 : 0, paddingVertical: 12, borderTopWidth: i >= 2 ? 1 : 0, borderTopColor: tokens.divider, overflow: "hidden" }}>
-              {posters.length ? (
-                <View pointerEvents="none" style={[StyleSheet.absoluteFill, { flexDirection: "row", opacity: 0.2 }]}>
-                  {posters.map((p) => (
-                    <Image key={p} source={{ uri: p }} style={{ flex: 1 }} contentFit="cover" cachePolicy="memory-disk" />
-                  ))}
-                </View>
-              ) : null}
               <Pressable onPress={opens ? () => onAll(c.title, all) : undefined} disabled={!opens} style={({ pressed }) => ({ marginBottom: 6, opacity: pressed ? 0.7 : 1, flexDirection: "row", alignItems: "center", gap: 4 })}>
                 <Text size={14}>{c.title}</Text>
                 {opens ? <Icon name="list" size={12} color={tokens.muted} /> : null}

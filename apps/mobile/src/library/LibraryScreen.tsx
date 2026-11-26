@@ -2,6 +2,7 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
+import { openStats } from "../statsDoor";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { aimDiscoverTab } from "../discover/aim";
 import { takeLibraryAim } from "./aim";
@@ -220,7 +221,8 @@ export function LibraryScreen() {
       /* 🆕 D-1213 — «النشاط» أصليّ: دفعٌ فوق هذه الشاشة لا بابٌ ويبيّ */
       if (path === "/activity") return void router.push({ pathname: "/activity", params: { from: "library" } });
       /* 🆕 D-1214 — و«الإحصائيات» كذلك: إحصائياتي أصليّةٌ بمداها */
-      if (path === "/stats") return void router.push({ pathname: "/stats", params: { from: "library" } });
+      /* 🆕 ت٤ «ج» — البابُ الواحد: القصّةُ أوّلَ مرّةٍ في الأسبوع، ثمّ «إحصائياتك» */
+      if (path === "/stats") return void openStats(router, "library");
       if (leaving) return;
       /* D-1036 — صفحةُ القائمة أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ، والشاشةُ تبقى تحتها (نهجُ D-956).
          القرارُ هنا لا في كلِّ منادٍ — كلُّ من يفتح قائمةً يمرّ من هذا الباب */
@@ -1005,7 +1007,7 @@ function PaneHead({
       <View style={{ flexDirection: "row", borderWidth: 1, borderColor: tokens.border, borderRadius: radius.card, overflow: "hidden" }}>
         {(
           [
-            { path: "/stats", icon: "chart", label: t.statsPageTitle },
+            { path: "/stats", icon: "chart", label: t.drawerReport },
             { path: "/activity", icon: "clock", label: t.activityTitle },
           ] as const
         ).map((b) => (

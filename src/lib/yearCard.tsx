@@ -36,7 +36,8 @@ function loopzMark(): Promise<string> {
 
 export type YearCardInput = {
   locale: Locale;
-  year: number;
+  /** 🆕 `null` ⇐ **كلُّ الأوقات** (بطاقةُ قصّة «إحصائياتك» — ت٤ «ج»): البطاقةُ نفسُها بوسمٍ وسطرٍ آخرين، لا بطاقةٌ ثانية */
+  year: number | null;
   name: string;
   username: string | null;
   avatar: string | null;
@@ -70,8 +71,8 @@ export async function yearCardElement(c: YearCardInput) {
     shapedText(c.name, { width: 560, size: 40, lineHeight: 1.2, maxLines: 1, color: FG, dir, face: "app" }),
     /* اتّجاهُ الصفحة لا اتّجاهُ الكلمة: في العربيّة يلتصق المعرّفُ اللاتينيُّ بالصورة من اليمين كالاسم فوقه */
     handle ? shapedText(handle, { width: 560, size: 28, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular" }) : null,
-    shapedText(ar ? `حصاد ${c.year}` : `${c.year} Wrapped`, { width: 230, size: 30, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular", align: "center" }),
-    shapedText(ar ? "سنتي في لوبز" : "My year on Loopz", { width: INNER, size: 34, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular", align: "center" }),
+    shapedText(c.year === null ? (ar ? "كلّ الأوقات" : "All time") : ar ? `حصاد ${c.year}` : `${c.year} Wrapped`, { width: 230, size: 30, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular", align: "center" }),
+    shapedText(c.year === null ? (ar ? "رحلتي في لوبز" : "My Loopz journey") : ar ? "سنتي في لوبز" : "My year on Loopz", { width: INNER, size: 34, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular", align: "center" }),
     shapedText(c.persona, { width: INNER, size: 92, lineHeight: 1.15, maxLines: 2, color: Y, dir, face: "app", align: "center" }),
     /* الرابطُ يلتصق بالحافّة البعيدة عن علامة لوبز في اللغتين — في الإنجليزيّة يُصفّ يميناً */
     shapedText(link, { width: 620, size: 28, lineHeight: 1.2, maxLines: 1, color: MUTED, dir: ar ? "ltr" : "rtl", face: "app-regular" }),

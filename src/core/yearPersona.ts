@@ -26,6 +26,8 @@ const BY_GENRE: Record<string, { ar: string; en: string }> = {
   western: { ar: "فارس الغرب", en: "Western Rider" },
 };
 const ANIME = { ar: "أوتاكو السنة", en: "Otaku of the Year" };
+/* 🆕 قصّةُ «إحصائياتك» (ت٤ «ج» · «٢أ»: كلُّ الأوقات) — الصفةُ نفسُها بلا «السنة» */
+const ANIME_ALL = { ar: "أوتاكو", en: "Otaku" };
 const ANY = { ar: "رفيق الشاشة", en: "Screen Companion" };
 /** الأنمي يسمّي السنةَ حين يأخذ هذا القدرَ من وقتها فأكثر */
 const ANIME_SHARE = 40;
@@ -33,8 +35,9 @@ const ANIME_SHARE = 40;
 export function yearPersona(
   input: { genres: readonly { slug: string; pct: number }[]; animePct: number; thin: boolean },
   locale: Locale,
+  scope: "year" | "all" = "year",
 ): string {
-  const pick = input.animePct >= ANIME_SHARE ? ANIME : input.thin ? ANY : (BY_GENRE[input.genres[0]?.slug ?? ""] ?? ANY);
+  const pick = input.animePct >= ANIME_SHARE ? (scope === "all" ? ANIME_ALL : ANIME) : input.thin ? ANY : (BY_GENRE[input.genres[0]?.slug ?? ""] ?? ANY);
   return locale === "en" ? pick.en : pick.ar;
 }
 

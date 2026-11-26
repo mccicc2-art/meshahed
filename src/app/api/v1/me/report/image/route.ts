@@ -7,7 +7,7 @@ import { GET as shareImage } from "@/app/api/share/route";
 export const runtime = "nodejs";
 
 /**
- * `GET /api/v1/me/report/image?p=week|month|year` — **صورةُ «شارك تقريرك»** (🆕 D-1368 · Phase 11-V · V-C · C5 · الدفعة ج).
+ * `GET /api/v1/me/report/image?p=week|month|year|all` — **صورةُ «شارك تقريرك»** (🆕 D-1368 · Phase 11-V · V-C · C5 · الدفعة ج).
  *
  * 🔑 **الراسمُ راسمُ الويب نفسُه** (`/api/share?kind=report` — D-810): هذا بابُه للتطبيق لا نسخةٌ منه. الخطّان و`dataUrl`
  * وحارسُ المشترك (`403` لغير Plus) والمدّةُ الفارغة (`409`: لا بطاقةَ تُظهر صفراً) كلُّها هناك — مسارٌ ثانٍ ينسخها يفترق عند
@@ -25,11 +25,15 @@ export async function GET(req: NextRequest) {
   });
   if (!gate.ok) return gate;
   const raw = req.nextUrl.searchParams.get("p");
-  const period = raw === "week" || raw === "year" ? raw : "month";
+  const period = raw === "week" || raw === "year" || raw === "all" ? raw : "month";
   const target = new URL("/api/share", req.url);
   /* 🆕 «حصاد 2026» (أحمد ٢٦ نوفمبر «ق٧أ»): مشاركةُ «السنة» بطاقةُ القصّة ١٠٨٠×١٩٢٠ لا صورةُ التقرير العريضة */
   if (period === "year") target.searchParams.set("kind", "year");
-  else {
+  else if (period === "all") {
+    /* 🆕 آخرُ صفحةٍ في قصّة «إحصائياتك» (ت٤ «ج»): بطاقةُ كلِّ الأوقات بالراسم نفسِه */
+    target.searchParams.set("kind", "year");
+    target.searchParams.set("p", "all");
+  } else {
     target.searchParams.set("kind", "report");
     target.searchParams.set("p", period);
   }

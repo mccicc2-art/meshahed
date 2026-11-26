@@ -23,6 +23,7 @@ import { ToastHost, type ToastHostRef } from "../HoldHost";
 import type { NativeRoot } from "../shell";
 import { num } from "@/core/i18n";
 import { drawerP, drawerStore, drawerWidth } from "./store";
+import { openStats } from "../statsDoor";
 import { useTourAnchor } from "../tour/anchors";
 
 /**
@@ -359,7 +360,8 @@ function SideDrawer({
               {/* 🆕 D-1606 — **التقويمُ ليس في القائمة** (أحمد ٣٠ أكتوبر بلقطة: «التقويم كالندر شيله من هنا ما نبيه يكون موجود»): صفحتُه باقيةٌ
                   وبابُها عنوانُ «أسبوعك ›» في الرئيسية؛ والقائمةُ لغير المشترك تقصر صفّاً فلا يختفي سطرُ اللغة كلُّه تحت الشاشة */}
               {/* T540 — «تقاريرك» للجميع: بلا وسم PLUS */}
-              {row("chart", t.drawerReport, () => go({ pathname: "/reports", params: { from } }))}
+              {/* 🆕 الباب الواحد (ت٤ «ج»): قصّةُ «إحصائياتك» أوّلَ مرّةٍ في الأسبوع، ثمّ الصفحة */}
+              {row("chart", t.drawerReport, () => close(() => openStats(router, from ?? "home")))}
               {/* 🆕 هجرة ٢٣٧ — «الربط» صفحةُ المدار، والمجانيُّ يربط جهازاً فلا وسمَ PLUS */}
               {row("link", t.linksTitle, () => go("/links"))}
               {/* 🆕 T357 — مرسى الجولة: خطوةُ القائمة تحيط هذا الصفَّ ويضغطه بنفسه فيدخل خطوةَ التخصيص بطريقها الحقيقيّ */}

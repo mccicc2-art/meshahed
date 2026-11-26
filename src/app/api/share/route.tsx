@@ -79,7 +79,8 @@ export async function GET(request: Request) {
   }
   /* 🆕 «حصاد 2026» (أحمد ٢٦ نوفمبر «ق٧أ»): بطاقةُ القصّة ١٠٨٠×١٩٢٠ — ومشاركةُ تقرير «السنة» تأتي إليها */
   if (q.get("kind") === "year") {
-    return yearImage(locale);
+    /* 🆕 `p=all` ⇐ بطاقةُ قصّة «إحصائياتك» (كلُّ الأوقات — ت٤ «ج») بالراسم نفسِه */
+    return yearImage(locale, q.get("p") === "all" ? "all" : "year");
   }
   /* 🆕 بطاقةُ سجلّ المشاهدة («ن٥ ب»): الأسبوعُ أو الشهر، وما أخفاه صاحبُها */
   if (q.get("kind") === "history") {
@@ -430,11 +431,11 @@ async function reportImage(rawPeriod: string | null, locale: Locale, rtl: boolea
  * 🆕 **«حصاد 2026»** — الأرقامُ من `buildPeriodStats("year")` نفسِه الذي ترسمه صفحةُ الإحصائيات بمدّة «السنة» (لا سطحان يقولان عن
  * السنة رقمين، D-797)، والبطاقةُ في `lib/yearCard`. سنةٌ فارغةٌ لا صورةَ لها (`409`) كالتقرير.
  */
-async function yearImage(locale: Locale) {
+async function yearImage(locale: Locale, scope: "year" | "all" = "year") {
   const profile = await getProfile();
   if (!hasFullStats(profile)) return new Response("plus required", { status: 403 });
   const tz = asTimeZone(profile?.timezone);
-  const stats = await buildPeriodStats("year", 0, locale, tz);
+  const stats = await buildPeriodStats(scope, 0, locale, tz);
   if (stats.empty) return new Response("nothing to share", { status: 409 });
 
   const top = stats.topTitles.filter((x) => x.poster).slice(0, 8);
@@ -443,19 +444,24 @@ async function yearImage(locale: Locale) {
     dataUrl(profile?.avatar_url ?? null),
   ]);
   const hours = Math.round(stats.minutes / 60);
+  /* 🆕 كلُّ الأوقات بالأيّام («128 يوماً» في القصّة) — والساعاتُ إن لم يبلغ يوماً */
+  const days = scope === "all" ? Math.floor(stats.minutes / 1440) : 0;
   const shows = stats.titles - stats.movies;
   const raw: { n: number; w: Parameters<typeof countedUnit>[1] }[] = [
-    { n: hours, w: { one: "ساعة واحدة", two: "ساعتان", few: "ساعات", many: "ساعةً", hundred: "ساعة", en1: "hour", enN: "hours" } },
+    days > 0
+      ? { n: days, w: { one: "يوم واحد", two: "يومان", few: "أيام", many: "يوماً", hundred: "يوم", en1: "day", enN: "days" } }
+      : { n: hours, w: { one: "ساعة واحدة", two: "ساعتان", few: "ساعات", many: "ساعةً", hundred: "ساعة", en1: "hour", enN: "hours" } },
     { n: shows, w: { one: "مسلسل واحد", two: "مسلسلان", few: "مسلسلات", many: "مسلسلاً", hundred: "مسلسل", en1: "show", enN: "shows" } },
     { n: stats.movies, w: { one: "فيلم واحد", two: "فيلمان", few: "أفلام", many: "فيلماً", hundred: "فيلم", en1: "movie", enN: "movies" } },
   ];
   const persona = yearPersona(
     { genres: stats.taste.genres, animePct: stats.mix.find((m) => m.key === "anime")?.pct ?? 0, thin: stats.taste.thin },
     locale,
+    scope,
   );
   const el = await yearCardElement({
     locale,
-    year: stats.range.from.getUTCFullYear(),
+    year: scope === "all" ? null : stats.range.from.getUTCFullYear(),
     name: profile?.hide_name ? (profile?.username ?? "Loopz") : profile?.nickname?.trim() || profile?.username || "Loopz",
     username: profile?.username ?? null,
     avatar,

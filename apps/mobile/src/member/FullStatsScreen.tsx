@@ -148,6 +148,10 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
                 /* 🆕 D-1581 — بلا صفِّ المدد يبقى اسمُ المدّة مقروءاً في الترويسة («كل الأوقات» وغيرُ المشترك بلا سهمين) */
                 <Text size={12} weight="600" numberOfLines={1} style={{ paddingHorizontal: 8 }}>{s?.range.label ?? periodLabel[period]}</Text>
               )}
+              {/* 🆕 ت٤ «ج» — «شاهد قصّتك من جديد»: القصّةُ تُفتح وحدَها أوّلَ مرّةٍ في الأسبوع، وهذا بابُها متى شئت */}
+              <Pressable onPress={() => { haptic.pick(); router.push({ pathname: "/stats-story", params: { from } }); }} accessibilityRole="button" accessibilityLabel={en ? "Watch your story again" : "شاهد قصّتك من جديد"} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+                <Icon name="play" size={20} color={tokens.fg} />
+              </Pressable>
               {canShare ? (
                 <Pressable onPress={() => void sharing.share()} disabled={sharing.busy} accessibilityRole="button" accessibilityLabel={t.shareReportTitle} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: sharing.busy ? 0.4 : pressed ? 0.7 : 1 })}>
                   <Icon name="share" size={20} color={tokens.fg} />
@@ -640,7 +644,7 @@ function HabitsTab({ s }: { s: ReportStats }) {
 
 /* ══════════════════════ قطعٌ مشتركة ══════════════════════ */
 
-function rhythmLabel(r: ReportStats["habits"]["rhythm"], en: boolean): string {
+export function rhythmLabel(r: ReportStats["habits"]["rhythm"], en: boolean): string {
   if (r === "weekend") return en ? "Weekend watcher" : "مشاهد نهاية الأسبوع";
   if (r === "night") return en ? "Night watcher" : "مشاهد الليل";
   if (r === "binge") return en ? "Binge watcher" : "مشاهد متواصل";
@@ -656,7 +660,7 @@ const mixLabel = (k: Mix, en: boolean) => (k === "movies" ? (en ? "Movies" : "أ
 const mixColor = (k: Mix, tk: Tokens) => (k === "shows" ? tk.accent : k === "movies" ? tk.fg : tk.muted);
 
 /** شريطُ نسبةٍ — قامةٌ بلون السطح وداخلها الممتلئ من بداية السطر */
-function Track({ pct, color, opacity = 1, thin }: { pct: number; color: string; opacity?: number; thin?: boolean }) {
+export function Track({ pct, color, opacity = 1, thin }: { pct: number; color: string; opacity?: number; thin?: boolean }) {
   const { tokens } = useApp();
   const h = thin ? 6 : 8;
   return (
