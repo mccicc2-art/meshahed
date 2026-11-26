@@ -3868,6 +3868,15 @@ const ar = {
   shahidProfileSub: "طلب شاهد اختيار الملف الشخصي قبل قراءة السجلّ، فتوقّفت المزامنة.",
   shahidLoginHint: "ادخل بالبريد أو رقم الجوال، ثم اختر ملفك",
   shahidSocialBlocked: "جوجل وأبل لا يسمحان بالدخول من داخل التطبيقات. ادخل بالبريد أو رقم الجوال.",
+  /* 🆕 المهمّة ٥٦٩ — اختيارُ ملفّ شاهد في Loopz (نافذةُ شاهد لا تظهر في متصفّح التطبيق) */
+  shahidPickTitle: "أي ملف في شاهد نقرأ سجلّه؟",
+  shahidPickSub: "لكل ملف سجلّه. تقدر تغيّره لاحقاً من صفحة شاهد هنا.",
+  shahidPickMain: "الملف الرئيسي",
+  shahidPickKid: "ملف أطفال",
+  shahidPickLocked: "مقفل برمز، تختاره في صفحة شاهد",
+  shahidPickOpening: "نفتح شاهد بالملف الذي اخترته…",
+  shahidPickInShahid: "اختر ملفك في صفحة شاهد",
+  shahidNoProfiles: "ما وصلنا لملفات حسابك. افتح تطبيق شاهد واختر ملفاً مرة، ثم ارجع هنا.",
   shahidAdded: (episodes: number, movies: number) =>
     episodes && movies
       ? `أُضيفت من شاهد ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")} و${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
@@ -6817,6 +6826,14 @@ const en: Dict = {
   shahidProfileSub: "Shahid asked to pick a profile before reading your history, so syncing stopped.",
   shahidLoginHint: "Sign in with email or phone, then pick your profile",
   shahidSocialBlocked: "Google and Apple don't allow signing in from inside apps. Sign in with email or phone.",
+  shahidPickTitle: "Which Shahid profile should we read?",
+  shahidPickSub: "Each profile has its own history. You can change it later from the Shahid page here.",
+  shahidPickMain: "Main profile",
+  shahidPickKid: "Kids profile",
+  shahidPickLocked: "PIN-locked, pick it on the Shahid page",
+  shahidPickOpening: "Opening Shahid with the profile you picked…",
+  shahidPickInShahid: "Pick your profile on the Shahid page",
+  shahidNoProfiles: "We couldn't reach your profiles. Open the Shahid app, pick a profile once, then come back here.",
   shahidAdded: (episodes: number, movies: number) =>
     episodes && movies
       ? `Added from Shahid: ${enCount(episodes, "episode", "episodes")} and ${enCount(movies, "movie", "movies")}`

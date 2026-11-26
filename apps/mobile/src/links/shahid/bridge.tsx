@@ -23,6 +23,8 @@ export const SHAHID_HOME = `${SHAHID_ORIGIN}/ar`;
 export type ShahidReady = { profileId: string; name: string };
 /** 🆕 المهمّة ٥٦٨ — ما رآه سكربتُ الصفحة: أرقامٌ لا رموز (كوكي الجلسة · جلسةُ الحال المحفوظة · الملفّ · نافذةُ «اختر من يشاهد») */
 export type ShahidSeen = { ck: number; st: number; pid: number; pick: number };
+/** 🆕 المهمّة ٥٦٩ — ملفٌّ من ملفّات الحساب كما يصل التطبيق: معرّفُه واسمُه · للأطفال · الرئيسيّ · مقفلٌ برمز */
+export type ShahidProfile = { id: string; name: string; kid: number; def: number; lock: number };
 export type ShahidPageState = "signed-out" | "gate" | "ready";
 
 export function shahidBootScript(): string {
@@ -62,6 +64,28 @@ export function shahidBootScript(): string {
     var sp = selected();
     return { s: "ready", path: q, d: d, profileId: String(id), name: String(sp && String(sp.id) === String(id) ? sp.name || "" : "") };
   };
+  /* 🆕 المهمّة ٥٦٩ — **ملفّاتُ الحساب** (قياسُ جوال أحمد بعد R318: داخلٌ بلا ملفٍّ مختار و«اختر من يشاهد» لا تظهر، فعلقت الصفحة).
+     القائمةُ من حال الموقع المحفوظة، وإلّا من واجهة شاهد نفسِها (\`userprofile/profiles/me\` — يطلبها الموقعُ بالرمز وحده، مقيسٌ في كوده
+     ٢٦ نوفمبر). الكائناتُ كاملةً تبقى في الصفحة؛ والتطبيقُ يرى الاسمَ والنوع وهل هو مقفلٌ — لا رمزَ ولا رقمَ قفل */
+  var known = null;
+  var list = function () {
+    var pr = store("profiles");
+    var l = (pr && pr.profileList) || [];
+    if (!l.length && known) l = known;
+    return l.filter(function (x) { return x && x.id != null; });
+  };
+  /* مقفلٌ برمز: اختيارُه من خارج شاهد يتخطّى قفلاً وضعه صاحبُ الحساب — فيُختار في نافذة شاهد نفسِها حيث يُكتب الرمز */
+  var locked = function (x) { return x.type !== "KID" && !!(x.pinCode || x.pin || x.isPinProtected || x.pinProtected || x.hasPin || x.locked); };
+  var slim = function (x) { return { id: String(x.id), name: String(x.name || ""), kid: x.type === "KID" ? 1 : 0, def: x["default"] ? 1 : 0, lock: locked(x) ? 1 : 0 }; };
+  var saveProfiles = function (fn) {
+    try {
+      var pm = JSON.parse(localStorage.getItem("persist:modules") || "{}");
+      var pr = JSON.parse(pm.profiles || "null") || {};
+      fn(pr);
+      pm.profiles = JSON.stringify(pr);
+      localStorage.setItem("persist:modules", JSON.stringify(pm));
+    } catch (e) {}
+  };
   var last = "";
   var tick = function () {
     var st = state();
@@ -72,6 +96,42 @@ export function shahidBootScript(): string {
     else post({ t: "state", state: st.s, path: st.path, d: st.d });
   };
   window.__lz = {
+    profiles: async function (id) {
+      var l = list(), src = "st";
+      if (!l.length) {
+        var tk = token();
+        src = "none";
+        if (tk) {
+          try {
+            var r = await fetch(${api} + "proxy/v2.1/userprofile/profiles/me", { method: "GET", headers: { "language": "AR", "Accept-Language": "ar", "shahid_os": "WEB", "uuid": "WEB", "token": tk } });
+            src = "api" + r.status;
+            if (r.ok) { var j = await r.json(); known = ((j && j.profiles) || []).filter(function (x) { return x && x.id != null; }); l = known; }
+          } catch (e) { src = "apierr"; }
+        }
+      }
+      post({ t: "profiles", id: id, list: l.map(slim), src: src });
+    },
+    /* 🆕 المهمّة ٥٦٩ — الملفُّ الذي اختاره العضوُ يُكتب كما يكتبه شاهد حين يُختار من نافذته (مقيسٌ في كوده): كوكي \`profileId\`
+       (١٠٠ يوم) و\`profileType\` و\`profileLanguage\`، و\`selectedProfile\` في حاله المحفوظة — ثمّ تُفتح الرئيسيّةُ من جديد فتُبنى بالملفّ */
+    pick: function (pid) {
+      var p = list().filter(function (x) { return String(x.id) === String(pid); })[0];
+      if (!p || locked(p)) { post({ t: "picked", ok: 0 }); return; }
+      var pt = { type: p.type, ageRestriction: p.ageRestriction, "default": p["default"] };
+      if (p.type === "KID" && p.ageRangeMaxAge != null) pt.age = p.ageRangeMaxAge;
+      document.cookie = "profileId=" + encodeURIComponent(String(p.id)) + "; path=/; max-age=8640000";
+      document.cookie = "profileType=" + encodeURIComponent(JSON.stringify(pt)) + "; path=/";
+      var lang = p.preference && p.preference.language;
+      if (lang) document.cookie = "profileLanguage=" + encodeURIComponent(String(lang)) + "; path=/; max-age=8640000";
+      var all = list();
+      saveProfiles(function (pr) { pr.selectedProfile = p; if (!pr.profileList || !pr.profileList.length) pr.profileList = all; pr.isShowModal = false; });
+      post({ t: "picked", ok: 1 });
+      location.href = ${JSON.stringify(SHAHID_HOME)};
+    },
+    /* نافذةُ «اختر من يشاهد» نفسُها (للملفّ المقفل، ولمن لم يقبل شاهدُ اختيارَه): الحالُ التي يكتبها شاهد ليعرضها، ثمّ الرئيسيّة */
+    picker: function () {
+      saveProfiles(function (pr) { pr.isShowModal = true; pr.profileModalType = "PROFILE_SELECTION"; });
+      location.href = ${JSON.stringify(SHAHID_HOME)};
+    },
     api: async function (id, ep, query, auth) {
       try {
         var h = { "language": "AR", "Accept-Language": "ar", "shahid_os": "WEB", "uuid": "WEB" };
@@ -115,6 +175,12 @@ export type ShahidWebRef = {
   /** طلبُ `GET` إلى واجهة شاهد من الصفحة — `auth`: بجلسة العضو. الردُّ JSON، أو `null`، أو `"auth"` (انتهت الجلسة) */
   api: (ep: string, query: string, auth: boolean, ms?: number) => Promise<unknown>;
   go: (url: string) => void;
+  /** 🆕 المهمّة ٥٦٩ — ملفّاتُ الحساب ومصدرُها للقياس (`st` الحال المحفوظة · `api200` واجهةُ شاهد…) — `null` إن لم تُجب الصفحة */
+  profiles: () => Promise<{ list: ShahidProfile[]; src: string } | null>;
+  /** يختار الملفَّ في الموقع ثمّ يفتح الرئيسيّة به */
+  pick: (profileId: string) => void;
+  /** يفتح نافذةَ «اختر من يشاهد» في شاهد نفسِه */
+  picker: () => void;
 };
 
 type Props = {
@@ -157,13 +223,28 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
           web.current?.injectJavaScript(`window.__lz && window.__lz.api(${id}, ${JSON.stringify(ep)}, ${JSON.stringify(query)}, ${auth ? "true" : "false"}); true;`);
         }),
       go: (next) => web.current?.injectJavaScript(`location.href = ${JSON.stringify(next)}; true;`),
+      profiles: () =>
+        new Promise((resolve) => {
+          const id = ++seq.current;
+          const timer = setTimeout(() => {
+            pending.current.delete(id);
+            resolve(null);
+          }, 15_000);
+          pending.current.set(id, (v) => {
+            clearTimeout(timer);
+            resolve((v as { list: ShahidProfile[]; src: string } | null) ?? null);
+          });
+          web.current?.injectJavaScript(`window.__lz && window.__lz.profiles(${id}); true;`);
+        }),
+      pick: (pid) => web.current?.injectJavaScript(`window.__lz && window.__lz.pick(${JSON.stringify(pid)}); true;`),
+      picker: () => web.current?.injectJavaScript(`window.__lz && window.__lz.picker(); true;`),
     }),
     [],
   );
 
   const onMessage = useCallback(
     (e: WebViewMessageEvent) => {
-      let m: { t?: string; id?: number; status?: number; body?: string; state?: ShahidPageState; path?: string; profileId?: string; name?: string; d?: ShahidSeen };
+      let m: { t?: string; id?: number; status?: number; body?: string; state?: ShahidPageState; path?: string; profileId?: string; name?: string; d?: ShahidSeen; list?: ShahidProfile[]; src?: string };
       try {
         m = JSON.parse(e.nativeEvent.data);
       } catch {
@@ -179,6 +260,11 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
         } catch {
           done(null);
         }
+      } else if (m.t === "profiles" && typeof m.id === "number") {
+        const done = pending.current.get(m.id);
+        if (!done) return;
+        pending.current.delete(m.id);
+        done({ list: Array.isArray(m.list) ? m.list : [], src: typeof m.src === "string" ? m.src : "" });
       } else if (m.t === "ready" && typeof m.profileId === "string") {
         onReady?.({ profileId: m.profileId, name: m.name ?? "" }, m.path ?? "");
       } else if (m.t === "state" && m.state) {
