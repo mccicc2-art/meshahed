@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, queryClient, write } from "../api";
 import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
-import type { DeviceKind, DeviceLinksBody, DeviceLinksState } from "@/core/contracts/deviceLinks";
+import type { DeviceKind, DeviceLinksBody, DeviceLinksState, PlatformKind } from "@/core/contracts/deviceLinks";
 
 /**
  * 🆕 **مدارُ الأجهزة** — استعلامٌ واحدٌ لصفحة «الربط» وصفحات الأجهزة وصفِّ الإعدادات (`GET /api/v1/me/links`، هجرة ٢٣٧).
@@ -43,7 +43,12 @@ export function linkedNames(d: DeviceLinksState): string[] {
 
 /** 🆕 هجرة ٢٦٥ — هل للعضو أن يربط نتفليكس الآن؟ المربوطةُ إعادةٌ لا خانة، وإلّا خانةٌ فارغة. 🆕 T551 — للطبقات كلِّها (أحمد ٢٥ نوفمبر):
  *  المجّانيُّ يربطها في خانته الواحدة كأيِّ جهاز — حكمُ الخادم نفسُه (`canLinkPlatform`) */
-export function canLinkNetflix(d: DeviceLinksState): boolean {
-  if (d.platforms?.some((p) => p.platform === "netflix" && !p.stopped)) return true;
+export function canLinkNetflix(d: DeviceLinksState, platform: PlatformKind = "netflix"): boolean {
+  if (d.platforms?.some((p) => p.platform === platform && !p.stopped)) return true;
   return d.limit == null || d.used < d.limit;
+}
+
+/** 🆕 المهمّة ٥٥٧ — اسمُ المنصّة كما يُكتب في كلِّ مكان: اسمُ منتجٍ لا يُترجم */
+export function platformName(p: PlatformKind): string {
+  return p === "osn" ? "OSN+" : "Netflix";
 }

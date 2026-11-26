@@ -3837,6 +3837,14 @@ const ar = {
   nfxNothingNew: "لا جديد منذ آخر مزامنة",
   nfxSyncFailed: "تعذّرت المزامنة. حاول لاحقاً.",
   nfxEmpty: "لا شيء هنا بعد",
+  /* 🆕 المهمّة ٥٥٧ — OSN+: ما يختلف عن نتفليكس وحده (اسمُ المنصّة)؛ والباقي نصوصُ نتفليكس نفسُها */
+  osnConsentLead: "يتسجّل ما تشاهده في OSN+ في مكتبتك وحده.",
+  osnConsent1Title: "تدخل من صفحة OSN+ نفسها",
+  osnConsent1Sub: "كلمة مرورك تُكتب عند OSN+، ولوبز لا يراها ولا يحفظها.",
+  osnContinue: "تابع إلى OSN+",
+  osnImportLaterNote: "يمكنك الاستيراد لاحقاً من صفحة OSN+.",
+  osnStoppedSub: "خرجت OSN+ من حسابك على هذا الجهاز. ما دخل مكتبتك باقٍ.",
+  osnProfileSub: "طلبت OSN+ اختيار الملف الشخصي قبل قراءة السجلّ، فتوقّفت المزامنة.",
 };
 
 export type Dict = typeof ar;
@@ -6740,6 +6748,13 @@ const en: Dict = {
   nfxNothingNew: "Nothing new since the last sync",
   nfxSyncFailed: "Couldn't sync. Try again later.",
   nfxEmpty: "Nothing here yet",
+  osnConsentLead: "What you watch on OSN+ is added to your library on its own.",
+  osnConsent1Title: "You sign in on OSN+'s own page",
+  osnConsent1Sub: "Your password is typed at OSN+. Loopz never sees or stores it.",
+  osnContinue: "Continue to OSN+",
+  osnImportLaterNote: "You can import later from the OSN+ page.",
+  osnStoppedSub: "OSN+ signed you out on this device. Everything already in your library stays.",
+  osnProfileSub: "OSN+ asked to pick a profile before reading your history, so syncing stopped.",
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };

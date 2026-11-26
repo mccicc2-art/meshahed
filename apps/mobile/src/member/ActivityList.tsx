@@ -292,5 +292,6 @@ function sourceLabel(s: WatchSource, t: ReturnType<typeof useApp>["t"]): string 
   if (s === "plex" || s === "jellyfin" || s === "emby" || s === "kodi" || s === "nuvio") return SIGNAL_SOURCE_NAME[s];
   /* 🆕 هجرة ٢٦٥ — مزامنةُ نتفليكس: اسمُ منتجٍ لا يُترجم */
   if (s === "netflix") return "Netflix";
+  if (s === "osn") return "OSN+";
   return s === "stremio" ? t.srcStremio : s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }

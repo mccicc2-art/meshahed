@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
     const reviewFrom = body.reviewFrom === "letterboxd" || body.reviewFrom === "auto" ? body.reviewFrom : undefined;
     /* 🆕 مصدرُ الكتابة (هجرة ٢٦٥): مزامنةُ نتفليكس تُوسم `netflix` — عدّادُ صفحتها وشارتُها يقرآن هذا الوسم. كان يسقط هنا
        فيُكتب ما جاء من نتفليكس «استيراداً» ويبقى العدّادُ صفراً (أوّلُ تجربةٍ على جهاز، ٢٥ نوفمبر) */
-    const source = body.source === "netflix" ? ("netflix" as const) : undefined;
+    /* 🆕 `osn` — مزامنةُ OSN+ (هجرة ٢٦٨) */
+    const source = body.source === "netflix" || body.source === "osn" ? (body.source as "netflix" | "osn") : undefined;
     const done = await applyImportChunk({ shows, movies, lists, favorites, favoritesName, keep: body.keep === true, reviewFrom, ...(source ? { source } : {}) });
     return ok(done, []);
   });

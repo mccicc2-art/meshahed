@@ -29,7 +29,7 @@ export const NETFLIX_VIEWED = `${NETFLIX_ORIGIN}/settings/viewed`;
 export const NETFLIX_SIGNOUT = `${NETFLIX_ORIGIN}/SignOut`;
 /** صفحةُ «مَن يشاهد؟» — تحوّل إلى `/browse` وعليها الملفّات (مقيس ٢٥ نوفمبر)؛ ومَن لم يسجّل دخوله تحوّله إلى الدخول */
 export const NETFLIX_GATE = `${NETFLIX_ORIGIN}/ProfilesGate`;
-const DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+export const DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 export type NfxReady = { guid: string; name: string; historyId: string | null; seasonId: string | null; moviesId: string | null };
 /** 🆕 `left`: «مَن يشاهد؟» اختفت لتوّها بعد أن ظهرت — يُقال فوراً لتغطّي شاشةُ التحميل نتفليكس، و`browse` يؤكّد بعده */

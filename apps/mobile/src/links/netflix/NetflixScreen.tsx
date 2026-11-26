@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,10 +17,10 @@ import { PlatformMark } from "../DeviceMark";
 import { UnlinkSheet } from "../UnlinkSheet";
 import { useLinks } from "../api";
 import { Orbit } from "../Orbit";
-import type { DeviceLinksState } from "@/core/contracts/deviceLinks";
+import type { DeviceLinksState, NetflixAddedList, PlatformKind } from "@/core/contracts/deviceLinks";
 import { NETFLIX_GATE, NETFLIX_LOGIN, NETFLIX_VIEWED, NetflixWeb, type NetflixWebRef, type NfxReady } from "./bridge";
-import { clearLocal, linkNetflix, netflixOf, readHistory, readLocal, unlinkNetflix, useNetflixAdded, writeLocal, type NfxLocal } from "./sync";
-import { requestNetflixSignOut, requestNetflixSync, useNetflixSync } from "./NetflixSyncHost";
+import { clearLocal, linkNetflix, readHistory, readLocal, unlinkNetflix, useNetflixAdded, writeLocal, type NfxLocal } from "./sync";
+import { requestNetflixSignOut, requestNetflixSync, useNetflixSync, type NfxSyncState } from "./NetflixSyncHost";
 
 /**
  * ====== 🆕 صفحةُ نتفليكس — الفكرةُ «ب»، لوحةُ الملخّص (التصاميمُ المعتمدة ٢٥ نوفمبر: «اعتمد») ======
@@ -32,20 +32,95 @@ import { requestNetflixSignOut, requestNetflixSync, useNetflixSync } from "./Net
  * - **للمجانيّ**: الربطُ لـLoopz+ (أحمد «٣ب») — بابُ الاشتراك.
  */
 type Overlay = null | "consent" | "login" | "ask" | "unlink" | "added" | "unmatched" | "partial";
-type LoginWhy = "link" | "relogin" | "profile";
+export type LoginWhy = "link" | "relogin" | "profile";
+
+/**
+ * 🆕 المهمّة ٥٥٧ — **ما يختلف بين منصّةٍ وأخرى**: صفحةُ نتفليكس صارت صفحةَ كلِّ منصّة (`PlatformScreen`) حين جاءت OSN+ — نسختان
+ * منها كانتا ستتباعدان. هنا الاسمُ، ومضيفُ المزامنة، وملفُّ الجهاز، والربطُ والفكّ، وصفحةُ الدخول، والجملُ التي تسمّي المنصّة.
+ */
+export type PlatformLoginProps = {
+  why: LoginWhy;
+  d: DeviceLinksState | undefined;
+  onClose: () => void;
+  /** اختار ملفَّه: اسمُه، وما يعدّ ما فيه للسؤال */
+  onFound: (name: string, count: () => Promise<{ episodes: number; movies: number }>) => void;
+};
+export type PlatformDriver = {
+  platform: PlatformKind;
+  name: string;
+  useSync: () => NfxSyncState;
+  requestSync: (kind: "auto" | "manual" | "import") => boolean;
+  requestSignOut: () => Promise<void>;
+  readLocal: (uid: string) => NfxLocal;
+  writeLocal: (uid: string, patch: Partial<NfxLocal>) => NfxLocal;
+  clearLocal: (uid: string) => void;
+  link: (profileLabel: string, importAll: boolean) => Promise<void>;
+  unlink: () => Promise<void>;
+  useAdded: (enabled: boolean) => { data?: NetflixAddedList };
+  Login: (p: PlatformLoginProps) => React.ReactElement;
+  str: { consentLead: string; consent1Title: string; consent1Sub: string; continue_: string; importLaterNote: string; stoppedSub: string; profileSub: string };
+};
+
+/** صفحةُ دخول نتفليكس بشكل المنصّات: تختار الملفَّ، ثمّ يُعدّ السجلُّ للسؤال */
+function NetflixLogin({ why, d, onClose, onFound }: PlatformLoginProps) {
+  return (
+    <LoginOverlay
+      start={why === "profile" ? NETFLIX_GATE : NETFLIX_LOGIN}
+      d={d}
+      onClose={onClose}
+      onReady={async (web, ready) =>
+        onFound(ready.name, async () => {
+          const items = (await readHistory(web, ready, null)) ?? [];
+          return { episodes: items.filter((i) => i.kind === "episode").length, movies: items.filter((i) => i.kind === "movie").length };
+        })
+      }
+    />
+  );
+}
 
 export function NetflixScreen() {
+  const { t } = useApp();
+  const drv = useMemo<PlatformDriver>(
+    () => ({
+      platform: "netflix",
+      name: "Netflix",
+      useSync: useNetflixSync,
+      requestSync: requestNetflixSync,
+      requestSignOut: requestNetflixSignOut,
+      readLocal,
+      writeLocal,
+      clearLocal,
+      link: linkNetflix,
+      unlink: unlinkNetflix,
+      useAdded: useNetflixAdded,
+      Login: NetflixLogin,
+      str: {
+        consentLead: t.nfxConsentLead,
+        consent1Title: t.nfxConsent1Title,
+        consent1Sub: t.nfxConsent1Sub,
+        continue_: t.nfxContinue,
+        importLaterNote: t.nfxImportLaterNote,
+        stoppedSub: t.nfxStoppedSub,
+        profileSub: t.nfxProfileSub,
+      },
+    }),
+    [t],
+  );
+  return <PlatformScreen drv={drv} />;
+}
+
+export function PlatformScreen({ drv }: { drv: PlatformDriver }) {
   const { t, tokens, me } = useApp();
   const router = useRouter();
   const toast = useRef<ToastHostRef>(null);
   const q = useLinks();
   const d = q.data;
-  const nfx = netflixOf(d);
-  const sync = useNetflixSync();
+  const nfx = d?.platforms?.find((p) => p.platform === drv.platform) ?? null;
+  const sync = drv.useSync();
   /* 🆕 T552 — «ما دخل» من المكتبة على الخادم، لا من ملفّ الجهاز — يطابق الأرقامَ فوقها ولا يُمسح بإعادة الربط */
-  const added = useNetflixAdded(!!nfx);
+  const added = drv.useAdded(!!nfx);
   const uid = me?.id ?? "";
-  const [local, setLocal] = useState<NfxLocal>(() => (uid ? readLocal(uid) : {}));
+  const [local, setLocal] = useState<NfxLocal>(() => (uid ? drv.readLocal(uid) : {}));
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [why, setWhy] = useState<LoginWhy>("link");
   const [found, setFound] = useState<{ name: string; episodes: number; movies: number } | null>(null);
@@ -57,7 +132,7 @@ export function NetflixScreen() {
   useEffect(() => {
     if (!sync.last || sync.last.at === lastAt.current) return;
     lastAt.current = sync.last.at;
-    if (uid) setLocal(readLocal(uid));
+    if (uid) setLocal(drv.readLocal(uid));
     if (sync.last.kind === "auto") return;
     const o = sync.last.outcome;
     if (o.ok) toast.current?.say(o.episodes + o.movies > 0 ? t.nfxAdded(o.episodes, o.movies) : t.nfxNothingNew, undefined, undefined, o.episodes + o.movies > 0 ? "success" : undefined);
@@ -78,31 +153,31 @@ export function NetflixScreen() {
     setOverlay("login");
   };
 
-  /* «تم» في صفحة الدخول ⇐ السجلُّ يُقرأ ليُعدّ (إعادةُ الدخول للملفّ نفسِه لا تسأل) */
-  const onLoggedIn = useCallback(
-    async (web: NetflixWebRef, ready: NfxReady) => {
-      if (uid) setLocal(writeLocal(uid, { expired: false, profile: false }));
-      if (why === "relogin" && nfx?.profile_label && nfx.profile_label === ready.name) {
+  /* الدخولُ واختيارُ الملفّ ⇐ ما فيه يُعدّ للسؤال (إعادةُ الدخول للملفّ نفسِه لا تسأل). القراءةُ للعدّ في صفحة كلِّ منصّة (`count`) */
+  const onFound = useCallback(
+    async (name: string, count: () => Promise<{ episodes: number; movies: number }>) => {
+      if (uid) setLocal(drv.writeLocal(uid, { expired: false, profile: false }));
+      if (why === "relogin" && nfx?.profile_label && nfx.profile_label === name) {
         setOverlay(null);
-        requestNetflixSync("manual");
+        drv.requestSync("manual");
         return;
       }
-      const items = (await readHistory(web, ready, null)) ?? [];
-      setFound({ name: ready.name, episodes: items.filter((i) => i.kind === "episode").length, movies: items.filter((i) => i.kind === "movie").length });
+      const n = await count();
+      setFound({ name, episodes: n.episodes, movies: n.movies });
       setOverlay("ask");
     },
-    [uid, why, nfx?.profile_label],
+    [uid, why, nfx?.profile_label, drv],
   );
 
   const choose = async (importAll: boolean) => {
     if (!found) return;
     setBusy(true);
     try {
-      await linkNetflix(found.name, importAll);
+      await drv.link(found.name, importAll);
       haptic.pick();
       setOverlay(null);
-      if (uid) setLocal(writeLocal(uid, { added: [], unmatched: [], partial: [] }));
-      if (importAll) requestNetflixSync("import");
+      if (uid) setLocal(drv.writeLocal(uid, { added: [], unmatched: [], partial: [] }));
+      if (importAll) drv.requestSync("import");
     } catch (e) {
       say(e);
     } finally {
@@ -112,9 +187,9 @@ export function NetflixScreen() {
 
   const unlink = async () => {
     try {
-      await requestNetflixSignOut();
-      await unlinkNetflix();
-      if (uid) clearLocal(uid);
+      await drv.requestSignOut();
+      await drv.unlink();
+      if (uid) drv.clearLocal(uid);
       setOverlay(null);
       router.back();
     } catch (e) {
@@ -124,12 +199,12 @@ export function NetflixScreen() {
 
   const sheets = (
     <>
-      {overlay === "consent" ? <ConsentSheet onClose={() => (nfx ? setOverlay(null) : router.back())} onContinue={() => openLogin("link")} /> : null}
-      {overlay === "login" ? <LoginOverlay start={why === "profile" ? NETFLIX_GATE : NETFLIX_LOGIN} d={d} onClose={() => setOverlay(null)} onReady={onLoggedIn} /> : null}
+      {overlay === "consent" ? <ConsentSheet drv={drv} onClose={() => (nfx ? setOverlay(null) : router.back())} onContinue={() => openLogin("link")} /> : null}
+      {overlay === "login" ? <drv.Login why={why} d={d} onClose={() => setOverlay(null)} onFound={(n, c) => void onFound(n, c)} /> : null}
       {/* 🆕 السؤالُ يطلع فوق مدار الربط نفسِه — لا تعود صفحةُ نتفليكس بينهما (التصميمُ المعتمد «و١») */}
-      {overlay === "ask" && found ? <LinkingCover d={d} reading={false} /> : null}
-      {overlay === "ask" && found ? <AskSheet found={found} busy={busy} onClose={() => setOverlay(null)} onChoose={(a) => void choose(a)} /> : null}
-      {overlay === "unlink" ? <UnlinkSheet name="Netflix" works={nfx?.works ?? 0} onClose={() => setOverlay(null)} onConfirm={unlink} /> : null}
+      {overlay === "ask" && found ? <LinkingCover d={d} platform={drv.platform} reading={false} /> : null}
+      {overlay === "ask" && found ? <AskSheet drv={drv} found={found} busy={busy} onClose={() => setOverlay(null)} onChoose={(a) => void choose(a)} /> : null}
+      {overlay === "unlink" ? <UnlinkSheet name={drv.name} works={nfx?.works ?? 0} onClose={() => setOverlay(null)} onConfirm={unlink} /> : null}
       {overlay === "added" ? (
         <ListSheet
           title={t.nfxShowImported}
@@ -154,14 +229,14 @@ export function NetflixScreen() {
 
   if (!d && !q.isError) {
     return (
-      <SettingsScreen title="Netflix" toast={toast}>
+      <SettingsScreen title={drv.name} toast={toast}>
         <RowsSkeleton rows={3} />
       </SettingsScreen>
     );
   }
   if (!d || !d.ready) {
     return (
-      <SettingsScreen title="Netflix" toast={toast}>
+      <SettingsScreen title={drv.name} toast={toast}>
         <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
       </SettingsScreen>
     );
@@ -172,11 +247,11 @@ export function NetflixScreen() {
   /* غيرُ مربوطة: الموافقةُ فوق صفحةٍ فارغةٍ هادئة */
   if (!nfx) {
     return (
-      <SettingsScreen title="Netflix" toast={toast} overlay={sheets}>
+      <SettingsScreen title={drv.name} toast={toast} overlay={sheets}>
         <View style={{ alignItems: "center", gap: 12, paddingTop: 12 }}>
-          <PlatformMark size={64} />
-          <Text size={14} muted style={{ textAlign: "center", lineHeight: 22 }}>{t.nfxConsentLead}</Text>
-          <Button label={t.nfxContinue} onPress={() => setOverlay("consent")} />
+          <PlatformMark platform={drv.platform} size={64} />
+          <Text size={14} muted style={{ textAlign: "center", lineHeight: 22 }}>{drv.str.consentLead}</Text>
+          <Button label={drv.str.continue_} onPress={() => setOverlay("consent")} />
         </View>
       </SettingsScreen>
     );
@@ -193,12 +268,12 @@ export function NetflixScreen() {
   const counts = nfx.counts ?? { shows: 0, episodes: 0, movies: 0 };
 
   return (
-    <SettingsScreen title="Netflix" toast={toast} overlay={sheets}>
+    <SettingsScreen title={drv.name} toast={toast} overlay={sheets}>
       {/* ───── الرأس في سطر ───── */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <PlatformMark size={52} state={nfx.stopped || expired ? "idle" : "on"} />
+        <PlatformMark platform={drv.platform} size={52} state={nfx.stopped || expired ? "idle" : "on"} />
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text size={20} weight="800" style={{ writingDirection: "ltr", textAlign: "left" }}>Netflix</Text>
+          <Text size={20} weight="800" style={{ writingDirection: "ltr", textAlign: "left" }}>{drv.name}</Text>
           {nfx.profile_label ? <Text size={13} muted numberOfLines={1}>{t.nfxProfile(nfx.profile_label)}</Text> : null}
         </View>
         <StatusPill label={pill.label} color={pill.color} />
@@ -234,13 +309,13 @@ export function NetflixScreen() {
         ) : needProfile ? (
           <>
             <Text size={15} weight="700">{t.nfxProfileTitle}</Text>
-            <Text size={13} muted style={{ lineHeight: 20 }}>{t.nfxProfileSub}</Text>
+            <Text size={13} muted style={{ lineHeight: 20 }}>{drv.str.profileSub}</Text>
             <Button label={t.nfxPickProfile} onPress={() => openLogin("profile")} />
           </>
         ) : expired ? (
           <>
             <Text size={15} weight="700">{t.nfxStoppedTitle}</Text>
-            <Text size={13} muted style={{ lineHeight: 20 }}>{t.nfxStoppedSub}</Text>
+            <Text size={13} muted style={{ lineHeight: 20 }}>{drv.str.stoppedSub}</Text>
             <Button label={t.nfxRelogin} onPress={() => openLogin("relogin")} />
           </>
         ) : (
@@ -249,7 +324,7 @@ export function NetflixScreen() {
               <Text size={15} weight="700">{nfx.synced_at ? t.nfxLastSync(timeAgo(nfx.synced_at, t)) : t.nfxNeverSynced}</Text>
               <Text size={13} muted style={{ marginTop: 3 }}>{t.nfxNextSync}</Text>
             </View>
-            <Button size="sm" variant="ghost" label={t.nfxSyncNow} disabled={nfx.stopped} onPress={() => requestNetflixSync("manual")} />
+            <Button size="sm" variant="ghost" label={t.nfxSyncNow} disabled={nfx.stopped} onPress={() => drv.requestSync("manual")} />
           </View>
         )}
       </View>
@@ -272,18 +347,18 @@ export function NetflixScreen() {
 }
 
 /** ورقةُ الموافقة — النقاطُ الأربع كما اعتُمدت، بلا تحذير */
-function ConsentSheet({ onClose, onContinue }: { onClose: () => void; onContinue: () => void }) {
+function ConsentSheet({ drv, onClose, onContinue }: { drv: PlatformDriver; onClose: () => void; onContinue: () => void }) {
   const { t, tokens } = useApp();
   const points: [IconName, string, string][] = [
-    ["lock", t.nfxConsent1Title, t.nfxConsent1Sub],
+    ["lock", drv.str.consent1Title, drv.str.consent1Sub],
     ["shield", t.nfxConsent2Title, t.nfxConsent2Sub],
     ["check", t.nfxConsent3Title, t.nfxConsent3Sub],
     ["repeat", t.nfxConsent4Title, t.nfxConsent4Sub],
   ];
   return (
-    <Sheet title={`${t.linksLinkAction("Netflix")}`} onClose={onClose}>
+    <Sheet title={`${t.linksLinkAction(drv.name)}`} onClose={onClose}>
       <View style={{ gap: 4 }}>
-        <Text size={14} muted style={{ lineHeight: 21, marginBottom: 6 }}>{t.nfxConsentLead}</Text>
+        <Text size={14} muted style={{ lineHeight: 21, marginBottom: 6 }}>{drv.str.consentLead}</Text>
         {points.map(([icon, title, sub]) => (
           <View key={title} style={{ flexDirection: "row", gap: 12, alignItems: "flex-start", paddingVertical: 8 }}>
             <View style={{ width: 34, height: 34, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, alignItems: "center", justifyContent: "center" }}>
@@ -296,7 +371,7 @@ function ConsentSheet({ onClose, onContinue }: { onClose: () => void; onContinue
           </View>
         ))}
         <View style={{ height: 12 }} />
-        <Button label={t.nfxContinue} onPress={onContinue} />
+        <Button label={drv.str.continue_} onPress={onContinue} />
         <Button label={t.introLater} variant="ghost" onPress={onClose} />
       </View>
     </Sheet>
@@ -312,7 +387,7 @@ function ConsentSheet({ onClose, onContinue }: { onClose: () => void; onContinue
  *   أمامه نحو ستّ ثوانٍ (تحميلُها الثقيل + انتظارُ استقرارها + التحويل) — فيغطّيها غطاءٌ قصيرٌ (خلفيّةُ التطبيق ومؤشّرٌ صغير) ونطلب
  *   «مَن يشاهد؟» فوراً، ويرتفع حين تظهر. وله حدٌّ (عشرُ ثوانٍ) يرتفع بعده فلا يعلق أمام شاشةٍ فارغة، ومدّتُه تُقاس.
  */
-function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: DeviceLinksState | undefined; onClose: () => void; onReady: (web: NetflixWebRef, r: NfxReady) => Promise<void> }) {
+export function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: DeviceLinksState | undefined; onClose: () => void; onReady: (web: NetflixWebRef, r: NfxReady) => Promise<void> }) {
   const { t, tokens } = useApp();
   const insets = useSafeAreaInsets();
   const web = useRef<NetflixWebRef>(null);
@@ -436,12 +511,12 @@ function LoginOverlay({ start, d, onClose, onReady }: { start: string; d: Device
  * 🆕 **شاشةُ التحميل — مدارُ الربط** (التصميمُ «و١»، أحمد ٢٥ نوفمبر «١أ نفذ»): مدارُ المشترك كما في صفحة الربط، أجهزتُه باهتة،
  * ونتفليكس تتوهّج في خانتها بخطٍّ متقطّعٍ تجري عليه النقاط، وتحته حبّةُ «نقرأ سجلّك…». وخلف سؤال الاستيراد تبقى بلا الحبّة.
  */
-function LinkingCover({ d, reading }: { d: DeviceLinksState | undefined; reading: boolean }) {
+export function LinkingCover({ d, reading, platform = "netflix" }: { d: DeviceLinksState | undefined; reading: boolean; platform?: PlatformKind }) {
   const { t, tokens } = useApp();
   const { width } = useWindowDimensions();
   return (
     <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: tokens.bg, alignItems: "center", justifyContent: "center", gap: 22 }}>
-      {d ? <Orbit d={d} width={width} linking="netflix" onSlot={() => undefined} onHold={() => undefined} /> : null}
+      {d ? <Orbit d={d} width={width} linking={platform} onSlot={() => undefined} onHold={() => undefined} /> : null}
       {reading ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, borderRadius: radius.pill, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, paddingHorizontal: 14, paddingVertical: 7 }}>
           <ActivityIndicator size="small" color={tokens.accent} />
@@ -453,7 +528,7 @@ function LinkingCover({ d, reading }: { d: DeviceLinksState | undefined; reading
 }
 
 /** سؤالُ الاستيراد — كما اعتُمد: العددُ، وشرحُ الزرّين بخطٍّ عريضٍ لاسم كلٍّ منهما، والزرّان، والسطرُ الأخير */
-function AskSheet({ found, busy, onClose, onChoose }: { found: { name: string; episodes: number; movies: number }; busy: boolean; onClose: () => void; onChoose: (importAll: boolean) => void }) {
+function AskSheet({ drv, found, busy, onClose, onChoose }: { drv: PlatformDriver; found: { name: string; episodes: number; movies: number }; busy: boolean; onClose: () => void; onChoose: (importAll: boolean) => void }) {
   const { t, tokens } = useApp();
   return (
     <Sheet
@@ -461,7 +536,7 @@ function AskSheet({ found, busy, onClose, onChoose }: { found: { name: string; e
       onClose={onClose}
       header={
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <PlatformMark size={40} state="on" />
+          <PlatformMark platform={drv.platform} size={40} state="on" />
           <View>
             <Text size={15} weight="700">{t.nfxLinkedHead}</Text>
             {found.name ? <Text size={13} muted>{t.nfxProfile(found.name)}</Text> : null}
@@ -484,14 +559,14 @@ function AskSheet({ found, busy, onClose, onChoose }: { found: { name: string; e
         </View>
         <Button label={t.nfxImportAll} busy={busy} onPress={() => onChoose(true)} />
         <Button label={t.nfxFromNow} variant="ghost" disabled={busy} onPress={() => onChoose(false)} />
-        <Text size={12} muted style={{ textAlign: "center" }}>{t.nfxImportLaterNote}</Text>
+        <Text size={12} muted style={{ textAlign: "center" }}>{drv.str.importLaterNote}</Text>
       </View>
     </Sheet>
   );
 }
 
 /** قائمةٌ بسيطةٌ في ورقة — ما دخل · لم نطابقه · بدأته ولم تكمله */
-function ListSheet({ title, note, rows, onClose }: { title: string; note?: string; rows: { title: string; sub?: string }[]; onClose: () => void }) {
+export function ListSheet({ title, note, rows, onClose }: { title: string; note?: string; rows: { title: string; sub?: string }[]; onClose: () => void }) {
   const { t } = useApp();
   return (
     <Sheet title={title} onClose={onClose}>

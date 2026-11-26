@@ -11,7 +11,8 @@ export type ActivityKind = "watch" | "rate" | "review" | "list";
 /* 🆕 هجرة ٢٣٥ — سيرفراتُ البيت: ما أجاب عنه العضو من سؤال Plex أو Jellyfin أو Emby */
 /* 🆕 `netflix` — مزامنةُ نتفليكس (هجرة ٢٦٥) */
 /* 🆕 `nuvio` — إضافةُ Stremio في Nuvio برابطه (هجرة ٢٦٧) */
-export type WatchSource = "stremio" | "nuvio" | "widget" | "import" | "auto" | "plex" | "jellyfin" | "emby" | "kodi" | "netflix";
+/* 🆕 `osn` — مزامنةُ OSN+ (هجرة ٢٦٨) */
+export type WatchSource = "stremio" | "nuvio" | "widget" | "import" | "auto" | "plex" | "jellyfin" | "emby" | "kodi" | "netflix" | "osn";
 
 export interface ActivityItem {
   id: string;

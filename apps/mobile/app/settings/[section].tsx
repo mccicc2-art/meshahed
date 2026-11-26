@@ -19,6 +19,7 @@ import { HomeDeviceScreen, KodiDeviceScreen, NuvioDeviceScreen, StremioDeviceScr
 import { LinkIntroScreen } from "../../src/links/LinkIntroScreen";
 import { LinksScreen } from "../../src/links/LinksScreen";
 import { NetflixScreen } from "../../src/links/netflix/NetflixScreen";
+import { OsnScreen } from "../../src/links/osn/OsnScreen";
 import { useLinks } from "../../src/links/api";
 
 /**
@@ -61,6 +62,8 @@ const SCREENS = {
   "link-intro": LinkIntroScreen,
   /* 🆕 هجرة ٢٦٥ — صفحةُ نتفليكس (الفكرة «ب»): الموافقةُ والدخولُ وسؤالُ الاستيراد والمزامنة */
   netflix: NetflixScreen,
+  /* 🆕 هجرة ٢٦٨ — صفحةُ OSN+: صفحةُ المنصّة نفسُها */
+  osn: OsnScreen,
   /* «سيرفرات البيت» (هجرة ٢٣٥) — رابطٌ قديمٌ قد يفتحها: قبل الهجرة شاشتُها، وبعدها المدار */
   "home-servers": HomeServersEntry,
 } as const;

@@ -93,5 +93,6 @@ export function sourceName(s: WatchSource | null, t: ReturnType<typeof getDict>,
   if (s === "plex" || s === "jellyfin" || s === "emby" || s === "kodi" || s === "stremio" || s === "nuvio") return SIGNAL_SOURCE_NAME[s];
   /* 🆕 هجرة ٢٦٥ — اسمُ منتجٍ لا يُترجم */
   if (s === "netflix") return "Netflix";
+  if (s === "osn") return "OSN+";
   return s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }

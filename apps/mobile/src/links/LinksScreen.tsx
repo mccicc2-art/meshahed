@@ -17,8 +17,10 @@ import { PlexImportSheet } from "../settings/PlexImport";
 import { DeviceLabel, DeviceMark, PlatformMark } from "./DeviceMark";
 import { UnlinkSheet } from "./UnlinkSheet";
 import { Orbit, OrbitCounter, physLeft, slotPoints, slotsOf, type Slot } from "./Orbit";
-import { canLinkNetflix, canLinkNow, deviceName, linksWrite, useLinks } from "./api";
+import { canLinkNetflix, canLinkNow, deviceName, linksWrite, platformName, useLinks } from "./api";
 import { requestNetflixSync } from "./netflix/NetflixSyncHost";
+import { requestOsnSync } from "./osn/OsnSyncHost";
+import { PLATFORM_KINDS } from "@/core/deviceLinks";
 import { DEVICE_KINDS } from "@/core/deviceLinks";
 import type { DeviceKind, DeviceLinksState, PlatformKind } from "@/core/contracts/deviceLinks";
 
@@ -222,9 +224,12 @@ export function LinksScreen() {
 
   const free = d.tier === "free";
   const full = d.limit != null && d.used >= d.limit;
-  const netflix = d.platforms?.find((p) => p.platform === "netflix") ?? null;
-  const netflixLinked = !!netflix && !netflix.stopped;
-  const netflixStopped = !!netflix?.stopped;
+  /* 🆕 المهمّة ٥٥٧ — منصّاتُ البثّ غيرُ المربوطة (نتفليكس · OSN+)، والموقوفةُ معها بعلامتها */
+  const platformsOff = PLATFORM_KINDS.filter((k) => {
+    const p = d.platforms?.find((x) => x.platform === k);
+    return !p || p.stopped;
+  });
+  const platformStopped = (k: PlatformKind) => !!d.platforms?.find((x) => x.platform === k)?.stopped;
   const unlinked = DEVICE_KINDS.filter((k) => !d.devices.find((x) => x.kind === k)?.linked || d.devices.find((x) => x.kind === k)?.stopped);
   /* الرابطُ القديمُ قبل أوّل إرسالٍ لا يُختار في الورقة (لا جهازَ معروفاً له) — صفُّه تحت «من أجهزتك» يفكّه */
   const stopped = d.devices.filter((x) => x.stopped).length;
@@ -255,14 +260,15 @@ export function LinksScreen() {
           {addOpen ? <AddSheet kinds={unlinked} d={d} onClose={() => setAddOpen(false)} onPick={pickDevice} /> : null}
           {holdP ? (
             <PlatformHoldSheet
+              platform={holdP}
               onClose={() => setHoldP(null)}
               onSync={() => {
                 setHoldP(null);
-                if (requestNetflixSync("manual")) toast.current?.say(t.nfxSyncing);
+                if ((holdP === "osn" ? requestOsnSync : requestNetflixSync)("manual")) toast.current?.say(t.nfxSyncing);
               }}
               onOpen={() => {
                 setHoldP(null);
-                open("netflix");
+                open(holdP);
               }}
             />
           ) : null}
@@ -339,30 +345,33 @@ export function LinksScreen() {
       </View>
 
       {/* ───── 🆕 منصّاتُ البثّ (هجرة ٢٦٥) — المربوطةُ في المدار، وغيرُها هنا. 🆕 T551 — للجميع في خاناتهم: بلا قفلٍ ولا بهتان ───── */}
-      {!netflixLinked ? (
+      {platformsOff.length ? (
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4 }}>
             <Text size={16} weight="800">{t.nfxSection}</Text>
             <View style={{ flex: 1 }} />
           </View>
-          <View style={{ flexDirection: "row", paddingHorizontal: 4 }}>
-            <Pressable
-              onPress={() => {
-                haptic.pick();
-                if (netflixStopped) setKeepOpen(true);
-                else if (canLinkNetflix(d)) open("netflix");
-                else intro();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t.linksLinkAction("Netflix")}
-              style={{ width: LIST_TILE + 8, alignItems: "center" }}
-            >
-              <View>
-                <PlatformMark size={LIST_TILE} state={netflixStopped ? "paused" : "idle"} />
-              </View>
-              <DeviceLabel name="Netflix" />
-              {netflixStopped ? <Text size={10} muted>{t.linksStopped}</Text> : null}
-            </Pressable>
+          <View style={{ flexDirection: "row", gap: 6, paddingHorizontal: 4 }}>
+            {platformsOff.map((k) => (
+              <Pressable
+                key={k}
+                onPress={() => {
+                  haptic.pick();
+                  if (platformStopped(k)) setKeepOpen(true);
+                  else if (canLinkNetflix(d, k)) open(k);
+                  else intro();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t.linksLinkAction(platformName(k))}
+                style={{ width: LIST_TILE + 8, alignItems: "center" }}
+              >
+                <View>
+                  <PlatformMark platform={k} size={LIST_TILE} state={platformStopped(k) ? "paused" : "idle"} />
+                </View>
+                <DeviceLabel name={platformName(k)} />
+                {platformStopped(k) ? <Text size={10} muted>{t.linksStopped}</Text> : null}
+              </Pressable>
+            ))}
           </View>
         </View>
       ) : null}
@@ -452,10 +461,10 @@ function PlusLock() {
 }
 
 /** 🆕 الضغطُ المطوَّل على منصّةٍ في المدار: «زامن الآن · افتح صفحتها» (خطّةُ Loopz+ v2 §5: «حدّث الآن» للمنصّة) */
-function PlatformHoldSheet({ onClose, onSync, onOpen }: { onClose: () => void; onSync: () => void; onOpen: () => void }) {
+function PlatformHoldSheet({ platform, onClose, onSync, onOpen }: { platform: PlatformKind; onClose: () => void; onSync: () => void; onOpen: () => void }) {
   const { t } = useApp();
   return (
-    <Sheet title="Netflix" onClose={onClose}>
+    <Sheet title={platformName(platform)} onClose={onClose}>
       <Group>
         <Row icon="repeat" title={t.nfxSyncNow} onPress={onSync} />
         <Row icon="link" title={t.linksOpenPage} onPress={onOpen} />
@@ -525,7 +534,7 @@ function KeepSheet({ d, onClose, onError }: { d: DeviceLinksState; onClose: () =
           ))}
           {d.tier !== "free"
             ? plats.map((p) => (
-                <OptionRow key={p.platform} selected={pickP.includes(p.platform)} title="Netflix" subtitle={p.stopped ? t.linksStopped : t.stremioLinked} onSelect={() => toggleP(p.platform)} />
+                <OptionRow key={p.platform} selected={pickP.includes(p.platform)} title={platformName(p.platform)} subtitle={p.stopped ? t.linksStopped : t.stremioLinked} onSelect={() => toggleP(p.platform)} />
               ))
             : null}
         </OptionList>

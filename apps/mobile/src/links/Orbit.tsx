@@ -7,7 +7,7 @@ import { Icon } from "../icons";
 import { Text } from "../ui";
 import { radius } from "../theme";
 import { DeviceLabel, DeviceMark, PlatformMark } from "./DeviceMark";
-import { deviceName } from "./api";
+import { deviceName, platformName } from "./api";
 import type { DeviceKind, DeviceLinksState, PlatformKind } from "@/core/contracts/deviceLinks";
 
 const MARK = require("../../assets/loopz-mark.png");
@@ -157,15 +157,15 @@ export function Orbit({
               onLongPress={() => onHoldPlatform?.(s.platform)}
               delayLongPress={350}
               accessibilityRole="button"
-              accessibilityLabel={`Netflix، ${s.waiting ? t.linksWaiting : t.stremioLinked}`}
+              accessibilityLabel={`${platformName(s.platform)}، ${s.waiting ? t.linksWaiting : t.stremioLinked}`}
               style={{ position: "absolute", ...physLeft(left), top, width: TILE, alignItems: "center", opacity: linking && s.platform !== linking ? 0.35 : 1 }}
             >
               {linking === s.platform ? (
                 /* توهّجُ المنصّة الجارية بأحمرها — حلقةٌ خلف الشارة لا ظلٌّ (ظلُّ أندرويد لا يُلوَّن) */
-                <View style={{ position: "absolute", top: -6, width: TILE + 12, height: TILE + 12, borderRadius: radius.md + 6, backgroundColor: "#E5091433" }} />
+                <View style={{ position: "absolute", top: -6, width: TILE + 12, height: TILE + 12, borderRadius: radius.md + 6, backgroundColor: s.platform === "osn" ? "#FF00D433" : "#E5091433" }} />
               ) : null}
-              <PlatformMark size={TILE} state={s.waiting ? "waiting" : "on"} />
-              <DeviceLabel name="Netflix" />
+              <PlatformMark platform={s.platform} size={TILE} state={s.waiting ? "waiting" : "on"} />
+              <DeviceLabel name={platformName(s.platform)} />
               {s.waiting && linking !== s.platform ? <Text size={10} muted numberOfLines={1}>{t.linksWaiting}</Text> : null}
             </Pressable>
           );

@@ -5,7 +5,7 @@ import { useApp } from "../state";
 import { Icon, iconSource, type IconName } from "../icons";
 import { Text } from "../ui";
 import { radius } from "../theme";
-import type { DeviceKind } from "@/core/contracts/deviceLinks";
+import type { DeviceKind, PlatformKind } from "@/core/contracts/deviceLinks";
 
 /**
  * 🆕 **شارةُ الجهاز في المدار وفي «من أجهزتك»** (خطّةُ Loopz+ v2 §الشعارات).
@@ -170,8 +170,13 @@ export function DeviceLabel({ name, muted }: { name: string; muted?: boolean }) 
 /** أحمرُ نتفليكس — لونُ الكلمة وحدها */
 const NETFLIX_RED = "#E50914";
 
-export function PlatformMark({ size = 56, state = "idle" }: { size?: number; state?: "idle" | "on" | "waiting" | "paused" }) {
-  const { tokens } = useApp();
+/** 🆕 المهمّة ٥٥٧ — «+» وردُ شعار OSN+ كما قيس في osnplus.com (‎#FF00D4)، ويغمق على أبيض `daylight` كي يُقرأ (أحمد ٢٦ نوفمبر «ب») */
+const OSN_PLUS = "#FF00D4";
+const OSN_PLUS_DAY = "#D600B2";
+
+export function PlatformMark({ platform = "netflix", size = 56, state = "idle" }: { platform?: PlatformKind; size?: number; state?: "idle" | "on" | "waiting" | "paused" }) {
+  const { tokens, themeId } = useApp();
+  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : 0.17)));
   return (
     <View
       style={{
@@ -186,11 +191,21 @@ export function PlatformMark({ size = 56, state = "idle" }: { size?: number; sta
         opacity: state === "paused" ? 0.55 : 1,
       }}
     >
-      {/* 🆕 الكلمةُ بأحمر نتفليكس وبخطّ التطبيق — كتابةٌ لا نسخةٌ من الشعار (أحمد ٢٥ نوفمبر «١أ»: لا شعار بلا إذن). والأحمرُ يُقرأ على
-          الداكن والفاتح معاً، فلا يتبع لونَ النصّ */}
-      <Text size={Math.max(7, Math.round(size * 0.17))} weight="800" color={NETFLIX_RED} style={{ writingDirection: "ltr", letterSpacing: 0.4 }} numberOfLines={1}>
-        NETFLIX
-      </Text>
+      {platform === "osn" ? (
+        /* 🆕 «OSN» بلون النصّ و«+» بوردِ شعارهم — كتابةٌ لا نسخةٌ من الشعار (لا شعارَ بلا إذن) */
+        <Text size={fs} weight="800" style={{ writingDirection: "ltr", letterSpacing: 0.4 }} numberOfLines={1}>
+          OSN
+          <Text size={fs} weight="800" color={themeId === "daylight" ? OSN_PLUS_DAY : OSN_PLUS}>
+            +
+          </Text>
+        </Text>
+      ) : (
+        /* 🆕 الكلمةُ بأحمر نتفليكس وبخطّ التطبيق — كتابةٌ لا نسخةٌ من الشعار (أحمد ٢٥ نوفمبر «١أ»: لا شعار بلا إذن). والأحمرُ يُقرأ على
+            الداكن والفاتح معاً، فلا يتبع لونَ النصّ */
+        <Text size={fs} weight="800" color={NETFLIX_RED} style={{ writingDirection: "ltr", letterSpacing: 0.4 }} numberOfLines={1}>
+          NETFLIX
+        </Text>
+      )}
       <StateBadge state={state} />
     </View>
   );
