@@ -20,7 +20,7 @@ import {
   type NetflixViewing,
 } from "@/core/netflix";
 import { useQuery } from "@tanstack/react-query";
-import type { DeviceLinksState, NetflixAddedList, NetflixLinkBody, PlatformLinkInfo, PlatformLinkResult } from "@/core/contracts/deviceLinks";
+import type { DeviceLinksState, NetflixAddedList, NetflixLinkBody, PlatformLinkInfo, PlatformLinkResult, PlatformAdded } from "@/core/contracts/deviceLinks";
 import type { NetflixWebRef, NfxReady } from "./bridge";
 
 /**
@@ -174,8 +174,28 @@ export async function readMovies(web: NetflixWebRef, ready: NfxReady, items: Net
 
 export type SyncPhase = "reading" | ImportPhase;
 export type SyncOutcome =
-  | { ok: true; episodes: number; movies: number; shows: number; newest: number | null; stats?: SyncStats }
+  | { ok: true; episodes: number; movies: number; shows: number; newest: number | null; stats?: SyncStats; added?: PlatformAdded | null }
   | { ok: false; reason: "signed-out" | "profile" | "unreadable" | "server" | "stopped" };
+
+/**
+ * 🆕 المهمّة ٥٦١ — **ملخّصُ ما وصل** لسطر الجرس وإشعار الجوال (الخادمُ يكتبه في `link_adds`): الأعدادُ من الخادم (ما كُتب فعلاً)، والاسمُ
+ * أوّلُ عملٍ في الدفعة كما سمّته المنصّة، والحلقةُ حين تكون الدفعةُ حلقةً واحدة. `auto` = مزامنةُ الفتح ⇒ إشعارُ الجوال (أحمد «٢ب»).
+ * لا جديد ⇒ `null` فلا سطرَ ولا إشعار.
+ */
+export function platformAdded(added: NfxAdded[], episodes: number, movies: number, auto: boolean): PlatformAdded | null {
+  if (episodes + movies <= 0) return null;
+  const titles = [...new Set(added.map((a) => a.title).filter(Boolean))];
+  const first = added.find((a) => a.title) ?? null;
+  return {
+    episodes,
+    movies,
+    works: Math.max(1, titles.length),
+    title: first?.title.slice(0, 200) ?? null,
+    season: episodes + movies === 1 ? (first?.season ?? null) : null,
+    episode: episodes + movies === 1 ? (first?.episode ?? null) : null,
+    auto,
+  };
+}
 
 /** 🆕 T552 — أعدادُ المزامنة لعلامة الأداء `nfx.sync`: ما قُرئ · ما بُني صفوفاً · بدأه ولم يكمله · لم يُفهم · لم يُطابَق */
 export type SyncStats = { items: number; rec: number; part: number; skip: number; unm: number };
@@ -189,7 +209,7 @@ export async function runNetflixSync(
   ready: NfxReady,
   uid: string,
   after: number | null,
-  hooks: { stopped: () => boolean; phase: (p: SyncPhase) => void; pct: (n: number) => void },
+  hooks: { stopped: () => boolean; phase: (p: SyncPhase) => void; pct: (n: number) => void; auto?: boolean },
 ): Promise<SyncOutcome> {
   hooks.phase("reading");
   hooks.pct(0);
@@ -213,16 +233,21 @@ export async function runNetflixSync(
     unmatched = res.unmatched;
   }
   const newest = built.newest ?? (items[0]?.at ?? null);
+  const added: NfxAdded[] = built.records.flatMap((r): NfxAdded[] =>
+    r.kind === "ep-name" ? [{ title: r.show, season: r.s, episode: r.e, at: r.at ?? "" }] : r.kind === "movie-name" ? [{ title: r.name, season: null, episode: null, at: r.at ?? "" }] : [],
+  );
+  const summary = platformAdded(added, episodes, movies, !!hooks.auto);
   try {
-    await write<PlatformLinkResult>("/api/v1/me/links/netflix", { action: "sync", last_item_at: newest != null && (after == null || newest > after) ? new Date(newest).toISOString() : null } satisfies NetflixLinkBody);
+    await write<PlatformLinkResult>("/api/v1/me/links/netflix", {
+      action: "sync",
+      last_item_at: newest != null && (after == null || newest > after) ? new Date(newest).toISOString() : null,
+      ...(summary ? { added: summary } : {}),
+    } satisfies NetflixLinkBody);
   } catch {
     return { ok: false, reason: "server" };
   }
   /* صفوفُ «السجلّ» على الجهاز: الأحدثُ أوّلاً، مئةٌ من كلٍّ */
   const prev = readLocal(uid);
-  const added: NfxAdded[] = built.records.flatMap((r): NfxAdded[] =>
-    r.kind === "ep-name" ? [{ title: r.show, season: r.s, episode: r.e, at: r.at ?? "" }] : r.kind === "movie-name" ? [{ title: r.name, season: null, episode: null, at: r.at ?? "" }] : [],
-  );
   writeLocal(uid, {
     expired: false,
     profile: false,
@@ -231,7 +256,7 @@ export async function runNetflixSync(
     partial: [...built.partial, ...(prev.partial ?? [])].slice(0, KEEP),
   });
   await queryClient.invalidateQueries({ queryKey: LINKS_KEY });
-  return { ok: true, episodes, movies, shows, newest, stats: { items: fresh.length, rec: built.records.length, part: built.partial.length, skip: built.skipped, unm: unmatched.length } };
+  return { ok: true, episodes, movies, shows, newest, added: summary, stats: { items: fresh.length, rec: built.records.length, part: built.partial.length, skip: built.skipped, unm: unmatched.length } };
 }
 
 /** الربطُ على الخادم بعد سؤال الاستيراد — `import_all`: «استيراد الكل»؛ وإلّا «من الآن فقط» */

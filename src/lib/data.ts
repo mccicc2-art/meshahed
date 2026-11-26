@@ -1,3 +1,4 @@
+import { unreadLinkSignals } from "@/lib/linkSignals";
 import { cache } from "react";
 import { createClient, bearerToken } from "@/lib/supabase/server";
 import { decodeAccessToken, decodeSessionCookie, sessionCookieParts } from "@/lib/sessionCookie";
@@ -2255,9 +2256,10 @@ export const getUnreadSignals = cache(async (): Promise<number> => {
   try {
     if (!(await getUserId())) return 0; // D-1482 — زائرٌ بلا جلسة: الجوابُ صفرٌ بلا نداء
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("unread_signals");
-    if (error) return 0;
-    return Number(data ?? 0);
+    /* 🆕 المهمّة ٥٦١ — والجديدُ من الربوط (الهجرة ٢٦٩) يُجمع هنا لا في القاعدة: الرقمُ يصل مع الكود الذي يرسم أسطره */
+    const [{ data, error }, links] = await Promise.all([supabase.rpc("unread_signals"), unreadLinkSignals()]);
+    if (error) return links;
+    return Number(data ?? 0) + links;
   } catch {
     return 0;
   }

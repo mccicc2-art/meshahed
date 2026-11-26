@@ -3,6 +3,7 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
 import { isGold, isPlus, type PlanBearer } from "@/core/plan";
 import type { SignalSource } from "@/core/contracts/stremio";
+import type { PlatformAdded } from "@/core/contracts/deviceLinks";
 import { markSignalWatched, type SignalRow } from "@/lib/watchMark";
 import {
   acceptOnUnbound,
@@ -562,6 +563,31 @@ export async function kodiPairPending(userId: string): Promise<boolean> {
     const { data } = await db.from("kodi_pair_codes").select("expires_at").eq("user_id", userId).maybeSingle();
     const r = data as { expires_at: string } | null;
     return !!r && Date.parse(r.expires_at) > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * سطرُ «أُضيفت من نتفليكس/OSN+» بعد مزامنةٍ أدخلت شيئاً — بمفتاح الخدمة (الجدولُ لا يُكتب بجلسة العضو: الهجرة ٢٦٩) — 🆕 المهمّة ٥٦١، هنا بجانب `recordPlatformSync` أخيه.
+ * صامتٌ إن فشل: المزامنةُ تمّت، والسطرُ تحسين.
+ */
+export async function recordLinkAdd(userId: string, source: PlatformKind, added: PlatformAdded): Promise<boolean> {
+  try {
+    if (!hasServiceKey()) return false;
+    const db = await createServiceClient();
+    const one = added.episodes + added.movies === 1;
+    const { error } = await db.from("link_adds").insert({
+      user_id: userId,
+      source,
+      episodes: added.episodes,
+      movies: added.movies,
+      works: added.works,
+      title: added.title,
+      season: one && added.episodes === 1 ? added.season : null,
+      episode: one && added.episodes === 1 ? added.episode : null,
+    });
+    return !error;
   } catch {
     return false;
   }

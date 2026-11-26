@@ -10,6 +10,7 @@
  */
 import type { PersonLite } from "../people.ts";
 import type { SignalRow } from "../signals.ts";
+import type { LinkSignalRow } from "../linkSignals.ts";
 import type { MsgGroupConversation } from "./groups.ts";
 
 /** عملٌ مُشارَك — بطاقةٌ بملصقه واسمه بلغة القارئ */
@@ -200,7 +201,8 @@ export function parseMsgDeleteBody(raw: unknown): MsgDeleteBody | null {
 
 /** `GET /api/v1/me/signals` — أسطرُ الجرس كما تعيدها `mySignals`، والجملةُ والوجهةُ من `core/signals.ts` في الطرفين */
 /** 🆕 N2-fix — `pending_requests`: معرّفاتُ من طلبوا متابعتي وما زال طلبُهم قائماً — صفُّ «طلب المتابعة» يُرسم بزرَّي قبولٍ ورفضٍ لهم وحدَهم */
-export type SignalsPayload = { me_id: string; rows: SignalRow[]; pending_requests: string[] };
+/** 🆕 المهمّة ٥٦١ — `links`: ما وصل من الربوط وسؤالُها (`my_link_signals`، الهجرة ٢٦٩) — بجانب `rows` فلا تراه نسخةٌ لا تعرفه */
+export type SignalsPayload = { me_id: string; rows: SignalRow[]; pending_requests: string[]; links?: LinkSignalRow[] };
 
 /** 🆕 N2-fix — `POST /api/v1/me/follow-requests`: قبولُ طلب متابعةٍ واردٍ أو رفضُه */
 export type FollowRequestBody = { person_id: string; accept: boolean };

@@ -1,4 +1,5 @@
 import { mySignals } from "@/lib/actions";
+import { myLinkSignals } from "@/lib/linkSignals";
 import { getIncomingFollowRequests } from "@/lib/data";
 import { handle, limited, requireUser, signalsLevel } from "@/lib/v1";
 import type { Signal } from "@/lib/actions";
@@ -54,8 +55,9 @@ export async function GET() {
     const lim = limited(`v1:signals:${auth.user.id}`, 30, 60_000);
     if (lim) return lim;
     /* 🆕 N2-fix — الطلباتُ القائمةُ مع الإشعارات: صفُّ «طلب متابعة» يحمل قبولاً ورفضاً ما دام الطلبُ قائماً */
-    const [all, pending, level] = await Promise.all([mySignals(), getIncomingFollowRequests(), signalsLevel()]);
+    /* 🆕 المهمّة ٥٦١ — وما وصل من الربوط (`links`): نسخةٌ أقدم تتجاهل الحقل، والشارةُ تعدّه مع الكود نفسِه */
+    const [all, pending, level, links] = await Promise.all([mySignals(), getIncomingFollowRequests(), signalsLevel(), myLinkSignals()]);
     const rows = level >= 3 ? all : legacyRows(all, level);
-    return ok({ me_id: auth.user.id, rows, pending_requests: pending.map((p) => p.id) });
+    return ok({ me_id: auth.user.id, rows, pending_requests: pending.map((p) => p.id), links });
   });
 }

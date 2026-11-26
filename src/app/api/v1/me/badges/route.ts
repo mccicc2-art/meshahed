@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { runEpisodePush, runRateQueuePush } from "@/lib/push";
+import { runEpisodePush, runLinkAskPush, runRateQueuePush } from "@/lib/push";
 import { runPlanEndNotices } from "@/lib/billing";
 import { getUnreadShares, getUnreadSignals } from "@/lib/data";
 import { handle, limited, requireUser } from "@/lib/v1";
@@ -24,6 +24,8 @@ export async function GET() {
     after(() => runEpisodePush().then(() => undefined).catch(() => undefined));
     /* 🆕 T530 — «بانتظار تقييمك» الأسبوعيّ بالنمط نفسِه: خارجَ الخميس (بأيِّ منطقة) يعود قبل أيِّ استعلام */
     after(() => runRateQueuePush().then(() => undefined).catch(() => undefined));
+    /* 🆕 المهمّة ٥٦١ — «شغّلت X في Stremio. شاهدتها؟» على الجوال بالنمط نفسِه: عشرُ دقائق في الذاكرة ثمّ مفتاحٌ لكلِّ سؤال */
+    after(() => runLinkAskPush().then(() => undefined).catch(() => undefined));
     /* 🆕 المرحلة ١ — «اشتراكك انتهى، أبقينا X» لمن انتهى بلسُه بلا ويبهوك (المؤسِّسون ٣٠ نوفمبر) — النمطُ نفسُه: مرّةً في الساعة */
     after(() => runPlanEndNotices().then(() => undefined).catch(() => undefined));
     return ok({ messages, signals });

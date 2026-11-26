@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser, getUnreadShares, getUnreadSignals, getLastSeenOf, getIncomingFollowRequests } from "@/lib/data";
 import { mySignals, getChatBgState } from "@/lib/actions";
+import { myLinkSignals } from "@/lib/linkSignals";
 import { buildInbox } from "@/lib/messagesCore";
 import { getGroups } from "@/lib/groupsCore";
 import { getT } from "@/lib/locale";
@@ -118,12 +119,13 @@ async function AlertsPane({
   myId: string;
 }) {
   /* 🆕 11-N دَين — الطلباتُ القائمةُ مع الإشعارات في موجةٍ واحدة (كما يقرؤها `GET /api/v1/me/signals`) */
-  const [rows, requests] = await Promise.all([mySignals(), getIncomingFollowRequests()]);
+  /* 🆕 المهمّة ٥٦١ — وما وصل من الربوط في الموجة نفسِها */
+  const [rows, requests, links] = await Promise.all([mySignals(), getIncomingFollowRequests(), myLinkSignals()]);
   return (
     <>
       {/* الختمُ بعد العرض — والشارةُ تسقط بالإنعاش الذي يليه */}
-      <MarkSignalsSeen enabled={rows.some((r) => r.isNew)} />
-      <NotificationList rows={rows} myId={myId} locale={locale} pending={requests.map((p) => p.id)} />
+      <MarkSignalsSeen enabled={rows.some((r) => r.isNew) || links.some((r) => r.isNew)} />
+      <NotificationList rows={rows} myId={myId} locale={locale} pending={requests.map((p) => p.id)} links={links} />
     </>
   );
 }

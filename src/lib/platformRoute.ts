@@ -1,9 +1,10 @@
-import { linkPlatform, recordPlatformSync, revokePlatform } from "@/lib/linkTokens";
+import { linkPlatform, recordLinkAdd, recordPlatformSync, revokePlatform } from "@/lib/linkTokens";
 import { sharedLimited } from "@/lib/sharedLimit";
 import { createClient } from "@/lib/supabase/server";
 import { handle, requireUser, limited, fail } from "@/lib/v1";
 import { ok, type Result } from "@/core/contracts/result";
-import type { NetflixAddedItem, NetflixAddedList, NetflixLinkBody, PlatformLinkResult } from "@/core/contracts/deviceLinks";
+import { parsePlatformAdded, type NetflixAddedItem, type NetflixAddedList, type NetflixLinkBody, type PlatformLinkResult } from "@/core/contracts/deviceLinks";
+import { notifyPlatformAdded } from "@/lib/push";
 import type { PlatformKind } from "@/core/deviceLinks";
 
 /**
@@ -99,6 +100,9 @@ export async function platformPOST(platform: PlatformKind, req: Request) {
       const lim = limited(`v1:${platform}-sync:${uid}`, 20, 60_000);
       if (lim) return lim;
       if (!(await recordPlatformSync(uid, platform, at))) return fail("conflict");
+      /* 🆕 المهمّة ٥٦١ — ما وصل: سطرٌ في الجرس لكلِّ دفعة، وإشعارُ جوالٍ لمزامنة الفتح الصامتة وحدَها (أحمد «٢ب») */
+      const added = parsePlatformAdded(body.added);
+      if (added && (await recordLinkAdd(uid, platform, added)) && added.auto) notifyPlatformAdded({ to: uid, source: platform, added });
       return ok<PlatformLinkResult>({ linked: true }, [...tags]);
     }
 

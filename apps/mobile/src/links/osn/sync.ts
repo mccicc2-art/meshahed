@@ -20,6 +20,7 @@ import {
 } from "@/core/osn";
 import type { DeviceLinksState, NetflixAddedList, NetflixLinkBody, PlatformLinkInfo, PlatformLinkResult } from "@/core/contracts/deviceLinks";
 import type { NfxAdded, NfxLocal, SyncOutcome, SyncPhase } from "../netflix/sync";
+import { platformAdded } from "../netflix/sync";
 import type { OsnWebRef } from "./bridge";
 
 /**
@@ -153,7 +154,7 @@ export async function runOsnSync(
   web: OsnWebRef,
   uid: string,
   after: number | null,
-  hooks: { stopped: () => boolean; phase: (p: SyncPhase) => void; pct: (n: number) => void },
+  hooks: { stopped: () => boolean; phase: (p: SyncPhase) => void; pct: (n: number) => void; auto?: boolean },
 ): Promise<SyncOutcome> {
   hooks.phase("reading");
   hooks.pct(0);
@@ -175,15 +176,21 @@ export async function runOsnSync(
     unmatched = res.unmatched;
   }
   const newest = built.newest ?? read.latest.reduce<number | null>((m, b) => (b.at > 0 && (m == null || b.at > m) ? b.at : m), null);
+  const added: NfxAdded[] = built.records.flatMap((r): NfxAdded[] =>
+    r.kind === "ep-name" ? [{ title: r.show, season: r.s, episode: r.e, at: r.at ?? "" }] : r.kind === "movie-name" ? [{ title: r.name, season: null, episode: null, at: r.at ?? "" }] : [],
+  );
+  /* 🆕 المهمّة ٥٦١ — سطرُ الجرس وإشعارُ الجوال (كنتفليكس) */
+  const summary = platformAdded(added, episodes, movies, !!hooks.auto);
   try {
-    await write<PlatformLinkResult>("/api/v1/me/links/osn", { action: "sync", last_item_at: newest != null && (after == null || newest > after) ? new Date(newest).toISOString() : null } satisfies NetflixLinkBody);
+    await write<PlatformLinkResult>("/api/v1/me/links/osn", {
+      action: "sync",
+      last_item_at: newest != null && (after == null || newest > after) ? new Date(newest).toISOString() : null,
+      ...(summary ? { added: summary } : {}),
+    } satisfies NetflixLinkBody);
   } catch {
     return { ok: false, reason: "server" };
   }
   const prev = readOsnLocal(uid);
-  const added: NfxAdded[] = built.records.flatMap((r): NfxAdded[] =>
-    r.kind === "ep-name" ? [{ title: r.show, season: r.s, episode: r.e, at: r.at ?? "" }] : r.kind === "movie-name" ? [{ title: r.name, season: null, episode: null, at: r.at ?? "" }] : [],
-  );
   writeOsnLocal(uid, {
     expired: false,
     profile: false,
@@ -199,7 +206,7 @@ export async function runOsnSync(
     ].slice(0, KEEP),
   });
   await queryClient.invalidateQueries({ queryKey: LINKS_KEY });
-  return { ok: true, episodes, movies, shows, newest, stats: { items: read.bookmarks.length, rec: built.records.length, part: built.partial.length, skip: built.skipped, unm: unmatched.length } };
+  return { ok: true, episodes, movies, shows, newest, added: summary, stats: { items: read.bookmarks.length, rec: built.records.length, part: built.partial.length, skip: built.skipped, unm: unmatched.length } };
 }
 
 export async function linkOsn(profileLabel: string, importAll: boolean): Promise<void> {

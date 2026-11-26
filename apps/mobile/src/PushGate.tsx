@@ -88,6 +88,8 @@ export function PushGate() {
       const group = GROUP.exec(url);
       if (peer) router.push({ pathname: "/messages/[peer]", params: { peer: peer[1], from: "home" } });
       else if (group) router.push({ pathname: "/messages/group/[id]", params: { id: group[1], from: "home" } });
+      /* 🆕 المهمّة ٥٦١ — إشعاراتُ الربوط («وصل من نتفليكس» · «شاهدتها؟») تفتح الجرسَ نفسَه: فيه السطرُ والجواب */
+      else if (url === "/messages?tab=alerts") router.push({ pathname: "/messages", params: { tab: "alerts", from: "home" } });
       else if (url === "/") return;
       else open.current(url);
     }, 250);

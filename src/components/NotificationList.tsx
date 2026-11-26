@@ -7,6 +7,8 @@ import { curatedName } from "@/core/universes";
 import { signalHref, signalParts, signalPersonHref } from "@/core/signals";
 import { timeAgo } from "@/core/when";
 import { FollowRequestActions } from "./FollowRequestActions";
+import { DeviceMark, PlatformMark } from "./links/DeviceMark";
+import { linkSignalHref, linkSignalText, mergeByTime, type LinkSignalRow } from "@/core/linkSignals";
 
 /**
  * قائمةُ الإشعارات — **لوحٌ في صفحةٍ لا ورقةٌ منبثقة** (D-463، طلبُ
@@ -32,8 +34,11 @@ export function NotificationList({
   myId,
   locale,
   pending = [],
+  links = [],
 }: {
   rows: Signal[];
+  /** 🆕 المهمّة ٥٦١ — ما وصل من الربوط وسؤالُها (`my_link_signals`) — يُدمج مع أسطر الأشخاص بالأحدث أوّلاً */
+  links?: LinkSignalRow[];
   /** 🆕 11-N دَين — من طلب متابعتي وطلبُه قائم: صفُّه يحمل قبولاً ورفضاً (D-1197) */
   pending?: readonly string[];
   /**
@@ -58,13 +63,14 @@ export function NotificationList({
   /* 🆕 11-M · M4 — **الجملةُ المشقوقةُ عند الاسم (D-775) والوجهةُ (D-218/D-899) انتقلتا إلى `core/signals.ts`** بحرفهما:
      التطبيقُ الأصليُّ يرسم الإشعاراتِ منهما أيضاً، فلا وجهتان تفترقان لإشعارٍ واحد. */
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && links.length === 0) {
     return <p className="text-sm text-muted text-center py-16">{t.notifEmpty}</p>;
   }
 
   return (
     <ul className="divide-y divide-[color:var(--divider)]">
-      {rows.map((s, i) => {
+      {mergeByTime(rows, links).map((s, i) => {
+        if (!("person" in s)) return <LinkItem key={`link-${s.kind}-${s.source}-${s.at}-${i}`} r={s} locale={locale} />;
         /* 🔑 **الوجهةُ هي الشيءُ نفسُه لا صاحبُه** (D-218) — `core/signals.ts` */
         const href = signalHref(s, myId);
 
@@ -130,5 +136,36 @@ export function NotificationList({
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * 🆕 المهمّة ٥٦١ — **سطرُ الربط**: شارةُ التطبيق مكانَ الصورة (لا شخصَ هنا)، والجملةُ من `core/linkSignals.ts` كالتطبيق والإشعار.
+ * الضغطةُ تفتح العملَ حين يُعرف؛ والسؤالُ «شاهدتها؟» يُجاب من جرس التطبيق وبطاقة رئيسيّته — الويبُ لا بابَ جوابٍ فيه بعد.
+ */
+function LinkItem({ r, locale }: { r: LinkSignalRow; locale: Locale }) {
+  const t = getDict(locale);
+  const href = linkSignalHref(r);
+  const mark = r.source === "netflix" || r.source === "osn" ? <PlatformMark platform={r.source} size={40} /> : <DeviceMark kind={r.source} size={40} />;
+  const text = (
+    <span className="block py-3">
+      <p className="text-14 leading-snug">{linkSignalText(r, t)}</p>
+      <span className="block text-12 text-muted mt-0.5">{timeAgo(r.at, t)}</span>
+    </span>
+  );
+  return (
+    <li className="flex items-center gap-3">
+      {mark}
+      <span className="min-w-0 flex-1">
+        {href ? (
+          <Link href={href} prefetch={false} className="block">
+            {text}
+          </Link>
+        ) : (
+          text
+        )}
+      </span>
+      {r.isNew && <span className="shrink-0 w-2 h-2 rounded-full bg-accent" aria-hidden />}
+    </li>
   );
 }

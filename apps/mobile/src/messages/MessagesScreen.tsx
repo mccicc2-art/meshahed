@@ -23,6 +23,11 @@ import { timeAgo } from "@/core/when";
 import { listStampOf } from "./chatFormat";
 import { displayNameOf } from "@/core/people";
 import { signalHref, signalParts, signalPersonHref } from "@/core/signals";
+import { linkSignalHref, linkSignalText, mergeByTime, type LinkSignalRow } from "@/core/linkSignals";
+import type { StremioSignal } from "@/core/contracts/stremio";
+import { DeviceMark, PlatformMark } from "../links/DeviceMark";
+import { useStremioAnswer } from "../stremio/useAnswer";
+import { AnswerCircles } from "../stremio/StremioListScreen";
 import { curatedName } from "@/core/universes";
 import type { MessagesPayload, MsgConversation, MsgEvent, MsgGroupConversation, SignalRow, SignalsPayload } from "../contracts";
 import { GroupAvatar, dropGroup, groupPreview } from "./groups";
@@ -146,7 +151,7 @@ export function MessagesScreen({ initialTab, from }: { initialTab: Tab; from: Or
             /* 🆕 D-1380 — «ابدأ محادثة» يفتح الخيطَ نفسَه بخانة كتابة (كان ورقةَ اختيار عمل — D-051 المنقوضة) */
             <InboxPane d={d} error={q.isError} onRetry={() => void q.refetch()} onOpen={openConv} onOpenGroup={openGroup} onNewChat={newChat} />
           ) : (
-            <AlertsPane live={active} onOpen={doors.openPath} />
+            <AlertsPane live={active} onOpen={doors.openPath} toast={toastHost} />
           )
         }
       />
@@ -368,14 +373,16 @@ function ConvRow({ c, onPress, onLongPress }: { c: MsgConversation; onPress: () 
  * لوحُ الإشعارات — **يُجلب حين يُرسم** (التبويبُ المفتوح، أو الجارُ لحظةَ السحب — D-125 روحاً)، **ويُختم «رأيتُها» حين
  * يكون المفتوحَ وفيه جديد** (`MarkSignalsSeen`): مرّةً للّوح، والنقطةُ تبقى في هذه الزيارة ليُرى ما وصل.
  */
-function AlertsPane({ live, onOpen }: { live: boolean; onOpen: (path: string) => void }) {
+function AlertsPane({ live, onOpen, toast }: { live: boolean; onOpen: (path: string) => void; toast: React.RefObject<ToastHostRef | null> }) {
   const { t, tokens } = useApp();
+  /* 🆕 المهمّة ٥٦١ — جوابُ «شاهدتها؟» من الجرس: الخطّافُ نفسُه الذي يجيب به «من أجهزتك» (إخفاءٌ فوريّ و«تراجع») */
+  const { hidden, answer } = useStremioAnswer(toast);
   const q = useQuery({ queryKey: SIGNALS_KEY, queryFn: async () => (await api<SignalsPayload>("/api/v1/me/signals")).data, staleTime: 30_000 });
   const refresh = usePullRefresh([SIGNALS_KEY], 0);
   const d = q.data ?? null;
   const sealed = useRef(false);
   useEffect(() => {
-    if (!live || !d || sealed.current || !d.rows.some((r) => r.isNew)) return;
+    if (!live || !d || sealed.current || !(d.rows.some((r) => r.isNew) || (d.links ?? []).some((r) => r.isNew))) return;
     sealed.current = true;
     dropBadges({ signals: true });
     /* الختمُ ليس حَمْلَ اللوح: فشلُه يُبقي الشارةَ للجلب التالي ولا يمنع القراءة */
@@ -397,10 +404,16 @@ function AlertsPane({ live, onOpen }: { live: boolean; onOpen: (path: string) =>
     );
   }
   return (
-    <FlatList
-      data={d.rows}
-      keyExtractor={(s, i) => `${s.kind}-${s.person.id}-${s.at}-${i}`}
-      renderItem={({ item }) => <SignalItem s={item} meId={d.me_id} onOpen={onOpen} pending={item.kind === "request" && (d.pending_requests ?? []).includes(item.person.id)} />}
+    <FlatList<SignalRow | LinkSignalRow>
+      data={mergeByTime(d.rows, (d.links ?? []).filter((r) => r.signalId == null || !hidden.has(r.signalId)))}
+      keyExtractor={(s, i) => ("person" in s ? `${s.kind}-${s.person.id}-${s.at}-${i}` : `link-${s.kind}-${s.source}-${s.at}-${i}`)}
+      renderItem={({ item }) =>
+        "person" in item ? (
+          <SignalItem s={item} meId={d.me_id} onOpen={onOpen} pending={item.kind === "request" && (d.pending_requests ?? []).includes(item.person.id)} />
+        ) : (
+          <LinkItem r={item} onOpen={onOpen} onAnswer={answer} />
+        )
+      }
       ListEmptyComponent={<Text size={14} muted style={{ textAlign: "center", paddingVertical: 64, paddingHorizontal: 20, lineHeight: 21 }}>{t.notifEmpty}</Text>}
       contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: 40 }}
       refreshControl={refresh}
@@ -483,5 +496,54 @@ function SignalItem({ s, meId, onOpen, pending }: { s: SignalRow; meId: string; 
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} />
       ) : null}
     </Pressable>
+  );
+}
+
+/** سؤالُ الجرس بشكل إشارة «من أجهزتك» — كي يجيب عنه `useStremioAnswer` نفسُه */
+function askSignal(r: LinkSignalRow): StremioSignal | null {
+  if (r.signalId == null || !r.tmdbId || !r.mediaType || r.source === "netflix" || r.source === "osn") return null;
+  return { id: r.signalId, kind: r.mediaType, tmdb_id: r.tmdbId, title: r.title ?? "", image_path: null, season: r.season, episode: r.episode, seen_at: r.at, source: r.source, rate: null };
+}
+
+/**
+ * 🆕 المهمّة ٥٦١ — **سطرُ الربط في الجرس** (أحمد ٢٦ نوفمبر: «المفترض يجي تنبيه فيه حين اضافت عمل من اي ربط»): شارةُ التطبيق مكانَ الصورة
+ * (`PlatformMark` · `DeviceMark` نفسُهما في صفحة الربط)، والجملةُ من `core/linkSignals.ts` كالويب وإشعار الجوال.
+ *  - «أُضيفت من نتفليكس/OSN+» تفتح شاشةَ المنصّة («ما وصل» فيها)، وما سُجّل من Kodi وأخواته يفتح العمل.
+ *  - «شاهدتها؟» يُجاب هنا بدائرتَي «من أجهزتك» (`AnswerCircles`) — والسطرُ يغيب بالجواب ويعود بـ«تراجع».
+ */
+function LinkItem({ r, onOpen, onAnswer }: { r: LinkSignalRow; onOpen: (path: string) => void; onAnswer: (s: StremioSignal, watched: boolean) => void }) {
+  const { t, tokens } = useApp();
+  const router = useRouter();
+  const ask = r.kind === "link_ask" ? askSignal(r) : null;
+  const href = linkSignalHref(r);
+  const platform = r.source === "netflix" || r.source === "osn" ? r.source : null;
+  const open = () => {
+    haptic.pick();
+    if (platform) router.push({ pathname: "/settings/[section]", params: { section: platform } });
+    else if (href) onOpen(href);
+  };
+  const text = linkSignalText(r, t);
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+      <Pressable
+        onPress={open}
+        disabled={!platform && !href}
+        accessibilityRole={platform || href ? "link" : undefined}
+        style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed ? 0.7 : 1 })}
+      >
+        {platform ? <PlatformMark platform={platform} size={40} /> : r.source !== "netflix" && r.source !== "osn" ? <DeviceMark kind={r.source} size={40} /> : null}
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Text size={14} style={{ lineHeight: 20 }}>{text}</Text>
+          <Text size={12} muted>{timeAgo(r.at, t)}</Text>
+        </View>
+      </Pressable>
+      {ask ? (
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <AnswerCircles label={text} movie={ask.kind === "movie"} size={34} onNo={() => onAnswer(ask, false)} onYes={() => onAnswer(ask, true)} />
+        </View>
+      ) : r.isNew ? (
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.accent }} />
+      ) : null}
+    </View>
   );
 }

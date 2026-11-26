@@ -112,3 +112,29 @@ export function DeviceMark({ kind, size = 56, state = "idle" }: { kind: DeviceKi
     </span>
   );
 }
+
+/**
+ * 🆕 المهمّة ٥٦١ — **شارةُ المنصّة في الويب** (نتفليكس · OSN+) نظيرُ `PlatformMark` في التطبيق بقراراته: كلمةٌ بخطّ الموقع لا شعار
+ * (لا شعارَ بلا إذن)، «NETFLIX» بأحمرهم (يُقرأ على الداكن والفاتح)، و«OSN» بلون النصّ و«+» بوردِهم — أغمقَ على النهاريّ.
+ * أوّلُ من يرسمها جرسُ الويب («أُضيفت من نتفليكس»).
+ */
+export function PlatformMark({ platform, size = 56 }: { platform: "netflix" | "osn"; size?: number }) {
+  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : 0.17)));
+  return (
+    <span
+      className="relative grid shrink-0 place-items-center rounded-[var(--radius-control)] border border-border bg-surface"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      <span dir="ltr" className="font-extrabold tracking-[0.4px] leading-none" style={{ fontSize: fs }}>
+        {platform === "osn" ? (
+          <>
+            OSN<span style={{ color: "light-dark(#D600B2, #FF00D4)" }}>+</span>
+          </>
+        ) : (
+          <span style={{ color: "#E50914" }}>NETFLIX</span>
+        )}
+      </span>
+    </span>
+  );
+}

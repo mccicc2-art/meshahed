@@ -2320,7 +2320,7 @@ const ar = {
   pushEpisodesSub: "يوم عرض حلقةٍ من مسلسلٍ تتابعه",
   /* 🆕 T361 — هجرة ٢٤٢ (أحمد ١٠ نوفمبر «٣ أ») */
   pushAuto: "ما يُسجَّل تلقائياً",
-  pushAutoSub: "حين يضيف Loopz ما شاهدته في تطبيقاتك المربوطة",
+  pushAutoSub: "حين يضيف Loopz ما شاهدته في تطبيقاتك المربوطة، أو يسألك عنه",
   /* 🆕 T530 — هجرة ٢٦٣ */
   pushRate: "تذكير التقييم",
   pushRateSub: "مرّةً في الأسبوع إن انتظر تقييمَك عشرةُ أعمالٍ فأكثر",
@@ -3855,6 +3855,21 @@ const ar = {
       : movies
         ? `أُضيف من OSN+ ${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
         : `أُضيفت من OSN+ ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")}`,
+  /* 🆕 المهمّة ٥٦١ — الجرسُ وإشعارُ الجوال لكلِّ ربط (أحمد ٢٦ نوفمبر: «المفترض يجي تنبيه فيه حين اضافت عمل من اي ربط») */
+  linkEpisodes: (n: number) => arCount(n, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة"),
+  linkMovies: (n: number) => arCount(n, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم"),
+  linkWorks: (n: number) => arCount(n, "عمل واحد", "عملان", "أعمال", "عملاً", "عمل"),
+  linkAnd: (a: string, b: string) => `${a} و${b}`,
+  linkAdded: (app: string, what: string) => `أُضيفت من ${app}: ${what}`,
+  linkCountOf: (count: string, title: string) => `${count} من ${title}`,
+  linkAmong: (count: string, title: string) => `${count}، منها ${title}`,
+  linkAsk: (title: string, ep: string, app: string) => `شغّلت ${title} · ${ep} في ${app}. شاهدتها؟`,
+  linkAskMovie: (title: string, app: string) => `شغّلت ${title} في ${app}. شاهدته؟`,
+  linkAskUntitled: (app: string) => `شغّلت عملاً في ${app}. شاهدته؟`,
+  linkAskPushTitle: (app: string) => `من ${app}`,
+  linkAskMany: (count: string, app: string) => `${count} شغّلتها في ${app}. شاهدتها؟`,
+  linkPushMany: (what: string) => `أضفنا ${what} لمكتبتك`,
+  linkAddedShow: "عرض",
 };
 
 export type Dict = typeof ar;
@@ -5532,7 +5547,7 @@ const en: Dict = {
   pushEpisodes: "New episodes",
   pushEpisodesSub: "The day an episode of a show you follow airs",
   pushAuto: "Auto-tracked",
-  pushAutoSub: "When Loopz adds what you finished in your linked apps",
+  pushAutoSub: "When Loopz adds what you finished in your linked apps, or asks about it",
   pushRate: "Rating reminder",
   pushRateSub: "Once a week, when 10 or more titles wait for your rating",
   pushOffTitle: "Notifications are off in device settings",
@@ -6773,6 +6788,20 @@ const en: Dict = {
       : movies
         ? `Added from OSN+: ${enCount(movies, "movie", "movies")}`
         : `Added from OSN+: ${enCount(episodes, "episode", "episodes")}`,
+  linkEpisodes: (n: number) => enCount(n, "episode", "episodes"),
+  linkMovies: (n: number) => enCount(n, "movie", "movies"),
+  linkWorks: (n: number) => enCount(n, "title", "titles"),
+  linkAnd: (a: string, b: string) => `${a} and ${b}`,
+  linkAdded: (app: string, what: string) => `Added from ${app}: ${what}`,
+  linkCountOf: (count: string, title: string) => `${count} of ${title}`,
+  linkAmong: (count: string, title: string) => `${count}, including ${title}`,
+  linkAsk: (title: string, ep: string, app: string) => `You played ${title} · ${ep} in ${app}. Did you watch it?`,
+  linkAskMovie: (title: string, app: string) => `You played ${title} in ${app}. Did you watch it?`,
+  linkAskUntitled: (app: string) => `You played something in ${app}. Did you watch it?`,
+  linkAskPushTitle: (app: string) => `From ${app}`,
+  linkAskMany: (count: string, app: string) => `${count} you played in ${app}. Did you watch them?`,
+  linkPushMany: (what: string) => `Added ${what} to your library`,
+  linkAddedShow: "View",
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };

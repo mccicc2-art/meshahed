@@ -12,6 +12,8 @@ import { getMovieIn, getTvIn } from "@/lib/tmdb";
 import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
 import type { HomeServer } from "@/core/homeServer";
 import type { SignalKind, SignalRow } from "@/core/signals";
+import { LINK_SOURCE_NAME, linkEpisodeLabel, linkWhat, type LinkSource } from "@/core/linkSignals";
+import type { PlatformAdded } from "@/core/contracts/deviceLinks";
 import { isPersonaId } from "@/core/personas";
 import {
   EPISODE_PUSH_FROM_HOUR,
@@ -1100,5 +1102,112 @@ export async function runRateQueuePush(nowMs = Date.now()): Promise<{ ran: boole
   const { sent, failed } = await send(db, batch, "ratequeue");
   const release = [...claimed.values()].filter((c) => c.at.length && c.at.every((n) => failed.has(n))).map((c) => c.key);
   if (release.length) await db.from("push_sent").delete().in("key", release);
+  return { ran: true, users: users.length, sent };
+}
+
+/* ================= 🆕 المهمّة ٥٦١ — ما وصل من الربوط ================= */
+
+/** وجهةُ إشعارات الربوط: الجرسُ نفسُه (تبويبُ «التنبيهات») — فيه السطرُ وجوابُ السؤال */
+const ALERTS_URL = "/messages?tab=alerts";
+
+/**
+ * **«وصل من نتفليكس/OSN+»** بعد مزامنة الفتح الصامتة (أحمد ٢٦ نوفمبر «٢ب»: إشعارُ الجوال لا الشريط). ⚠️ المزامنةُ لا تجري إلّا والتطبيقُ
+ * مفتوح (متصفّحُها المخفيّ لا يعمل في الخلفية)، فالإشعارُ يصل لحظةَ الفتح ويبقى في مركز إشعارات الجوال. مفتاحُ «ما يُسجَّل تلقائياً»
+ * (`auto`) يكتمه كأخيه «وصل من Kodi». والوسمُ واحدٌ للمنصّة: دفعةٌ ثانيةٌ تحلّ محلَّ الأولى ولا تتراكم.
+ */
+export function notifyPlatformAdded(input: { to: string; source: "netflix" | "osn"; added: PlatformAdded }) {
+  quiet(() =>
+    deliver({
+      to: input.to,
+      group: "auto",
+      build: (t) => {
+        const what = linkWhat(input.added, t);
+        if (!what) return null;
+        return { title: t.autoPushTitle(LINK_SOURCE_NAME[input.source]), body: what, url: ALERTS_URL, tag: `link-${input.source}` };
+      },
+    }),
+  );
+}
+
+let askLastTry = 0;
+/**
+ * كم ينتظر السؤالُ بعد بدء التشغيل قبل أن يرنّ: Stremio وNuvio يقولان «شغّلها» عند البدء لا عند النهاية — سؤالُ «شاهدتها؟» في أوّل
+ * دقيقةٍ من الحلقة إزعاج. سيرفرُ البيت (Kodi وأخواته) يقول «أنهاها» فيُسأل فوراً.
+ */
+const ASK_DELAY_MS: Record<"tv" | "movie", number> = { tv: 45 * 60_000, movie: 130 * 60_000 };
+const ASK_STARTS_ONLY: ReadonlySet<string> = new Set(["stremio", "nuvio"]);
+/** سؤالٌ أقدمُ من يومٍ لم يعد خبراً — يبقى في الجرس أسبوعاً بلا رنين */
+const ASK_FRESH_MS = 24 * 60 * 60_000;
+const ASK_USERS_PER_RUN = 50;
+
+/**
+ * **«شغّلت X في Stremio. شاهدتها؟»** على الجوال (أحمد «١أ») — بحركة المرور كالحلقات (`me/badges` → `after`)، مفتاحٌ لكلِّ سؤالٍ في
+ * `push_sent` فلا يرنّ مرّتين، ولا رنينَ قبل العاشرة بتوقيت صاحبه (السؤالُ ينتظر يوماً). سؤالان فأكثر لعضوٍ واحد إشعارٌ واحدٌ بعددها.
+ * الضغطةُ تفتح الجرس، والجوابُ هناك.
+ */
+export async function runLinkAskPush(nowMs = Date.now()): Promise<{ ran: boolean; users: number; sent: number }> {
+  const idle = { ran: false, users: 0, sent: 0 };
+  if (!hasServiceKey()) return idle;
+  if (nowMs - askLastTry < TRY_EVERY_MS) return idle;
+  askLastTry = nowMs;
+  const db = await createServiceClient();
+  const { data } = await db
+    .from("watch_signals")
+    .select("id, user_id, source, media_type, tmdb_id, season, episode, played_at")
+    .eq("state", "pending")
+    .is("auto_at", null)
+    .not("played_at", "is", null)
+    .gte("played_at", new Date(nowMs - ASK_FRESH_MS).toISOString())
+    .order("played_at", { ascending: false })
+    .limit(500);
+  type Ask = { id: number; user_id: string; source: string; media_type: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; played_at: string };
+  const ripe = ((data ?? []) as Ask[]).filter((a) => !ASK_STARTS_ONLY.has(a.source) || nowMs - Date.parse(a.played_at) >= ASK_DELAY_MS[a.media_type]);
+  if (!ripe.length) return { ran: true, users: 0, sent: 0 };
+  const byUser = new Map<string, Ask[]>();
+  for (const a of ripe) byUser.set(a.user_id, [...(byUser.get(a.user_id) ?? []), a]);
+  const users = [...byUser.keys()].slice(0, ASK_USERS_PER_RUN);
+  const [{ data: tok }, { data: profs }] = await Promise.all([
+    db.from("device_tokens").select("user_id").in("user_id", users).limit(2000),
+    db.from("profiles").select("id, timezone").in("id", users),
+  ]);
+  const hasDevice = new Set(((tok ?? []) as { user_id: string }[]).map((r) => r.user_id));
+  const zone = new Map(((profs ?? []) as { id: string; timezone: string | null }[]).map((p) => [p.id, p.timezone]));
+  let sent = 0;
+  for (const user of users) {
+    if (!hasDevice.has(user)) continue;
+    if (localDayHour(nowMs, zone.get(user)).hour < EPISODE_PUSH_FROM_HOUR) continue;
+    const fresh: Ask[] = [];
+    for (const a of byUser.get(user) ?? []) if (await claim(db, `ask:${a.id}`)) fresh.push(a);
+    if (!fresh.length) continue;
+    const first = fresh[0];
+    const app = LINK_SOURCE_NAME[(first.source in LINK_SOURCE_NAME ? first.source : "stremio") as LinkSource];
+    const nameIn = async (language: "ar-SA" | "en-US") => {
+      try {
+        const d = first.media_type === "tv" ? await getTvIn(first.tmdb_id, language) : await getMovieIn(first.tmdb_id, language);
+        return ((d as { name?: string }).name ?? (d as { title?: string }).title ?? "").trim();
+      } catch {
+        return "";
+      }
+    };
+    const [ar, en] = fresh.length === 1 ? await Promise.all([nameIn("ar-SA"), nameIn("en-US")]) : ["", ""];
+    await deliver({
+      to: user,
+      group: "auto",
+      build: (t, lang) => {
+        const title = (lang === "ar" ? ar || en : en || ar).slice(0, 120);
+        const ep = linkEpisodeLabel(first.season, first.episode);
+        const body =
+          fresh.length > 1
+            ? t.linkAskMany(t.linkWorks(fresh.length), app)
+            : !title
+              ? t.linkAskUntitled(app)
+              : first.media_type === "movie" || !ep
+                ? t.linkAskMovie(title, app)
+                : t.linkAsk(title, ep, app);
+        return { title: t.linkAskPushTitle(app), body, url: ALERTS_URL, tag: `ask-${user.slice(0, 8)}` };
+      },
+    });
+    sent++;
+  }
   return { ran: true, users: users.length, sent };
 }

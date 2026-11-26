@@ -105,29 +105,42 @@ export function StremioListScreen() {
                     <Icon name="check" size={18} color={tokens.success} />
                   </Pressable>
                 ) : null}
-                {s.auto ? null : <Pressable
-                  onPress={() => answer(s, false)}
-                  hitSlop={4}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t.stremioNo} — ${s.title} ${ep}`}
-                  style={({ pressed }) => ({ width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
-                >
-                  <Icon name="close" size={16} color={tokens.muted} />
-                </Pressable>}
-                {s.auto ? null : <Pressable
-                  onPress={() => answer(s, true)}
-                  hitSlop={4}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${s.kind === "movie" ? t.stremioYesMovie : t.stremioYes} — ${s.title} ${ep}`}
-                  style={({ pressed }) => ({ width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
-                >
-                  <Icon name="check" size={18} color={tokens.onAccent} />
-                </Pressable>}
+                {s.auto ? null : <AnswerCircles label={`${s.title} ${ep}`} movie={s.kind === "movie"} onNo={() => answer(s, false)} onYes={() => answer(s, true)} />}
               </View>
             );
           })}
         </View>
       ))}
     </SettingsScreen>
+  );
+}
+
+/**
+ * 🆕 المهمّة ٥٦١ — **دائرتا الجواب ✕ و✓** — كانتا هنا وحدَهما، ونُقلتا مكوّناً حين احتاجهما جرسُ «التنبيهات» («شغّلت X في Stremio.
+ * شاهدتها؟» يُجاب من الجرس — أحمد «١أ»): نسختان من الدائرتين كانتا ستتباعدان.
+ */
+export function AnswerCircles({ label, movie, onNo, onYes, size = CIRCLE }: { label: string; movie: boolean; onNo: () => void; onYes: () => void; size?: number }) {
+  const { t, tokens } = useApp();
+  return (
+    <>
+      <Pressable
+        onPress={onNo}
+        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={`${t.stremioNo} — ${label}`}
+        style={({ pressed }) => ({ width: size, height: size, borderRadius: size / 2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+      >
+        <Icon name="close" size={16} color={tokens.muted} />
+      </Pressable>
+      <Pressable
+        onPress={onYes}
+        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={`${movie ? t.stremioYesMovie : t.stremioYes} — ${label}`}
+        style={({ pressed }) => ({ width: size, height: size, borderRadius: size / 2, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+      >
+        <Icon name="check" size={18} color={tokens.onAccent} />
+      </Pressable>
+    </>
   );
 }

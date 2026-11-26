@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../../state";
-import { ToastHost, type ToastHostRef } from "../../HoldHost";
 import { mark } from "../../perfMarks";
 import { afterOf, fetchLinks, syncDue, type SyncOutcome } from "../netflix/sync";
 import type { NfxSyncState } from "../netflix/NetflixSyncHost";
@@ -78,11 +76,9 @@ const JOB_MS = 3 * 60_000;
 const CHECK_GAP_MS = 10 * 60_000;
 
 export function OsnSyncHost() {
-  const { me, t } = useApp();
-  const insets = useSafeAreaInsets();
+  const { me } = useApp();
   const st = useOsnSync();
   const web = useRef<OsnWebRef>(null);
-  const toast = useRef<ToastHostRef>(null);
   const [after, setAfter] = useState<number | null | undefined>(undefined);
   const busy = useRef(false);
   const lastCheck = useRef(0);
@@ -123,11 +119,9 @@ export function OsnSyncHost() {
         });
       }
       set({ job: null, phase: null, pct: 0, last: { at: Date.now(), kind, outcome } });
-      if (kind === "auto" && outcome.ok && outcome.episodes + outcome.movies > 0) {
-        toast.current?.say(t.osnAdded(outcome.episodes, outcome.movies), undefined, undefined, "success");
-      }
+      /* 🆕 المهمّة ٥٦١ — لا شريطَ لمزامنة الفتح: الخادمُ يرسل إشعارَ الجوال ويكتب سطرَ الجرس (أحمد «٢ب»: الاثنان في الثانية نفسِها تكرار) */
     },
-    [t],
+    [],
   );
 
   const job = st.job;
@@ -163,6 +157,7 @@ export function OsnSyncHost() {
     busy.current = true;
     try {
       const outcome = await runOsnSync(web.current as OsnWebRef, uid, after, {
+        auto: state.job?.kind === "auto",
         stopped: () => !state.job,
         phase: (phase) => set({ phase }),
         pct: (pct) => set({ pct }),
@@ -199,7 +194,6 @@ export function OsnSyncHost() {
   return (
     <>
       {mounted ? <OsnWeb ref={web} url={mounted} mode="hidden" onReady={() => void onReady()} onPageState={onPageState} signOut={job?.kind === "signout"} /> : null}
-      <ToastHost hostRef={toast} bottom={insets.bottom + 72} />
     </>
   );
 }

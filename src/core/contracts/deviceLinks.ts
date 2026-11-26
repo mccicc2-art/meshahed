@@ -83,8 +83,39 @@ export type DeviceLinksBody =
  */
 export type NetflixLinkBody =
   | { action: "link"; profile_label?: string | null; import_all: boolean }
-  | { action: "sync"; last_item_at: string | null }
+  | { action: "sync"; last_item_at: string | null; added?: PlatformAdded }
   | { action: "revoke" };
+
+/**
+ * 🆕 المهمّة ٥٦١ — **ما وصل في هذه المزامنة**: سطرٌ في الجرس لكلِّ دفعة، وإشعارُ جوالٍ للمزامنة التلقائيّة وحدَها (أحمد «٢ب»: الإشعارُ
+ * لا الشريط). الاسمُ كما جاء من المنصّة (أوّلُ عملٍ في الدفعة)، والحلقةُ حين تكون الدفعةُ حلقةً واحدة. غائبٌ = لا جديد (أو نسخةٌ أقدم).
+ */
+export interface PlatformAdded {
+  episodes: number;
+  movies: number;
+  works: number;
+  title: string | null;
+  season: number | null;
+  episode: number | null;
+  /** `true` = مزامنةُ الفتح الصامتة ⇒ إشعارُ الجوال؛ «زامن الآن» يراها صاحبُها أمامه */
+  auto: boolean;
+}
+
+const count = (v: unknown, max: number): number | null => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= max ? v : null);
+
+/** جسمُ `added` بعد التنقية — `null` لما لا يصحّ (فيُتجاهل ولا تفشل المزامنة) */
+export function parsePlatformAdded(raw: unknown): PlatformAdded | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const episodes = count(o.episodes, 100_000);
+  const movies = count(o.movies, 100_000);
+  const works = count(o.works, 100_000);
+  if (episodes == null || movies == null || works == null || episodes + movies === 0) return null;
+  const title = typeof o.title === "string" && o.title.trim() ? o.title.trim().slice(0, 200) : null;
+  const season = o.season == null ? null : count(o.season, 1000);
+  const episode = o.episode == null ? null : count(o.episode, 20_000);
+  return { episodes, movies, works: Math.max(1, works), title, season, episode, auto: o.auto === true };
+}
 
 export interface PlatformLinkResult {
   linked: boolean;
