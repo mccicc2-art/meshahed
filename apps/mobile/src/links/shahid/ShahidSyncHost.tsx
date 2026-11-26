@@ -112,7 +112,8 @@ export function ShahidSyncHost() {
         const s = outcome.ok ? outcome.stats : undefined;
         /* قياسُ نتفليكس نفسُه بنوعٍ يسبقه `shahid:` — لا اسمَ جديدَ في قائمة الخادم */
         mark("nfx.sync", Math.max(0, Date.now() - startedAt.current), {
-          kind: `shahid:${kind}`,
+          /* 🆕 المهمّة ٥٦٨ — نقطةٌ لا نقطتان: القياسُ يقبل `[\w.-]` وحدها، فكان النوعُ بنقطتين يسقط من الصفّ بصمت */
+          kind: `shahid.${kind}`,
           result: outcome.ok ? "ok" : outcome.reason,
           ...(outcome.ok ? { ep: outcome.episodes, mv: outcome.movies } : {}),
           ...(s ? { items: s.items, rec: s.rec, part: s.part, skip: s.skip, unm: s.unm } : {}),

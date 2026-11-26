@@ -21,6 +21,8 @@ export const SHAHID_ORIGIN = "https://shahid.mbc.net";
 export const SHAHID_HOME = `${SHAHID_ORIGIN}/ar`;
 
 export type ShahidReady = { profileId: string; name: string };
+/** 🆕 المهمّة ٥٦٨ — ما رآه سكربتُ الصفحة: أرقامٌ لا رموز (كوكي الجلسة · جلسةُ الحال المحفوظة · الملفّ · نافذةُ «اختر من يشاهد») */
+export type ShahidSeen = { ck: number; st: number; pid: number; pick: number };
 export type ShahidPageState = "signed-out" | "gate" | "ready";
 
 export function shahidBootScript(): string {
@@ -37,36 +39,44 @@ export function shahidBootScript(): string {
     return null;
   };
   /* الملفُّ المختار من حال الموقع المحفوظة — اسمُه للسؤال، و«default» علامةُ الملفّ الرئيسيّ في ترويسة الطلب */
-  var selected = function () {
-    try { var pm = JSON.parse(localStorage.getItem("persist:modules") || "{}"); var p = JSON.parse(pm.profiles || "{}"); return p.selectedProfile || null; } catch (e) { return null; }
+  var store = function (k) {
+    try { var pm = JSON.parse(localStorage.getItem("persist:modules") || "{}"); return JSON.parse(pm[k] || "null"); } catch (e) { return null; }
   };
+  var selected = function () { var p = store("profiles"); return (p && p.selectedProfile) || null; };
+  /* 🆕 المهمّة ٥٦٨ — **الجلسةُ من الكوكي، وإلّا من حال الموقع المحفوظة** (فيديو أحمد ٢٦ نوفمبر: دخل بالجوال وعلقت الصفحة ولم يلحظ
+     Loopz دخوله). الموقعُ نفسُه يرسل \`token\` من \`user.sessionId\` (مقيسٌ في كوده)، والملفُّ من \`selectedProfile\` — فإن غاب الكوكي
+     على الجوّال بقي الطريقُ الذي يمشيه الموقع */
+  var token = function () { var c = cookie("token"); if (c) return c; var u = store("user"); return (u && u.sessionId) ? String(u.sessionId) : null; };
+  var profileId = function () { var c = cookie("profileId"); if (c) return c; var sp = selected(); return (sp && sp.id != null) ? String(sp.id) : null; };
   var gateShown = function () {
     var b = document.body ? document.body.innerText || "" : "";
     return /اختر من يشاهد|who.?s watching/i.test(b.slice(0, 4000));
   };
   var state = function () {
     var q = location.pathname || "/";
-    if (!cookie("token")) return { s: "signed-out", path: q };
-    var id = cookie("profileId");
-    if (!id || gateShown()) return { s: "gate", path: q };
+    /* 🆕 المهمّة ٥٦٨ — ما رآه السكربتُ يُرسل مع كلِّ حال (أرقامٌ لا رموز): كوكي الجلسة · جلسةُ الحال المحفوظة · الملفّ · نافذةُ الاختيار */
+    var d = { ck: cookie("token") ? 1 : 0, st: (store("user") || {}).sessionId ? 1 : 0, pid: profileId() ? 1 : 0, pick: gateShown() ? 1 : 0 };
+    if (!token()) return { s: "signed-out", path: q, d: d };
+    var id = profileId();
+    if (!id || d.pick) return { s: "gate", path: q, d: d };
     var sp = selected();
-    return { s: "ready", path: q, profileId: String(id), name: String(sp && String(sp.id) === String(id) ? sp.name || "" : "") };
+    return { s: "ready", path: q, d: d, profileId: String(id), name: String(sp && String(sp.id) === String(id) ? sp.name || "" : "") };
   };
   var last = "";
   var tick = function () {
     var st = state();
-    var key = st.s + "|" + (st.profileId || "") + "|" + st.path;
+    var key = st.s + "|" + (st.profileId || "") + "|" + st.path + "|" + JSON.stringify(st.d);
     if (key === last) return;
     last = key;
-    if (st.s === "ready") post({ t: "ready", profileId: st.profileId, name: st.name, path: st.path });
-    else post({ t: "state", state: st.s, path: st.path });
+    if (st.s === "ready") post({ t: "ready", profileId: st.profileId, name: st.name, path: st.path, d: st.d });
+    else post({ t: "state", state: st.s, path: st.path, d: st.d });
   };
   window.__lz = {
     api: async function (id, ep, query, auth) {
       try {
         var h = { "language": "AR", "Accept-Language": "ar", "shahid_os": "WEB", "uuid": "WEB" };
         if (auth) {
-          var tk = cookie("token"), pid = cookie("profileId");
+          var tk = token(), pid = profileId();
           if (!tk || !pid) { post({ t: "api", id: id, status: 401, body: "" }); return; }
           var sp = selected();
           h.token = tk;
@@ -111,16 +121,21 @@ type Props = {
   url: string;
   mode: "visible" | "hidden";
   onReady?: (r: ShahidReady, path: string) => void;
-  onPageState?: (s: ShahidPageState, path: string) => void;
+  onPageState?: (s: ShahidPageState, path: string, seen: ShahidSeen | null) => void;
   onSocialBlocked?: () => void;
+  /** 🆕 المهمّة ٥٦٨ — انتقالٌ إلى موقعٍ غير شاهد (مسموحٌ الآن) — اسمُه للقياس */
+  onForeign?: (host: string) => void;
   signOut?: boolean;
 };
 
-/** صفحاتُ شاهد وما تحتاجه للدخول (التحقّقُ من جوجل للكابتشا) — ورابطٌ إلى غيرها لا يُفتح هنا */
-const ALLOWED = /^https:\/\/([a-z0-9-]+\.)*(mbc\.net|shahid\.net|gstatic\.com|recaptcha\.net)(\/|$)|^https:\/\/www\.google\.com\/recaptcha\//i;
+/**
+ * صفحاتُ شاهد — ويُسمح بغيرها الآن (المهمّة ٥٦٨): الدخولُ بالجوال علق بعد نجاحه (فيديو أحمد ٢٦ نوفمبر)، وأرجحُ الأسباب انتقالٌ إلى
+ * خدمة دخولٍ خارجيّة كان يُمنع هنا. فكلُّ صفحةٍ آمنةٍ تُفتح، واسمُ ما ليس شاهد يُقاس (`onForeign`)؛ وجوجل وأبل وفيسبوك ممنوعةٌ كما كانت.
+ */
+const SHAHID_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(mbc\.net|shahid\.net)(\/|$)/i;
 const SOCIAL = /^https:\/\/(accounts\.google\.com|appleid\.apple\.com|([a-z0-9-]+\.)?facebook\.com)(\/|$)/i;
 
-export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ url, mode, onReady, onPageState, onSocialBlocked, signOut }, ref) {
+export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ url, mode, onReady, onPageState, onSocialBlocked, onForeign, signOut }, ref) {
   const web = useRef<WebView<object>>(null);
   const seq = useRef(0);
   const pending = useRef(new Map<number, (v: unknown) => void>());
@@ -148,7 +163,7 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
 
   const onMessage = useCallback(
     (e: WebViewMessageEvent) => {
-      let m: { t?: string; id?: number; status?: number; body?: string; state?: ShahidPageState; path?: string; profileId?: string; name?: string };
+      let m: { t?: string; id?: number; status?: number; body?: string; state?: ShahidPageState; path?: string; profileId?: string; name?: string; d?: ShahidSeen };
       try {
         m = JSON.parse(e.nativeEvent.data);
       } catch {
@@ -167,7 +182,7 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
       } else if (m.t === "ready" && typeof m.profileId === "string") {
         onReady?.({ profileId: m.profileId, name: m.name ?? "" }, m.path ?? "");
       } else if (m.t === "state" && m.state) {
-        onPageState?.(m.state, m.path ?? "");
+        onPageState?.(m.state, m.path ?? "", m.d ?? null);
       }
     },
     [onReady, onPageState],
@@ -193,7 +208,10 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
             onSocialBlocked?.();
             return false;
           }
-          return ALLOWED.test(r.url) || r.url === "about:blank";
+          if (r.url === "about:blank" || SHAHID_HOSTS.test(r.url)) return true;
+          if (!/^https:\/\//i.test(r.url)) return false;
+          onForeign?.((/^https:\/\/([^/?#]+)/i.exec(r.url)?.[1] ?? "").toLowerCase());
+          return true;
         }}
         javaScriptEnabled
         domStorageEnabled
