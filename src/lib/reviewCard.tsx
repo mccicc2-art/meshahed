@@ -49,6 +49,25 @@ function shapingFonts(): Promise<Fonts> {
   return fontsP;
 }
 
+/**
+ * 🆕 **خطّا التطبيق** (أحمد ٢٦ نوفمبر «ق١٠أ»: صورُ المشاركة بـTajawal وPoppins كالتطبيق لا Cairo): نسختا الخطّين من
+ * `apps/mobile/assets/fonts` في `public/fonts` — ثقيلٌ للعناوين والأرقام، ومتوسّطٌ للسطور الصغيرة. أوّلُ قارئٍ بطاقةُ «حصاد 2026».
+ */
+export type ShapeFace = "cairo" | "app" | "app-regular";
+const faceP = new Map<ShapeFace, Promise<Fonts>>();
+function facesOf(face: ShapeFace): Promise<Fonts> {
+  if (face === "cairo") return shapingFonts();
+  let p = faceP.get(face);
+  if (!p) {
+    const [ar, la] = face === "app" ? ["Tajawal-800.ttf", "Poppins-700.ttf"] : ["Tajawal-500.ttf", "Poppins-500.ttf"];
+    const load = (f: string) =>
+      readFile(join(process.cwd(), "public/fonts", f)).then((b) => opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer));
+    p = Promise.all([load(ar), load(la)]).then(([a, l]) => ({ ar: a, la: l }));
+    faceP.set(face, p);
+  }
+  return p;
+}
+
 const SHAPE = { kerning: true, features: { liga: true, rlig: true } } as unknown as opentype.RenderOptions;
 const isLatinWord = (w: string) => /[A-Za-z0-9]/.test(w) && !ARABIC.test(w);
 type Piece = { t: string; f: Font };
@@ -82,9 +101,9 @@ function pieces(w: string, F: Fonts): Piece[] {
  */
 export async function shapedText(
   text: string,
-  o: { width: number; size: number; lineHeight: number; maxLines: number; color: string; dir?: "rtl" | "ltr" },
+  o: { width: number; size: number; lineHeight: number; maxLines: number; color: string; dir?: "rtl" | "ltr"; face?: ShapeFace; align?: "start" | "center" },
 ): Promise<{ src: string; width: number; height: number }> {
-  const F = await shapingFonts();
+  const F = await facesOf(o.face ?? "cairo");
   const dir = o.dir ?? "rtl";
   /* 🔴 البند ٤: ما لا يحمله الخطّان (الإيموجي ومحدِّداتُه) يسقط — وإلّا رُسم مربّعاً فارغاً في الصورة */
   const drawable = Array.from(text)
@@ -151,15 +170,18 @@ export async function shapedText(
       if (g && g.latin === u.latin) g.items.push(u);
       else groups.push({ latin: u.latin, items: [u] });
     }
+    /* 🆕 التوسيط: السطرُ يبدأ من نصف ما يفضل عنه — والترتيبُ داخله كما هو */
+    const lineW = groups.reduce((a, g) => a + groupW(g.items), 0) + space * (groups.length - 1);
+    const pad = o.align === "center" ? Math.max(0, (o.width - lineW) / 2) : 0;
     if (dir === "rtl") {
-      let x = o.width;
+      let x = o.width - pad;
       for (const g of groups) {
         x -= groupW(g.items);
         draw(g.items, g.latin, x, y);
         x -= space;
       }
     } else {
-      let x = 0;
+      let x = pad;
       for (const g of groups) {
         draw(g.items, g.latin, x, y);
         x += groupW(g.items) + space;

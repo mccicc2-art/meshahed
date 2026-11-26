@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("p");
   const period = raw === "week" || raw === "year" ? raw : "month";
   const target = new URL("/api/share", req.url);
-  target.searchParams.set("kind", "report");
-  target.searchParams.set("p", period);
+  /* 🆕 «حصاد 2026» (أحمد ٢٦ نوفمبر «ق٧أ»): مشاركةُ «السنة» بطاقةُ القصّة ١٠٨٠×١٩٢٠ لا صورةُ التقرير العريضة */
+  if (period === "year") target.searchParams.set("kind", "year");
+  else {
+    target.searchParams.set("kind", "report");
+    target.searchParams.set("p", period);
+  }
   return shareImage(new Request(target));
 }

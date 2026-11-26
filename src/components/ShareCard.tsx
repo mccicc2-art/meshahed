@@ -52,10 +52,13 @@ export function ShareCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /* 🆕 «حصاد 2026» (أحمد ٢٦ نوفمبر «ق٧أ»): تقريرُ «السنة» يُشارَك بطاقةَ القصّة */
   const src =
-    kind === "report"
-      ? `/api/share?kind=report${period ? `&p=${period}` : ""}`
-      : "/api/share";
+    kind === "report" && period === "year"
+      ? "/api/share?kind=year"
+      : kind === "report"
+        ? `/api/share?kind=report${period ? `&p=${period}` : ""}`
+        : "/api/share";
 
   async function share() {
     setBusy(true);

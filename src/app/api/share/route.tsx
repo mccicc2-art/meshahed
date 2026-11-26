@@ -38,6 +38,8 @@ import { num, worksParts, type Dict, type Locale } from "@/core/i18n";
 import { asStatsPeriod, buildPeriodStats, statsRange } from "@/lib/periodStats";
 import { hm, reportLead } from "@/core/statsFormat";
 import { asTimeZone } from "@/core/zone";
+import { yearCardElement, YEAR_CARD } from "@/lib/yearCard";
+import { countedUnit, yearPersona } from "@/core/yearPersona";
 
 export const runtime = "nodejs";
 
@@ -72,6 +74,10 @@ export async function GET(request: Request) {
   const q = new URL(request.url).searchParams;
   if (q.get("kind") === "report") {
     return reportImage(q.get("p"), locale, rtl, t);
+  }
+  /* 🆕 «حصاد 2026» (أحمد ٢٦ نوفمبر «ق٧أ»): بطاقةُ القصّة ١٠٨٠×١٩٢٠ — ومشاركةُ تقرير «السنة» تأتي إليها */
+  if (q.get("kind") === "year") {
+    return yearImage(locale);
   }
 
   const [profile, follows, followStats, summary, episodes, watchedMovies, ratings, favs, animeFlags] =
@@ -412,4 +418,48 @@ async function reportImage(rawPeriod: string | null, locale: Locale, rtl: boolea
       headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
     },
   );
+}
+
+/**
+ * 🆕 **«حصاد 2026»** — الأرقامُ من `buildPeriodStats("year")` نفسِه الذي ترسمه صفحةُ الإحصائيات بمدّة «السنة» (لا سطحان يقولان عن
+ * السنة رقمين، D-797)، والبطاقةُ في `lib/yearCard`. سنةٌ فارغةٌ لا صورةَ لها (`409`) كالتقرير.
+ */
+async function yearImage(locale: Locale) {
+  const profile = await getProfile();
+  if (!hasFullStats(profile)) return new Response("plus required", { status: 403 });
+  const tz = asTimeZone(profile?.timezone);
+  const stats = await buildPeriodStats("year", 0, locale, tz);
+  if (stats.empty) return new Response("nothing to share", { status: 409 });
+
+  const top = stats.topTitles.filter((x) => x.poster).slice(0, 8);
+  const [posters, avatar] = await Promise.all([
+    Promise.all(top.map((x) => dataUrl(posterUrl(x.poster, "w342")))),
+    dataUrl(profile?.avatar_url ?? null),
+  ]);
+  const hours = Math.round(stats.minutes / 60);
+  const shows = stats.titles - stats.movies;
+  const raw: { n: number; w: Parameters<typeof countedUnit>[1] }[] = [
+    { n: hours, w: { one: "ساعة واحدة", two: "ساعتان", few: "ساعات", many: "ساعةً", hundred: "ساعة", en1: "hour", enN: "hours" } },
+    { n: shows, w: { one: "مسلسل واحد", two: "مسلسلان", few: "مسلسلات", many: "مسلسلاً", hundred: "مسلسل", en1: "show", enN: "shows" } },
+    { n: stats.movies, w: { one: "فيلم واحد", two: "فيلمان", few: "أفلام", many: "فيلماً", hundred: "فيلم", en1: "movie", enN: "movies" } },
+  ];
+  const persona = yearPersona(
+    { genres: stats.taste.genres, animePct: stats.mix.find((m) => m.key === "anime")?.pct ?? 0, thin: stats.taste.thin },
+    locale,
+  );
+  const el = await yearCardElement({
+    locale,
+    year: stats.range.from.getUTCFullYear(),
+    name: profile?.hide_name ? (profile?.username ?? "Loopz") : profile?.nickname?.trim() || profile?.username || "Loopz",
+    username: profile?.username ?? null,
+    avatar,
+    persona,
+    posters: posters.filter((p): p is string => !!p),
+    /* لا خانةَ صفر: ما لم يُشاهَد منه شيءٌ لا يُرسم */
+    stats: raw.filter((x) => x.n > 0).map((x) => countedUnit(x.n, x.w, locale)),
+  });
+  return new ImageResponse(el, {
+    ...YEAR_CARD,
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }
