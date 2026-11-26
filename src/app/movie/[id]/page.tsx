@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { titleMetadata } from "@/lib/titleMeta";
+import { DownloadLoopzBar } from "@/components/DownloadLoopzBar";
 import Link from "next/link";
 import { Fragment, Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -8,6 +9,7 @@ import {
   getFollowState,
   isMovieWatched,
   getMyLists,
+  getUser,
   getListsContaining,
   getPublicListsContaining,
   getMyArtFor,
@@ -105,6 +107,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   const workTitlePromise = prefetchWorkTitle(movieId, "movie", locale);
   const creditsPromise = getCredits("movie", movieId).catch(() => ({ cast: [], crew: [] }));
   const trailerPromise = getTrailer("movie", movieId).catch(() => null);
+  /* 🆕 T584 — الزائرُ بلا حساب يقرأ الصفحة (الحارسُ في `proxy.ts`)، وفي قاعها «حمّل لوبز» — `getUser` مخبّأٌ للطلب فلا رحلةَ ثانية */
+  const userP = getUser();
   const [userRegion, movie, followState, watched, watchWhere, myLists, inLists, myArt, favs, pulse, curatedMap, mySaved] = await Promise.all([
     /* قراءةُ كوكي البلد كانت `await` منفرداً قبل الموجة — رحلةً لا تلزم
        أحداً قبلها، فدخلت الموجة. */
@@ -654,6 +658,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       />
       </div>
 
+      {/* 🆕 T584 — «حمّل لوبز» لمن وصل بلا حساب (ن٩ · ق٤ «أ»): زرُّ صفحة المراجعة نفسُه، في القاع لا حاجزاً فوق المحتوى */}
+      {!(await userP) ? <DownloadLoopzBar locale={locale} /> : null}
     </div>
   );
 }

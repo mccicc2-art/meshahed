@@ -18,6 +18,7 @@ import {
   getCuratedSlug,
 } from "@/lib/data";
 import { curatedName, curatedBlurb, universeBySlug } from "@/core/universes";
+import { DownloadLoopzBar } from "@/components/DownloadLoopzBar";
 import { ListReviews } from "@/components/ListReviews";
 import { isPlus } from "@/core/plan";
 import { getT } from "@/lib/locale";
@@ -305,21 +306,9 @@ export default async function ListPage({
         }
       />
 
-      {/* 🆕 **ودعوةُ القاع باقيةٌ للزائر** (D-631 — كانت في الفرع الساقط):
-          جاء ليرى القائمة، **فتُعرض كاملةً بمراجعاتها ثمّ يُعرض عليه أن
-          يبني مثلها** — لافتةٌ في القاع لا حاجزٌ فوق المحتوى. */}
-      {!user && (
-        <div className="mt-12 pt-6 border-t border-[color:var(--divider)] text-center">
-          <p className="text-sm text-muted mb-3">
-            {locale === "ar"
-              ? "ابنِ قوائمك أنت، وتتبّع كل ما تشاهده."
-              : "Build your own lists, and track everything you watch."}
-          </p>
-          <Link href="/login" className={buttonClass({ size: "sm" })}>
-            {locale === "ar" ? "ابدأ مع Loopz" : "Start with Loopz"}
-          </Link>
-        </div>
-      )}
+      {/* 🆕 **ودعوةُ القاع باقيةٌ للزائر** (D-631): جاء ليرى القائمة، فتُعرض كاملةً بمراجعاتها ثمّ يُعرض عليه أن يبني مثلها —
+          لافتةٌ في القاع لا حاجزٌ فوق المحتوى. 🆕 T584 — صارت «حمّل لوبز» نفسَها في صفحة المراجعة والملفّ والعمل (رسمٌ واحد) */}
+      {!user ? <DownloadLoopzBar locale={locale} /> : null}
     </div>
   );
 }

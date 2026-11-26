@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { displayNameOf } from "@/lib/data";
+import { DownloadLoopzBar } from "@/components/DownloadLoopzBar";
 import { getT } from "@/lib/locale";
 import { num } from "@/core/i18n";
 import { countNoun } from "@/core/countNoun";
@@ -107,6 +108,7 @@ export default async function PublicProfilePage({
     return <p className="text-center text-muted py-24">{t.userNotFound}</p>;
   }
   const {
+    me,
     profile,
     isMe,
     prefs,
@@ -1824,6 +1826,8 @@ export default async function PublicProfilePage({
           )}
         </>
       )}
+      {/* 🆕 T584 — «حمّل لوبز» لمن وصل بلا حساب (ن٩ · ق٤ «أ»): الملفُّ نفسُه بغلافه وما أظهره صاحبُه، وفي قاعه زرُّ صفحة المراجعة */}
+      {!me ? <DownloadLoopzBar locale={locale} /> : null}
     </div>
   );
 }

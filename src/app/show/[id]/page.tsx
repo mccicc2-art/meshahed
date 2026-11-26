@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { titleMetadata } from "@/lib/titleMeta";
+import { DownloadLoopzBar } from "@/components/DownloadLoopzBar";
 import Link from "next/link";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { Fragment, Suspense } from "react";
@@ -733,6 +734,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           />
         </Suspense>
       </div>
+      {/* 🆕 T584 — «حمّل لوبز» لمن وصل بلا حساب (ن٩ · ق٤ «أ»): زرُّ صفحة المراجعة نفسُه، في القاع لا حاجزاً فوق المحتوى */}
+      {!user ? <DownloadLoopzBar locale={locale} /> : null}
     </div>
   );
 }

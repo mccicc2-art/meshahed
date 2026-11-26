@@ -296,10 +296,21 @@ function guestOpen(pathname: string): boolean {
 const SEARCH_UA =
   /Googlebot|Google-InspectionTool|AdsBot-Google|Mediapartners-Google|Storebot-Google|bingbot|BingPreview|DuckDuckBot|YandexBot|Baiduspider|Applebot|Slurp|Sogou|SeznamBot|Exabot|Qwantify|Yeti/i;
 
+/**
+ * 🆕 T584 — **الزائرُ يقرأ ما شورك معه** (استوديو المشاركة ن٩ · ق٤ «أ» · س٧ — أحمد ٢٦ نوفمبر): من ضغط رابطَ ملفٍّ أو قائمةٍ أو
+ * عملٍ وصله في واتساب كان يصل إلى صفحة الدخول فيغلقها — فلا تجلب المشاركةُ أحداً. الصفحاتُ الأربع مكتوبةٌ للزائر من D-627
+ * (قراءاتُها الشخصيّةُ ذاتيّةُ الحراسة، والكتابةُ يردّها `requireUser`)، والقاعدةُ تخدمها للمجهول أصلاً (`can_view_profile`
+ * و`public_list` والمعلنةُ وحدَها) — **فلا هجرة**، والحارسُ هنا وحدَه كان يمنع. وفي أسفلها «حمّل لوبز» (`DownloadLoopzBar`).
+ * ⚖️ **محرّكاتُ البحث لا تدخل منها** (`SEARCH_UA` يُحوَّل كما كان): لا تُفهرَس صفحاتُ الناس، ولا يعود حِملُ الزحف الذي أغلقه D-914.
+ * والحسابُ الخاصُّ والقائمةُ الخاصّةُ تبقيان مقفلتين بحارسهما في SQL.
+ */
+const VISITOR_PAGE = /^\/(?:u\/[^/]+(?:\/stats)?|lists\/(?!new(?:\/|$))[^/]+|show\/\d+|movie\/\d+)\/?$/;
+
 function guestGate(request: NextRequest): NextResponse | null {
   const { pathname, search } = request.nextUrl;
   if (guestOpen(pathname)) return null;
   const ua = request.headers.get("user-agent") ?? "";
+  if (VISITOR_PAGE.test(pathname) && !SEARCH_UA.test(ua)) return null;
   if (!SEARCH_UA.test(ua) && (PREVIEW_UA.test(ua) || !request.headers.get("sec-fetch-mode"))) return null;
   if (sessionCookieParts(request.cookies.getAll()).length > 0) return null;
   const to = new URL("/login", request.url);
