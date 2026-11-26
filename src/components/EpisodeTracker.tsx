@@ -15,7 +15,7 @@ import { Icon } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
 import { ImdbMark, TmdbMark } from "./RatingMarks";
 import { Alert } from "./ui/Alert";
-import { chipClass } from "./ui/controls";
+import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
 import { SEASON_ORDER_KEY, parseSeasonOrder, splitSeasons, type SeasonOrder } from "@/core/seasonOrder";
 import dynamic from "next/dynamic";
 import type { EpisodeTarget } from "./EpisodeRateSheet";
@@ -1185,11 +1185,12 @@ export function EpisodeTracker({
           /* 🆕 D-1500 — «ترتيب المواسم» في آخر القائمة: رقاقتان (`chipClass`)، للأعمال كلِّها، محفوظٌ على الجهاز */
           <div className="mt-1.5 pt-3 border-t border-[color:var(--divider)]">
             <p className="px-1 mb-2 text-xs font-semibold text-muted">{t.seasonOrderLabel}</p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => pickOrder("progress")} aria-pressed={order === "progress"} className={chipClass(order === "progress")}>
+            {/* «ت٥أ» (أحمد ٢٦ نوفمبر): خيارٌ من اثنين = عائلةُ المقسّم لا كبسولتان */}
+            <div className={segmentedTrackFull}>
+              <button type="button" onClick={() => pickOrder("progress")} aria-pressed={order === "progress"} className={segmentedItem(order === "progress", "flex-1")}>
                 {t.seasonOrderProgress}
               </button>
-              <button type="button" onClick={() => pickOrder("original")} aria-pressed={order === "original"} className={chipClass(order === "original")}>
+              <button type="button" onClick={() => pickOrder("original")} aria-pressed={order === "original"} className={segmentedItem(order === "original", "flex-1")}>
                 {t.seasonOrderOriginal}
               </button>
             </div>

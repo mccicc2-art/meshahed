@@ -167,9 +167,10 @@ export function TalkTvBar({
         ) : null
       ) : (
         <div>
-          <div className="flex gap-2 overflow-x-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المواسمُ عائلةُ المقسّم بخطٍّ أصفر تتمرّر — لا كبسولات */}
+          <div className={`${segmentedTrackFull} overflow-x-auto my-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
             {[...seasons].reverse().map((x) => (
-              <button key={x.season} type="button" onClick={() => onSeason(x.season)} className={`${chipClass(x.season === cur)} shrink-0`}>
+              <button key={x.season} type="button" aria-pressed={x.season === cur} onClick={() => onSeason(x.season)} className={segmentedItem(x.season === cur, "shrink-0")}>
                 {t.talkSeasonLabel(x.season)}
               </button>
             ))}

@@ -7,7 +7,7 @@ import { PosterRail, RailItem, seeAllClass } from "./PosterRail";
 import { OneTimeHint } from "./OneTimeHint";
 import { Dropdown, DropdownRow } from "./ui/Dropdown";
 import { RailScroll } from "./RailScroll";
-import { chipClass } from "./ui/controls";
+import { segmentedItem, segmentedTrack } from "./ui/controls";
 import type { CinemaOrigin } from "@/core/contracts/discover";
 
 /** ملصقٌ رسمه الخادم (`CinemaSection`) ومعه ما يُصفّى به هنا */
@@ -129,14 +129,15 @@ export function CinemaRail({
       {/* سطرُ «في السعودية» ورقاقاتُ المنشأ في طرفه المقابل — سطرٌ واحدٌ لا صفّان (طلبُ أحمد) */}
       <div className="mb-2 flex items-center gap-3">
         <p className="shrink-0 text-xs text-muted">{labels.inSaudi}</p>
-        <div className="ms-auto flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المنشأُ عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات */}
+        <div className={`${segmentedTrack} ms-auto overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
           {(["all", "arabic", "foreign"] as const).map((o) => (
             <button
               key={o}
               type="button"
               aria-pressed={origin === o}
               onClick={() => setOrigin(o)}
-              className={chipClass(origin === o, "sm")}
+              className={segmentedItem(origin === o, "px-3 pt-1 pb-2 text-13", false)}
             >
               {o === "all" ? labels.all : o === "arabic" ? labels.arabic : labels.foreign}
               <span className="ms-1.5 tabular-nums opacity-60">{count(o)}</span>

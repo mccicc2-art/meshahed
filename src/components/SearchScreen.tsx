@@ -8,7 +8,7 @@ import { aiStorySearch, storyTrialsLeft } from "@/lib/actions";
 import { flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { SEARCH_FOCUS_EVENT } from "@/lib/searchFocus";
-import { chipClass, chipRow } from "./ui/controls";
+import { chipRow, segmentedItem, segmentedTrack } from "./ui/controls";
 import { Icon, type IconName } from "./Icon";
 import { OneTimeHint } from "./OneTimeHint";
 import { PersonName } from "./PersonRow";
@@ -386,8 +386,9 @@ export function SearchScreen({
               يحتاج من يسمّيه مرّةً. `OneTimeHint` القائم — يُقرأ عند الإغلاق أو عند دخول وضع الوصف. */}
           <OneTimeHint id="search-desc" text={t.hintSearchDesc} closeLabel={t.closeLabel} />
 
+          {/* «ت٥أ» (أحمد ٢٦ نوفمبر، استوديو المشاركة): صفُّ الفلتر عائلةُ المقسّم بخطٍّ أصفر يتمرّر — لا كبسولات */}
           <div className={chipRow}>
-            <div className="flex items-center gap-2">
+            <div className={segmentedTrack}>
               {SCOPES.map((s) => (
                 <button
                   key={s}
@@ -398,7 +399,7 @@ export function SearchScreen({
                     tap(8);
                     setScope(s);
                   }}
-                  className={chipClass(scope === s)}
+                  className={segmentedItem(scope === s)}
                 >
                   {scopeLabel(s, t)}
                 </button>

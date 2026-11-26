@@ -11,7 +11,7 @@ import { ReportView } from "@/components/ReportView";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { PlusPreview } from "@/components/stats/PlusPreview";
 import { ShareCard } from "@/components/ShareCard";
-import { chipClass } from "@/components/ui/controls";
+import { segmentedItem, segmentedTrack } from "@/components/ui/controls";
 
 /**
  * ====== 🆕 «إحصائياتك» — صفحةٌ واحدةٌ بدل «تقريرك» و«الإحصائيات الكاملة» (T412→T413، التصميم «أ»، أحمد ١٨ نوفمبر) ======
@@ -71,9 +71,10 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
 
   const tools = (
     <div className="flex flex-wrap items-center gap-2">
-      <div role="tablist" aria-label={ar ? "المدّة" : "Period"} className="flex items-center gap-1.5">
+      {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المدّةُ عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات */}
+      <div role="tablist" aria-label={ar ? "المدّة" : "Period"} className={segmentedTrack}>
         {(["week", "month", "year", "all"] as const).map((p) => (
-          <Link key={p} role="tab" aria-selected={p === period} href={href({ p, o: 0 })} scroll={false} replace className={chipClass(p === period, "sm")}>
+          <Link key={p} role="tab" aria-selected={p === period} href={href({ p, o: 0 })} scroll={false} replace className={segmentedItem(p === period)}>
             {periodLabel[p]}
           </Link>
         ))}

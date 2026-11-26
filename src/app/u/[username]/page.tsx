@@ -47,7 +47,7 @@ import { SectionReorderButton } from "@/components/SectionReorderButton";
 import { SavedListsToggle } from "@/components/SavedListsToggle";
 import { ProfileUnblockButton } from "@/components/ProfileUnblockButton";
 import { capCards } from "@/core/cardCount";
-import { chipClass, chipRow, coverBareControl, HEADER_ICON } from "@/components/ui/controls";
+import { chipRow, coverBareControl, HEADER_ICON, segmentedItem, segmentedTrack } from "@/components/ui/controls";
 import { reviewsView, splitReviews } from "@/core/profileReviews";
 import { browseGenreName, groupByGenre } from "@/core/browse";
 import { densityVars } from "@/core/density";
@@ -1601,7 +1601,8 @@ export default async function PublicProfilePage({
           (الصفحةُ خادميّة، D-438)، و`replace` فلا تملأ زرَّ الرجوع بتبديلٍ واحد. تغيبان معاً إن لم يكن شيءٌ يُعرض */}
       {canView && tab === "reviews" && reviewsNewest.length > 0 && (
         <div className={`${chipRow} mb-4`}>
-          <div className="flex items-center gap-2">
+          {/* «ت٥أ» (أحمد ٢٦ نوفمبر): عائلةُ المقسّم بخطٍّ أصفر لا كبسولات */}
+          <div className={segmentedTrack}>
             {(["written", "ratings"] as const).map((v) => (
               <Link
                 key={v}
@@ -1610,7 +1611,7 @@ export default async function PublicProfilePage({
                 scroll={false}
                 prefetch={false}
                 aria-current={reviewView === v ? "page" : undefined}
-                className={chipClass(reviewView === v)}
+                className={segmentedItem(reviewView === v)}
               >
                 {v === "written" ? t.tabReviews : t.reviewsRatingsOnly}{" "}
                 <span className="tabular-nums opacity-80">

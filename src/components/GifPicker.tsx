@@ -6,7 +6,7 @@ import { findGifs } from "@/lib/actions";
 import type { GifHit } from "@/lib/gif";
 import { getDict, type Dict, type Locale } from "@/core/i18n";
 import { GIF_ID_RE, gifUrl } from "@/core/media";
-import { chipClass } from "./ui/controls";
+import { segmentedItem } from "./ui/controls";
 import { Icon } from "./Icon";
 import { tap } from "@/lib/haptics";
 
@@ -171,7 +171,7 @@ export function GifPicker({
           key={c.term}
           type="button"
           aria-pressed={cat === c.term}
-          className={chipClass(cat === c.term, "sm", pop ? "shrink-0" : "")}
+          className={segmentedItem(cat === c.term, `px-3 pt-1 pb-2 text-13${pop ? " shrink-0" : ""}`, false)}
           onClick={() => {
             tap(8);
             setQ("");
@@ -237,7 +237,8 @@ export function GifPicker({
         </div>
         {/* الثمانيةُ في صفٍّ واحدٍ ينزلق — لا سطرَ ثانٍ تبقى فيه رقاقةٌ يتيمة */}
         {/* وحافّتُه الأخيرة تذوب: من يرى رقاقةً نصفُها ظاهرٌ يعرف أن الصفَّ يُسحب */}
-        <div className="flex gap-1.5 overflow-x-auto px-3 pb-2.5 [scrollbar-width:none] after:w-1 after:shrink-0 after:content-[''] ltr:[mask-image:linear-gradient(to_right,black_88%,transparent)] rtl:[mask-image:linear-gradient(to_left,black_88%,transparent)]">
+        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): الأصنافُ عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات */}
+        <div className="flex overflow-x-auto mx-3 mb-2.5 border-b border-[color:var(--divider)] [scrollbar-width:none] after:w-1 after:shrink-0 after:content-[''] ltr:[mask-image:linear-gradient(to_right,black_88%,transparent)] rtl:[mask-image:linear-gradient(to_left,black_88%,transparent)]">
           {cats}
         </div>
         <div className="h-[340px] overflow-y-auto border-t border-[color:var(--divider)] px-3 pt-2.5">
@@ -290,7 +291,7 @@ export function GifPicker({
         {/* **شبكةُ عمودين على الجوال وثلاثةٍ فوقه** — والملصقُ هنا صورةٌ
             عريضةٌ لا ملصقُ عمل، فلا `posterGrid` (D-002 بحدّها: وصفةٌ
             لمعنًى آخر ليست العائلةَ نفسَها). */}
-        <div className="mt-3 flex flex-wrap gap-1.5">{cats}</div>
+        <div className="mt-3 flex flex-wrap border-b border-[color:var(--divider)]">{cats}</div>
         {recentRow}
         <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[46svh] overflow-y-auto">
           {rows.map((g) => (

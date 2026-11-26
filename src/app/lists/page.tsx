@@ -19,7 +19,7 @@ import { PublicListsRail } from "@/components/PublicListsRail";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { getListProgress } from "@/lib/listProgress";
 import { webWords } from "@/components/webWords";
-import { chipClass } from "@/components/ui/controls";
+import { segmentedItem, segmentedTrack } from "@/components/ui/controls";
 import Link from "next/link";
 
 /**
@@ -140,9 +140,9 @@ export default async function ListsPage({ searchParams }: { searchParams: Promis
         title={saved.length > 0 ? `${t.savedListsSection} · ${saved.length}` : t.savedListsSection}
         action={
           saved.some((l) => isDone(l.id)) ? (
-            <span className="flex items-center gap-1.5">
-              <Link href="/lists" scroll={false} className={chipClass(!doneOnly, "sm")}>{w.savedAll}</Link>
-              <Link href="/lists?saved=done" scroll={false} className={chipClass(doneOnly, "sm")}>{w.savedDone}</Link>
+            <span className={segmentedTrack}>
+              <Link href="/lists" scroll={false} className={segmentedItem(!doneOnly, "px-3 pt-1 pb-2 text-13", false)}>{w.savedAll}</Link>
+              <Link href="/lists?saved=done" scroll={false} className={segmentedItem(doneOnly, "px-3 pt-1 pb-2 text-13", false)}>{w.savedDone}</Link>
             </span>
           ) : undefined
         }

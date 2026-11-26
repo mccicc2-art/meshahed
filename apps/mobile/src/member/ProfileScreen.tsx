@@ -29,7 +29,7 @@ import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
 import { openProfile } from "./open";
 import { fetchProfile, headMemo, profileKey, rememberHead } from "./profileData";
 import { ActivityList } from "./ActivityList";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { reviewsView, splitReviews, type ReviewsView } from "@/core/profileReviews";
 import { displayNameOf } from "@/core/people";
 import { COVER_RATIO } from "@/core/coverRatio";
@@ -1522,16 +1522,17 @@ function ReviewsPane({
   return (
     <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 14 }}>
       {/* رقاقتا «النشاط» نفسُهما (`Chip`) — لا عائلةَ ثالثة */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginBottom: 4 }}>
-        {(["written", "ratings"] as const).map((v) => (
-          <Chip
-            key={v}
-            label={`${v === "written" ? t.tabReviews : t.reviewsRatingsOnly} ${num((v === "written" ? split.written : split.ratings).length, locale)}`}
-            active={view === v}
-            onPress={() => (v === view ? undefined : (haptic.pick(), setAsked(v)))}
-          />
-        ))}
-      </ScrollView>
+      {/* «ت٥أ» (أحمد ٢٦ نوفمبر): عائلةُ المقسّم بخطٍّ أصفر لا كبسولات */}
+      <View style={{ marginBottom: 4 }}>
+        <Segmented
+          items={(["written", "ratings"] as const).map((v) => ({
+            id: v,
+            label: `${v === "written" ? t.tabReviews : t.reviewsRatingsOnly} ${num((v === "written" ? split.written : split.ratings).length, locale)}`,
+          }))}
+          value={view}
+          onChange={(v) => (v === view ? undefined : (haptic.pick(), setAsked(v as typeof view)))}
+        />
+      </View>
       {list.length === 0 ? <Empty text={t.profileEmptyReviews} /> : null}
       {list.map((r, i) => {
         const k = `${r.media_type}-${r.tmdb_id}`;

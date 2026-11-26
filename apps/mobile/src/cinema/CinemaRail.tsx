@@ -1,12 +1,12 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, View, type ViewInstance } from "react-native";
+import { Pressable, View, type ViewInstance } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "../api";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { OneTimeHint } from "../library/OneTimeHint";
 import { libraryQuery } from "../library/LibraryScreen";
 import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
@@ -132,16 +132,14 @@ export function CinemaRail({
       {/* سطرُ «في السعودية» ورقاقاتُ المنشأ في طرفه المقابل — سطرٌ واحد (طلبُ أحمد) */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingStart: PAGE_PAD, marginBottom: 8 }}>
         <Text size={12} muted>{t.cinemaInSaudi}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end", gap: 8, paddingEnd: PAGE_PAD }}>
-          {(["all", "arabic", "foreign"] as const).map((o) => (
-            <Chip
-              key={o}
-              label={`${o === "all" ? t.allWord : o === "arabic" ? t.cinemaArabic : t.cinemaForeign} ${count(o)}`}
-              active={origin === o}
-              onPress={() => setOrigin(o)}
-            />
-          ))}
-        </ScrollView>
+        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المنشأُ عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات */}
+        <View style={{ flex: 1, paddingEnd: PAGE_PAD }}>
+          <Segmented
+            items={(["all", "arabic", "foreign"] as const).map((o) => ({ id: o, label: `${o === "all" ? t.allWord : o === "arabic" ? t.cinemaArabic : t.cinemaForeign} ${count(o)}` }))}
+            value={origin}
+            onChange={(v) => setOrigin(v as typeof origin)}
+          />
+        </View>
       </View>
       {showHint ? <OneTimeHint id={hintId} text={t.cinemaHint} style={{ marginHorizontal: PAGE_PAD, marginBottom: 8 }} /> : null}
       {shown.length === 0 ? (

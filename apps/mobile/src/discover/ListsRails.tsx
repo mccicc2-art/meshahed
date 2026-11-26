@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FlatList, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { FlatList, Pressable, View, useWindowDimensions } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { Sheet } from "../library/Sheet";
 import { ListCard } from "../library/ListCard";
 import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
@@ -76,12 +76,18 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
 
   return (
     <View style={{ gap: 24 }}>
-      {/* رقاقاتُ المصدر — عائلةُ chip الواحدة (`ListsFilters variant="chips"`) */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
-        <Chip label={t.browseAll} active={src === "all"} onPress={() => setSrc("all")} />
-        <Chip label={t.listsCurated} active={src === "curated"} onPress={() => setSrc("curated")} />
-        <Chip label={t.publicListsRail} active={src === "community"} onPress={() => setSrc("community")} />
-      </ScrollView>
+      {/* المصدرُ — «ت٥أ» (أحمد ٢٦ نوفمبر): عائلةُ المقسّم بخطٍّ أصفر لا كبسولات */}
+      <View style={{ paddingHorizontal: PAGE_PAD }}>
+        <Segmented
+          items={[
+            { id: "all", label: t.browseAll },
+            { id: "curated", label: t.listsCurated },
+            { id: "community", label: t.publicListsRail },
+          ]}
+          value={src}
+          onChange={(v) => setSrc(v as typeof src)}
+        />
+      </View>
       {/* 🆕 T450 — بابا الإنشاء تحت الرقائق: قائمةٌ تملؤها بيدك من الكتالوج كلِّه، وذكيّةٌ تملأ نفسَها (مجّانيّةٌ للجميع) */}
       {me ? <NewListBar from="discover" style={{ marginHorizontal: PAGE_PAD, marginTop: -12 }} /> : null}
       {!p ? (

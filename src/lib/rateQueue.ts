@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { getFollows, getProfile, getTitleMetaFor, getUserId, getWatchSummary, type FollowRow } from "@/lib/data";
+import { getFollows, getMyAnimeFlags, getProfile, getTitleMetaFor, getUserId, getWatchSummary, type FollowRow } from "@/lib/data";
 import { shownProgressFor, skipModeOf } from "@/lib/skipProgress";
 import { localizeFollows } from "@/lib/localize";
 import { sanitizeUiState } from "@/lib/uiState";
@@ -153,9 +153,11 @@ export async function getRateQueue(locale: Locale, o: { summary?: boolean; nowMs
   const total = picked.length;
   const showsN = picked.filter((f) => f.media_type === "tv").length;
   const take = o.summary ? picked.slice(0, 3) : picked;
-  const [localized, meta] = await Promise.all([
+  const [localized, meta, anime] = await Promise.all([
     localizeFollows(take, locale),
     o.summary ? Promise.resolve(new Map()) : getTitleMetaFor(take.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id }))).catch(() => new Map()),
+    /* رزمةُ الأنمي في التطبيق: علَمُ المكتبة نفسُه (`getMyAnimeFlags`، خريطةٌ فارغةٌ إن تعذّر — فيبقى كلُّ شيءٍ في رزمته) */
+    o.summary ? Promise.resolve(new Map<string, boolean | null>()) : getMyAnimeFlags().catch(() => new Map<string, boolean | null>()),
   ]);
   const items: RateQueueItem[] = take.map((f, n) => {
     const loc = localized[n];
@@ -168,6 +170,7 @@ export async function getRateQueue(locale: Locale, o: { summary?: boolean; nowMs
       poster_path: loc?.poster_path ?? f.poster_path,
       year: m?.release_year ?? null,
       at: at || f.added_at,
+      ...(anime.get(rateKey(f.media_type, f.tmdb_id)) ? { anime: true } : {}),
     };
   });
   return {

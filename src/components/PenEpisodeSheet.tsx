@@ -8,7 +8,7 @@ import { formatDateShort } from "@/core/when";
 import { airedEpisodes, episodeTitle } from "@/core/talkEpisodes";
 import type { SeasonEpisode, SeasonPayload, TitleSeason } from "@/core/contracts/title";
 import { Sheet, SheetHeader } from "./ui/Sheet";
-import { chipClass } from "./ui/controls";
+import { segmentedItem, segmentedTrackFull } from "./ui/controls";
 import { Icon } from "./Icon";
 import { v1Get } from "./InboxComposer";
 
@@ -73,12 +73,14 @@ export function PenEpisodeSheet({
   return (
     <Sheet open onClose={onClose} closeLabel={t.closeLabel} variant="bottom" anchor="bottom" labelledBy="pen-ep-title">
       <SheetHeader id="pen-ep-title" title={t.penWhichEp} closeLabel={t.closeLabel} onClose={onClose} />
-      <div className="flex gap-2 overflow-x-auto px-5 pt-3 pb-2 [scrollbar-width:none]">
+      {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المواسمُ عائلةُ المقسّم بخطٍّ أصفر تتمرّر — لا كبسولات */}
+      <div className={`${segmentedTrackFull} overflow-x-auto mx-5 mt-2 mb-2 [scrollbar-width:none]`}>
         {[...real].reverse().map((s) => (
           <button
             key={s.season_number}
             type="button"
-            className={chipClass(s.season_number === season, "sm", "shrink-0")}
+            aria-pressed={s.season_number === season}
+            className={segmentedItem(s.season_number === season, "shrink-0")}
             onClick={() => {
               setSeason(s.season_number);
               setExpanded(false);

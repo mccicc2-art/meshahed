@@ -8,7 +8,7 @@ import { api } from "../api";
 import { useApp } from "../state";
 import { Button, Text, TopBar } from "../ui";
 import { Icon } from "../icons";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { posterFor } from "../poster";
 import type { NativeRoot } from "../shell";
 import { usePullRefresh } from "../pullRefresh";
@@ -155,9 +155,13 @@ export function RatingsScreen({ from }: { from: NativeRoot | "web" }) {
             <>
             {/* 🆕 T530 — بابُ «بانتظار تقييمك» أعلى «تقييماتي» (أحمد «٢أ»)؛ يغيب إن لم ينتظر شيء */}
             <RateQueueEntry from={from} style={{ marginTop: 6 }} />
-            <View style={{ flexDirection: "row", gap: 8, paddingTop: 6, paddingBottom: 12 }}>
-              <Chip label={`${t.ratingsAll} ${totalAll}`} active={!onlyComments} onPress={() => setOnlyComments(false)} />
-              <Chip label={`${t.ratingsWithComment} ${totalComments}`} active={onlyComments} onPress={() => setOnlyComments(true)} />
+            {/* «ت٥أ» (أحمد ٢٦ نوفمبر): صفُّ فلترٍ = عائلةُ المقسّم بخطٍّ أصفر، لا كبسولات */}
+            <View style={{ paddingTop: 6, paddingBottom: 12 }}>
+              <Segmented
+                items={[{ id: "all", label: `${t.ratingsAll} ${totalAll}` }, { id: "comments", label: `${t.ratingsWithComment} ${totalComments}` }]}
+                value={onlyComments ? "comments" : "all"}
+                onChange={(v) => setOnlyComments(v === "comments")}
+              />
             </View>
             </>
           }

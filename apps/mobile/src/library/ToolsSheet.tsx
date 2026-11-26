@@ -215,28 +215,69 @@ export function ViewPrefsPane({
   );
 }
 
-/** العائلةُ المقسّمة الواحدة (`segmentedItem`): خطٌّ سفليٌّ ٣ بلون التمييز على `--divider` */
-export function Segmented({ items, value, onChange }: { items: { id: string; label: string }[]; value: string; onChange: (v: string) => void }) {
+/**
+ * العائلةُ المقسّمة الواحدة (`segmentedItem`): خطٌّ سفليٌّ ٣ بلون التمييز على `--divider`.
+ *
+ * 🆕 **صفوفُ الفلاتر كلُّها بها** (أحمد ٢٦ نوفمبر، استوديو المشاركة «ت٥أ» و«ق٣أ»: «هذا التصميم ما ابغا اشوفه … في اي مكان
+ * بالتطبيق» عن كبسولات الفلترة الصفراء): صفُّ فلترٍ يُختار منه واحدٌ صار هذه العائلة، والرقاقةُ (`Chip`) بقيت للأزرار وحدَها
+ * («ادعُ» · «احفظ» · «قائمة تشغيل») ولخياراتٍ متعدّدةٍ تلتفّ في ورقة. **وليست عائلةً ثالثة**: `scroll` الشكلُ نفسُه بعرض كلماته
+ * يتمرّر أفقيّاً حين تكثر الخانات (النطاقاتُ الخمسة في البحث والسجلّ)، والخطُّ الرماديُّ يمتدّ تحت الصفّ كلِّه.
+ */
+export function Segmented({
+  items,
+  value,
+  onChange,
+  scroll,
+  inset = 0,
+  bare,
+}: {
+  items: { id: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  /** بعرض الكلمات ويتمرّر أفقيّاً — لصفٍّ تكثر خاناته أو تطول */
+  scroll?: boolean;
+  /** حشوُ البداية والنهاية داخل التمرير (صفٌّ يمتدّ إلى حافّة الشاشة ويبدأ محاذياً للصفحة) */
+  inset?: number;
+  /** بلا خطِّه السفليّ — صفٌّ أوسعُ يحمل الخطَّ ويضمّه وزرّاً بجانبه (`segmentedTrackBare` في الويب) */
+  bare?: boolean;
+}) {
   const { tokens } = useApp();
+  const cells = items.map((s) => {
+    const on = value === s.id;
+    return (
+      <Pressable
+        key={s.id}
+        accessibilityRole="radio"
+        accessibilityState={{ selected: on }}
+        onPress={() => onChange(s.id)}
+        style={scroll || bare ? { alignItems: "center", paddingHorizontal: 12, paddingVertical: 10 } : { flex: 1, alignItems: "center", paddingHorizontal: 8, paddingVertical: 10 }}
+      >
+        <Text size={14} weight="600" color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{s.label}</Text>
+        {on ? (
+          <View style={{ position: "absolute", bottom: -1, left: scroll || bare ? 6 : 0, right: scroll || bare ? 6 : 0, height: 3, borderTopLeftRadius: 999, borderTopRightRadius: 999, backgroundColor: tokens.accent }} />
+        ) : null}
+      </Pressable>
+    );
+  });
+  if (bare) {
+    return (
+      <View style={{ flexDirection: "row" }} accessibilityRole="radiogroup">
+        {cells}
+      </View>
+    );
+  }
+  if (scroll) {
+    return (
+      <View style={{ borderBottomWidth: 1, borderBottomColor: tokens.divider }} accessibilityRole="radiogroup">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: inset }} keyboardShouldPersistTaps="handled">
+          {cells}
+        </ScrollView>
+      </View>
+    );
+  }
   return (
     <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: tokens.divider }} accessibilityRole="radiogroup">
-      {items.map((s) => {
-        const on = value === s.id;
-        return (
-          <Pressable
-            key={s.id}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: on }}
-            onPress={() => onChange(s.id)}
-            style={{ flex: 1, alignItems: "center", paddingHorizontal: 8, paddingVertical: 10 }}
-          >
-            <Text size={14} weight="600" color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{s.label}</Text>
-            {on ? (
-              <View style={{ position: "absolute", bottom: -1, left: 0, right: 0, height: 3, borderTopLeftRadius: 999, borderTopRightRadius: 999, backgroundColor: tokens.accent }} />
-            ) : null}
-          </Pressable>
-        );
-      })}
+      {cells}
     </View>
   );
 }

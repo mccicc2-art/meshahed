@@ -6,7 +6,7 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { Icon } from "./Icon";
 import { Button } from "./ui/Button";
-import { chipClass } from "./ui/controls";
+import { segmentedItem, segmentedTrack, chipClass } from "./ui/controls";
 /* تبويب القوائم له بابُه هنا لا في ورقة اكتشف — رمزٌ واحد لكل تبويب (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
 import { getDict, num, type Locale } from "@/core/i18n";
@@ -167,12 +167,15 @@ export function ListsFilters({
   if (variant === "chips") {
     const isOn = (k: "all" | "curated" | "community") => (k === "all" ? lsrc === "all" || lsrc === "friends" : lsrc === k);
     return (
-      <div className="flex items-center gap-2 flex-wrap mb-2">
-        {(["all", "curated", "community"] as const).map((k) => (
-          <button key={k} type="button" aria-pressed={isOn(k)} className={chipClass(isOn(k), "sm")} onClick={() => push(fr ?? "", k)}>
-            {srcLabel[k]}
-          </button>
-        ))}
+      <div className="flex items-end gap-2 flex-wrap mb-2">
+        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المصدرُ عائلةُ المقسّم بخطٍّ أصفر — والعالَمُ المختارُ يبقى رقاقةً تُزال (زرٌّ لا فلتر) */}
+        <span className={segmentedTrack}>
+          {(["all", "curated", "community"] as const).map((k) => (
+            <button key={k} type="button" aria-pressed={isOn(k)} className={segmentedItem(isOn(k))} onClick={() => push(fr ?? "", k)}>
+              {srcLabel[k]}
+            </button>
+          ))}
+        </span>
         {fr && (
           <button type="button" className={chipClass(true, "sm")} onClick={() => push("", lsrc)}>
             <span className="inline-flex items-center gap-1">

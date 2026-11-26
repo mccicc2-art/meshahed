@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../state";
@@ -7,7 +7,7 @@ import { Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { Sheet } from "../library/Sheet";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { seasonQuery } from "../title/SeasonAccordion";
 import { backdropUrl } from "@/core/media";
 import { formatDateShort } from "@/core/when";
@@ -66,11 +66,18 @@ export function PenEpisodeSheet({
 
   return (
     <Sheet title={t.penWhichEp} onClose={onClose}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
-        {[...real].reverse().map((s) => (
-          <Chip key={s.season_number} size="md" label={t.talkSeasonLabel(s.season_number)} active={s.season_number === season} onPress={() => { setSeason(s.season_number); setExpanded(false); }} />
-        ))}
-      </ScrollView>
+      {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المواسمُ عائلةُ المقسّم بخطٍّ أصفر تتمرّر — لا كبسولات */}
+      <View style={{ paddingBottom: 8 }}>
+        <Segmented
+          scroll
+          items={[...real].reverse().map((s) => ({ id: String(s.season_number), label: t.talkSeasonLabel(s.season_number) }))}
+          value={String(season)}
+          onChange={(v) => {
+            setSeason(Number(v));
+            setExpanded(false);
+          }}
+        />
+      </View>
       {hiddenNewer ? (
         <Pressable onPress={() => setExpanded(true)} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, opacity: pressed ? 0.7 : 1 })}>
           <View style={{ transform: [{ rotate: "180deg" }] }}>

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
-import { Chip } from "../library/Chip";
 import { Sheet } from "../library/Sheet";
 import { Segmented } from "../library/ToolsSheet";
 import { radius } from "../theme";
@@ -65,11 +64,16 @@ export function ListEditSheet({
       {list.smart ? null : (
         <View style={{ gap: 8 }}>
           <Text size={12} weight="600" muted>{t.listType}</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <Chip label={t.listTypeRegular} active={kind === "regular"} onPress={() => setKind("regular")} />
-            <Chip label={t.listTypeRanked} active={kind === "ranked"} onPress={() => setKind("ranked")} />
-            <Chip label={t.listTypeWatch} active={kind === "watch_order"} onPress={() => setKind("watch_order")} />
-          </View>
+          {/* «ت٥أ» (أحمد ٢٦ نوفمبر): عائلةُ المقسّم كصفِّ «خاصّة/عامّة» فوقه — لا كبسولات */}
+          <Segmented
+            items={[
+              { id: "regular", label: t.listTypeRegular },
+              { id: "ranked", label: t.listTypeRanked },
+              { id: "watch_order", label: t.listTypeWatch },
+            ]}
+            value={kind}
+            onChange={(v) => setKind(v as typeof kind)}
+          />
           <Text size={12} muted>{kind === "ranked" ? t.listTypeRankedHint : kind === "watch_order" ? t.listTypeWatchHint : t.listTypeRegularHint}</Text>
         </View>
       )}

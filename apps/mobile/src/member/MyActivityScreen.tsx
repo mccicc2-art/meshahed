@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, View } from "react-native";
+import { BackHandler, Platform, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +12,7 @@ import { ActivityList } from "./ActivityList";
 import { ToastHost, type ToastHostRef } from "../HoldHost";
 import { errorText } from "../community/communityActs";
 import { SCOPES, label as scopeLabel, type ActivityItem, type Scope } from "@/core/activityDays";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { haptic } from "../haptics";
 import { TabSlide, useTabAim } from "../TabSlide";
 import type { MoveWatchDayBody, ToggleMovieBody, TrackResult, UnmarkEpisodesBody } from "../contracts";
@@ -147,21 +147,21 @@ export function MyActivityScreen({ from, scope }: { from: NativeRoot | "web"; sc
         /* 🆕 T526 — **الرقاقاتُ تُسحب** (أحمد ٢٣ نوفمبر: «امكانية اللف بالايماء» · «١أ»): `TabSlide` نفسُه (المكتبة · المجتمع ·
            الإحصاءات)، لوحٌ لكلِّ رقاقةٍ من حمولةٍ واحدة، والرقاقاتُ فوقه تُضيء الوجهةَ لحظةَ رفع الإصبع (`useTabAim`) */
         <View style={{ flex: 1 }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingHorizontal: PAGE_PAD, paddingTop: 14, paddingBottom: 4 }}>
-            {SCOPES.map((s) => (
-              <Chip
-                key={s}
-                label={scopeLabel(s, t)}
-                active={lit === s}
-                onPress={() => {
-                  if (s === tab) return;
-                  haptic.pick();
-                  setAim(s);
-                  setTab(s);
-                }}
-              />
-            ))}
-          </ScrollView>
+          {/* «ت٥أ» (أحمد ٢٦ نوفمبر): النطاقاتُ عائلةُ المقسّم بخطٍّ أصفر تتمرّر — لا كبسولات */}
+          <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 6, paddingBottom: 4 }}>
+            <Segmented
+              scroll
+              items={SCOPES.map((s) => ({ id: s, label: scopeLabel(s, t) }))}
+              value={lit}
+              onChange={(v) => {
+                const s = v as typeof tab;
+                if (s === tab) return;
+                haptic.pick();
+                setAim(s);
+                setTab(s);
+              }}
+            />
+          </View>
           <TabSlide
             order={SCOPES}
             tab={tab}

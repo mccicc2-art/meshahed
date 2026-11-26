@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { getDict, num, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
-import { chipClass, chipRow } from "./ui/controls";
+import { chipRow, segmentedItem, segmentedTrack } from "./ui/controls";
 import { Icon } from "./Icon";
 import { BackCrumb } from "./BackButton";
 import { HistoryRowMenu } from "./activity/HistoryRowMenu";
@@ -137,8 +137,9 @@ export function ActivityScreen({
         </header>
       )}
 
+      {/* «ت٥أ» (أحمد ٢٦ نوفمبر، استوديو المشاركة): صفُّ الفلتر عائلةُ المقسّم بخطٍّ أصفر يتمرّر — لا كبسولات */}
       <div className={chipRow}>
-        <div className="flex items-center gap-2">
+        <div className={segmentedTrack}>
           {SCOPES.map((s) => (
             <button
               key={s}
@@ -149,7 +150,7 @@ export function ActivityScreen({
                 tap(8);
                 setScope(s);
               }}
-              className={chipClass(scope === s)}
+              className={segmentedItem(scope === s)}
             >
               {label(s, t)}
             </button>

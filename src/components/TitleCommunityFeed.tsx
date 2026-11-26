@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { chipClass, chipRow } from "./ui/controls";
+import { chipRow, segmentedItem, segmentedTrackFull } from "./ui/controls";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 
@@ -103,7 +103,8 @@ export function TitleCommunityFeed({
           يعني أن «الكل» و«هو» شيءٌ واحد، **ومرشِّحٌ بخيارٍ واحد زينة.** */}
       {chips.length > 2 && (
         <div className={chipRow} role="group" aria-label={t.feedFilterGroup}>
-          <div className="flex items-center gap-2 pb-1">
+          {/* «ت٥أ» (أحمد ٢٦ نوفمبر): عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات */}
+          <div className={`${segmentedTrackFull} mb-1`}>
             {chips.map((c) => (
               <button
                 key={c.key}
@@ -113,7 +114,7 @@ export function TitleCommunityFeed({
                   tap(8);
                   setKind(c.key);
                 }}
-                className={chipClass(active === c.key, "sm")}
+                className={segmentedItem(active === c.key, "flex-1")}
               >
                 {c.label}
               </button>

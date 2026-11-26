@@ -9,7 +9,7 @@ import { Text } from "../ui";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { Sheet } from "../library/Sheet";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { span } from "../perfMarks";
 import { gifUrl, GIF_ID_RE } from "@/core/media";
 import type { Dict } from "@/core/i18n";
@@ -166,20 +166,17 @@ export function GifPicker({ onPick, onClose }: { onPick: (id: string) => void; o
           returnKeyType="search"
           style={{ minHeight: 44, backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, borderRadius: radius.control, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: tokens.fg, textAlign: "left" }}
         />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 6 }}>
-          {GIF_CATS.map((c) => (
-            <Chip
-              key={c.term}
-              label={c.label(t)}
-              active={cat === c.term}
-              onPress={() => {
-                haptic.pick();
-                setQ("");
-                setCat(cat === c.term ? null : c.term);
-              }}
-            />
-          ))}
-        </ScrollView>
+        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): الأصنافُ عائلةُ المقسّم تتمرّر — والضغطُ على المختار يُلغيه كما كان */}
+        <Segmented
+          scroll
+          items={GIF_CATS.map((c) => ({ id: c.term, label: c.label(t) }))}
+          value={cat ?? ""}
+          onChange={(v) => {
+            haptic.pick();
+            setQ("");
+            setCat(cat === v ? null : v);
+          }}
+        />
         {recentRow.length ? (
           <View style={{ gap: 6 }}>
             <Text size={12} weight="700" muted>{t.gifRecent}</Text>

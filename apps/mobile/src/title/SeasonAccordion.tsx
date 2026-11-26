@@ -10,6 +10,7 @@ import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { OneTimeHint } from "../library/OneTimeHint";
 import { libraryQuery } from "../library/LibraryScreen";
 import * as SecureStore from "expo-secure-store";
@@ -340,10 +341,15 @@ export function SeasonAccordion({
            لا يُرسم حين لا يختلف الترتيبُ عن الأصل — رقاقةٌ لا تغيّر شيئاً تُقرأ عطلاً */
         <View style={{ marginTop: 6, paddingTop: 12, borderTopWidth: 1, borderTopColor: tokens.divider, gap: 8 }}>
           <Text size={12} weight="600" muted style={{ paddingHorizontal: 4 }}>{t.seasonOrderLabel}</Text>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <Chip label={t.seasonOrderProgress} active={order === "progress"} onPress={() => pickOrder("progress")} />
-            <Chip label={t.seasonOrderOriginal} active={order === "original"} onPress={() => pickOrder("original")} />
-          </View>
+          {/* «ت٥أ» (أحمد ٢٦ نوفمبر): خيارٌ من اثنين = عائلةُ المقسّم لا كبسولتان */}
+          <Segmented
+            items={[
+              { id: "progress", label: t.seasonOrderProgress },
+              { id: "original", label: t.seasonOrderOriginal },
+            ]}
+            value={order}
+            onChange={(v) => pickOrder(v as typeof order)}
+          />
         </View>
       ) : null}
     </View>

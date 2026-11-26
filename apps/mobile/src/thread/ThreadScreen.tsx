@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, ScrollView, Share, StyleSheet, View, type TextInputInstance, type ViewInstance } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, I18nManager, Keyboard, Platform, Pressable, Share, StyleSheet, View, type TextInputInstance, type ViewInstance } from "react-native";
 import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop } from "react-native-svg";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -1393,11 +1393,15 @@ function TvTalkHead({ d, talk, tv }: { d: ThreadPayload; talk: { pick: EpisodeRe
         ) : null
       ) : (
         <View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 12 }}>
-            {[...seasons].reverse().map((x) => (
-              <Chip key={x.season} size="md" label={t.talkSeasonLabel(x.season)} active={x.season === season} onPress={() => tv.onSeason(x.season)} />
-            ))}
-          </ScrollView>
+          {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المواسمُ عائلةُ المقسّم بخطٍّ أصفر تتمرّر — لا كبسولات */}
+          <View style={{ paddingVertical: 8 }}>
+            <Segmented
+              scroll
+              items={[...seasons].reverse().map((x) => ({ id: String(x.season), label: t.talkSeasonLabel(x.season) }))}
+              value={String(season)}
+              onChange={(v) => tv.onSeason(Number(v))}
+            />
+          </View>
           {/* 🆕 R56 — الحلقاتُ بأرقام TMDB وعناوينها وصورها (أحمد: «١ أ» الصورةُ مغبّشةٌ لما لم تشاهده لأنّ صورَ الحلقات تحرق،
               «٢ ب» العنوانُ المكرّرُ من الرقم لا يُعرض). وقبل وصول الموسم مؤشّرٌ لا أرقامٌ تخمينيّة؛ وإن فشل فالعددُ القديم كما كان */}
           {!seasonInfo ? null : aired ? (

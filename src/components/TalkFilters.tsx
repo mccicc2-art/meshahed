@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setTalkFollowedOnly, setTalkSort, setFeedStrangers, setFeedSort } from "@/lib/actions";
-import { chipClass } from "./ui/controls";
+import { segmentedItem, segmentedTrackBare } from "./ui/controls";
 import { SortCycle } from "./ui/SortCycle";
 import { flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
@@ -72,12 +72,13 @@ export function TalkFilters({
   return (
     <div className="space-y-2 mb-3">
       {/* 🆕 D-1493 — صفٌّ واحدٌ كالتطبيق: «أعمالي» (و«من أتابعهم») أوّلاً ثمّ «الكل»، والترتيبُ في الطرف زرٌّ يدور «الأحدث ⌄» */}
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 border-b border-[color:var(--divider)]">
-        <div className="flex items-center gap-2">
-          <button type="button" aria-pressed={mine} onClick={() => pickMine(true)} className={chipClass(mine)}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[color:var(--divider)]">
+        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): الشريحتان عائلةُ المقسّم بلا خطِّها — خطُّ الصفِّ تحتهما فيجلس الأصفرُ عليه */}
+        <div className={segmentedTrackBare}>
+          <button type="button" aria-pressed={mine} onClick={() => pickMine(true)} className={segmentedItem(mine)}>
             {kind === "feed" ? t.feedScopeFollowing : t.talkScopeMine}
           </button>
-          <button type="button" aria-pressed={!mine} onClick={() => pickMine(false)} className={chipClass(!mine)}>
+          <button type="button" aria-pressed={!mine} onClick={() => pickMine(false)} className={segmentedItem(!mine)}>
             {t.allWord}
           </button>
         </div>

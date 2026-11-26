@@ -33,7 +33,15 @@ export type RateQueueItem = {
   year: number | null;
   /** متى شوهد آخرَ مرّة (الفيلم: تعليمُه · المسلسل: آخرُ حلقة) — الأحدثُ أوّلاً */
   at: string;
+  /** 🆕 أنمي (علَمُ المكتبة `follows.is_anime`، D-182): رزمةُ «الأنمي» الثالثة في التطبيق (قرارُ أحمد ٢٦ نوفمبر «٢أ»: بلا «الكلّ»،
+      وأفلامٌ · مسلسلاتٌ · أنمي). اختياريٌّ لأنّ الملخّصَ لا يحتاجه، وغيابُه يعني «ليس أنمي» */
+  anime?: boolean;
 };
+
+/** 🆕 الرزمُ الثلاث بترتيبها من البداية: الأفلام · المسلسلات · الأنمي — الأنمي فيلماً كان أو مسلسلاً رزمتُه الأنمي */
+export type RateDeckId = "movie" | "tv" | "anime";
+export const RATE_DECKS: readonly RateDeckId[] = ["movie", "tv", "anime"];
+export const rateDeckOf = (r: Pick<RateQueueItem, "kind" | "anime">): RateDeckId => (r.anime ? "anime" : r.kind);
 
 export type RateQueuePayload = {
   items: RateQueueItem[];

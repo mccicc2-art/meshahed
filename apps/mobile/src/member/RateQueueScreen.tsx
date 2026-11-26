@@ -8,7 +8,7 @@ import { api, write } from "../api";
 import { useApp } from "../state";
 import { Button, Text, TopBar } from "../ui";
 import { Icon } from "../icons";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { Sheet } from "../library/Sheet";
 import { StarRow } from "../title/StarRow";
 import { posterFor } from "../poster";
@@ -18,10 +18,11 @@ import { usePullRefresh } from "../pullRefresh";
 import { useHomeDoor } from "../homeDoor";
 import type { NativeRoot } from "../shell";
 import { RATE_QUEUE_KEY } from "./rateQueue";
+import { RateDeck } from "./RateDeck";
 import { num } from "@/core/i18n";
 import { messageOf } from "../settings/api";
-import type { RateQueueItem, RateQueuePayload } from "@/core/rateQueue";
-import type { RateBody, ToggleMovieBody } from "@/core/contracts/track";
+import { RATE_DECKS, rateDeckOf, type RateDeckId, type RateQueueItem, type RateQueuePayload } from "@/core/rateQueue";
+import type { RateBody, UnrateBody } from "@/core/contracts/track";
 
 /**
  * ====== 🆕 T530 — «بانتظار تقييمك» أصليّاً (أحمد ٢٣ نوفمبر: «١أ» قائمةٌ طويلة) ======
@@ -33,12 +34,22 @@ import type { RateBody, ToggleMovieBody } from "@/core/contracts/track";
  * 🔑 **ما فُعل لا ينتظر القائمة** (درسُ R253): القائمةُ لا تُعاد بعد كلِّ تقييم (مفتاحُها خارج `me:ratings`)، وما قيّمه أو
  * تخطّاه يُخفى بحالةٍ هنا — فإن أُعيدت القائمةُ بسحبٍ لم يرجع ما خرج، ولم يقفز صفٌّ تحت الإصبع.
  * 🔑 **والمتابعون يرون ما قيّمه هنا بطاقةً واحدة** («٣ب»): تقييماتٌ بلا كتابةٍ في اليوم تُجمع في خطّ المجتمع منذ T457.
+ *
+ * ====== 🆕 أحمد ٢٦ نوفمبر (استوديو المشاركة) ======
+ * - **طريقتان في شاشةٍ واحدة**: المروحةُ (`RateDeck`، الافتراضيّة) والقائمةُ القديمة — زرٌّ في الرأس يبدّل بينهما (أيقونتا الرئيسيّة نفسُهما).
+ * - **ثلاثُ رزمٍ بلا «الكلّ»** («٢أ»): أفلامٌ · مسلسلاتٌ · أنمي، تبويباتٌ بخطٍّ أصفرَ تحت المختار («ت٥أ»: لا كبسولاتِ فلترة).
+ * - **شريطُ تقدّمٍ تحت التبويبات** («ن١أ»): «قيّمت N من M» — M ما بقي وما قيّمتَه في هذه الجلسة.
+ * - **«لم أشاهده» يُخرج من الطابور وحدَه** («١أ»): لا يمسّ علامةَ المشاهدة. فاندمج فيه «تخطَّ» القديم (كانا الفعلَ نفسَه الآن)،
+ *   ويُكتب بعد أن يختفي إشعارُ «تراجع» لا قبله — فالتراجعُ لا يحتاج فعلاً عكسيّاً في الخادم.
+ * - **«لاحقاً»** يؤخّر العملَ إلى آخر رزمته في هذه الجلسة فقط — لا يُحفظ، لأنّه «ليس الآن» لا «أبداً».
  */
 const PAGE_PAD = 16;
 const SAVED_MS = 1100;
 /** بعد خروج صفٍّ لا تُقبل نجمةٌ هذه المدّة: ما تحته يصعد، وضغطةٌ قُصد بها صفٌّ قد تقع على الذي بعده (مراجعةُ الوكيل، البند ٢) */
 const SETTLE_MS = 450;
-type Filter = "all" | "movie" | "tv";
+/** مدّةُ «تراجع» — و«لم أشاهده» يُكتب بعدها */
+const UNDO_MS = 3500;
+type Mode = "cards" | "list";
 const keyOf = (r: { kind: string; id: number }) => `${r.kind}-${r.id}`;
 
 export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
@@ -47,12 +58,22 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const toast = useRef<ToastHostRef>(null);
-  const [filter, setFilter] = useState<Filter>("all");
-  /** ما اختير له نجومٌ وحُفظ — يبقى ظاهراً لحظةَ «انحفظ» ثمّ يدخل `gone` */
+  const [mode, setMode] = useState<Mode>("cards");
+  const flip = useCallback(() => {
+    haptic.pick();
+    setMode((m) => (m === "cards" ? "list" : "cards"));
+  }, []);
+  /** الرزمةُ المفتوحة — تُختار مرّةً حين تصل القائمة */
+  const [ci, setCi] = useState(-1);
+  /** ما قيّمه في القائمة ويبقى ظاهراً لحظةَ «انحفظ» ثمّ يدخل `gone` */
   const [saved, setSaved] = useState<ReadonlyMap<string, number>>(() => new Map());
   /** ما يُحفظ الآن — نجومُه ظاهرةٌ وصفُّه مقفل */
   const [busy, setBusy] = useState<ReadonlyMap<string, number>>(() => new Map());
   const [gone, setGone] = useState<ReadonlySet<string>>(() => new Set());
+  /** «لاحقاً»: رقمُ الترتيب في هذه الجلسة — الأكبرُ في آخر رزمته */
+  const [later, setLater] = useState<ReadonlyMap<string, number>>(() => new Map());
+  const [rated, setRated] = useState(0);
+  const [tray, setTray] = useState<readonly { key: string; poster: string | null; v: number }[]>([]);
   const [menu, setMenu] = useState<RateQueueItem | null>(null);
 
   const q = useQuery({
@@ -62,8 +83,38 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
   });
   const refresh = usePullRefresh([[...RATE_QUEUE_KEY, "all"]], 0);
 
-  /* المغادرةُ تُجدّد العددَ في الرئيسيّة و«تقييماتي» والمكتبة — لا كلُّ تقييم */
-  useEffect(() => () => void qc.invalidateQueries({ queryKey: RATE_QUEUE_KEY }), [qc]);
+  /* «لم أشاهده» المؤجَّلة: تُكتب بعد مهلة «تراجع»، وما بقي منها يُكتب عند المغادرة */
+  const pending = useRef(new Map<string, { r: RateQueueItem; timer: ReturnType<typeof setTimeout> }>());
+  /** «لم أشاهده» واحدةٌ بعد الأخرى: الخادمُ يقرأ الحالةَ ويكتبها، فطلبان متوازيان قد يُضيع أحدُهما الآخر (البند ٩) */
+  const skips = useRef<Promise<unknown>>(Promise.resolve());
+  const sendSkip = useCallback(
+    (r: RateQueueItem, quiet = false) => {
+      const next = skips.current.then(() => write("/api/v1/me/rate-queue/skip", { kind: r.kind, id: r.id }));
+      skips.current = next.catch(() => undefined);
+      next.catch(() => {
+        if (quiet) return;
+        setGone((g) => {
+          const n = new Set(g);
+          n.delete(keyOf(r));
+          return n;
+        });
+        toast.current?.say(t.apiInternal);
+      });
+    },
+    [t],
+  );
+  /* المغادرةُ تكتب ما بقي مؤجَّلاً وتُجدّد العددَ في الرئيسيّة و«تقييماتي» والمكتبة — لا كلُّ تقييم */
+  useEffect(
+    () => () => {
+      for (const { r, timer } of pending.current.values()) {
+        clearTimeout(timer);
+        sendSkip(r, true);
+      }
+      pending.current.clear();
+      void skips.current.then(() => qc.invalidateQueries({ queryKey: RATE_QUEUE_KEY }));
+    },
+    [qc, sendSkip],
+  );
 
   const home = useHomeDoor();
   const back = useCallback(() => {
@@ -80,102 +131,166 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
   }, [back]);
 
   const left = useMemo(() => (q.data?.items ?? []).filter((r) => !gone.has(keyOf(r))), [q.data, gone]);
-  const counts = useMemo(() => {
-    const open = left.filter((r) => !saved.has(keyOf(r)));
-    const tv = open.filter((r) => r.kind === "tv").length;
-    return { all: open.length, tv, movie: open.length - tv };
-  }, [left, saved]);
-  const rows = useMemo(() => (filter === "all" ? left : left.filter((r) => r.kind === filter)), [left, filter]);
+  /** الرزمُ الثلاث بترتيب `RATE_DECKS` — وما أُجّل في آخر رزمته بترتيب تأجيله */
+  const decks = useMemo(() => {
+    const out: RateQueueItem[][] = RATE_DECKS.map(() => []);
+    for (const r of left) out[RATE_DECKS.indexOf(rateDeckOf(r))].push(r);
+    for (const d of out) d.sort((a, b) => (later.get(keyOf(a)) ?? 0) - (later.get(keyOf(b)) ?? 0));
+    return out;
+  }, [left, later]);
+  const open = useMemo(() => decks.map((d) => d.filter((r) => !saved.has(keyOf(r))).length), [decks, saved]);
+
+  /* أوّلُ رزمةٍ: المسلسلات في الوسط إن كان فيها شيء (فتُرى الجارتان)، وإلّا أوّلُ رزمةٍ فيها شيء */
+  useEffect(() => {
+    if (ci >= 0 || !q.data) return;
+    const n = RATE_DECKS.map((d) => q.data.items.filter((r) => rateDeckOf(r) === d).length);
+    setCi(n[1] ? 1 : Math.max(0, n.findIndex((x) => x > 0)));
+  }, [q.data, ci]);
+  const deck = Math.max(0, ci);
 
   const settling = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** «تخطَّ» واحدةٌ بعد الأخرى: الخادمُ يقرأ الحالةَ ويكتبها، فطلبان متوازيان قد يُضيع أحدُهما الآخر (البند ٩) */
-  const skips = useRef<Promise<unknown>>(Promise.resolve());
-  const drop = useCallback((k: string) => {
+  const drop = useCallback((k: string, animate = true) => {
     if (settling.current) clearTimeout(settling.current);
     settling.current = setTimeout(() => (settling.current = null), SETTLE_MS);
     /* الصفُّ يُطوى ولا يختفي دفعةً: ما تحته يصعد بحركةٍ تراها العين */
-    LayoutAnimation.configureNext(LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+    if (animate) LayoutAnimation.configureNext(LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
     setGone((g) => new Set(g).add(k));
   }, []);
+  const restore = useCallback((k: string) => {
+    setGone((g) => {
+      const n = new Set(g);
+      n.delete(k);
+      return n;
+    });
+  }, []);
 
-  const rate = useCallback(
+  /** الكتابةُ الواحدة للطريقتين — تعود بالنجاح */
+  const save = useCallback(
+    async (r: RateQueueItem, stars: number): Promise<boolean> => {
+      try {
+        await write("/api/v1/track/rate", { tmdbId: r.id, mediaType: r.kind, rating: stars, review: "", title: r.title, posterPath: r.poster_path } satisfies RateBody);
+        return true;
+      } catch (e) {
+        toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.apiInternal));
+        return false;
+      }
+    },
+    [t],
+  );
+
+  /** «تراجع» بعد تقييم: يُسحب التقييمُ ويعود العملُ إلى رأس رزمته */
+  const undoRate = useCallback(
+    (r: RateQueueItem) => {
+      const k = keyOf(r);
+      restore(k);
+      setRated((n) => Math.max(0, n - 1));
+      setTray((x) => x.filter((y) => y.key !== k));
+      setLater((m) => {
+        const n = new Map(m);
+        n.set(k, -1 - n.size);
+        return n;
+      });
+      setCi(RATE_DECKS.indexOf(rateDeckOf(r)));
+      write("/api/v1/track/unrate", { tmdbId: r.id, mediaType: r.kind } satisfies UnrateBody).catch((e) =>
+        toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.apiInternal)),
+      );
+    },
+    [restore, t],
+  );
+
+  /* المروحة: التقييمُ يُحفظ (`save`) ثمّ تطير البطاقة (`RateDeck`)، ومعها يخرج العملُ هنا في الرسمة نفسِها */
+  const rated1 = useCallback(
+    (r: RateQueueItem, v: number) => {
+      const k = keyOf(r);
+      drop(k, false);
+      setRated((n) => n + 1);
+      setTray((x) => [{ key: k, poster: r.poster_path, v }, ...x.filter((y) => y.key !== k)].slice(0, 6));
+      toast.current?.say(t.rateQueueSaved(num(v, locale)), { label: t.undoWatched, onPress: () => undoRate(r) }, UNDO_MS, "success");
+    },
+    [drop, t, locale, undoRate],
+  );
+
+  /* القائمة: النجمةُ هي الحفظ، فيقول الصفُّ «انحفظ» ثمّ يُطوى */
+  const rateRow = useCallback(
     async (r: RateQueueItem, stars: number | null) => {
       const k = keyOf(r);
       if (!stars || busy.has(k) || saved.has(k) || settling.current) return;
       haptic.pick();
       setBusy((b) => new Map(b).set(k, stars));
-      try {
-        await write("/api/v1/track/rate", { tmdbId: r.id, mediaType: r.kind, rating: stars, review: "", title: r.title, posterPath: r.poster_path } satisfies RateBody);
-        haptic.success();
-        setSaved((s) => new Map(s).set(k, stars));
-        setTimeout(() => drop(k), SAVED_MS);
-      } catch (e) {
-        toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.apiInternal));
-      } finally {
-        setBusy((b) => {
-          const n = new Map(b);
+      const ok = await save(r, stars);
+      setBusy((b) => {
+        const n = new Map(b);
+        n.delete(k);
+        return n;
+      });
+      if (!ok) return;
+      haptic.success();
+      setSaved((s) => new Map(s).set(k, stars));
+      setTimeout(() => {
+        drop(k);
+        setRated((n) => n + 1);
+        setSaved((s) => {
+          const n = new Map(s);
           n.delete(k);
           return n;
         });
-      }
+      }, SAVED_MS);
     },
-    [busy, saved, drop, t],
+    [busy, saved, save, drop],
   );
 
-  const skip = useCallback(
-    (r: RateQueueItem) => {
-      setMenu(null);
-      drop(keyOf(r));
-      const next = skips.current.then(() => write("/api/v1/me/rate-queue/skip", { kind: r.kind, id: r.id }));
-      skips.current = next.catch(() => undefined);
-      next.catch(() => {
-        setGone((g) => {
-          const n = new Set(g);
-          n.delete(keyOf(r));
-          return n;
-        });
-        toast.current?.say(t.apiInternal);
-      });
-    },
-    [drop, t],
-  );
+  const laterOf = useCallback((r: RateQueueItem) => {
+    setLater((m) => new Map(m).set(keyOf(r), Date.now()));
+  }, []);
 
-  const unwatch = useCallback(
+  const notSeen = useCallback(
     (r: RateQueueItem) => {
       setMenu(null);
-      if (r.kind !== "movie") return;
-      drop(keyOf(r));
-      write("/api/v1/track/movie", { movieTmdbId: r.id, runtime: null, watched: false } satisfies ToggleMovieBody).then(
-        () => toast.current?.say(t.rateQueueUnwatched, undefined, 2200, "success"),
-        (e) => {
-          setGone((g) => {
-            const n = new Set(g);
-            n.delete(keyOf(r));
-            return n;
-          });
-          toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.apiInternal));
+      const k = keyOf(r);
+      drop(k, mode === "list");
+      const timer = setTimeout(() => {
+        pending.current.delete(k);
+        sendSkip(r);
+      }, UNDO_MS);
+      pending.current.set(k, { r, timer });
+      toast.current?.say(
+        t.rateQueueRemoved,
+        {
+          label: t.undoWatched,
+          onPress: () => {
+            const p = pending.current.get(k);
+            if (!p) return;
+            clearTimeout(p.timer);
+            pending.current.delete(k);
+            restore(k);
+            setCi(RATE_DECKS.indexOf(rateDeckOf(r)));
+          },
         },
+        UNDO_MS,
       );
     },
-    [drop, t],
+    [drop, mode, sendSkip, restore, t],
   );
 
   const openTitle = useCallback(
     (r: RateQueueItem) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: r.kind, id: String(r.id), from } }),
     [router, from],
   );
+  const metaOf = useCallback(
+    (r: RateQueueItem) => [r.anime ? t.rateQueueAnimeOne : r.kind === "tv" ? t.rateQueueShow : t.rateQueueMovie, r.year ? String(r.year) : null].filter(Boolean).join(" · "),
+    [t],
+  );
 
   const renderRow = useCallback(
     ({ item: r }: { item: RateQueueItem }) => {
       const k = keyOf(r);
       const done = saved.get(k);
-      const pending = busy.get(k);
+      const now = busy.get(k);
       const uri = posterFor(r.poster_path, 54);
-      const meta = [r.kind === "tv" ? t.rateQueueShow : t.rateQueueMovie, r.year ? String(r.year) : null].filter(Boolean).join(" · ");
       return (
-        <View style={{ flexDirection: "row", gap: 12, padding: 10, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, opacity: done ? 0.55 : 1 }}>
+        <View style={{ flexDirection: "row", gap: 12, paddingVertical: 10, paddingHorizontal: PAGE_PAD, borderBottomWidth: 1, borderBottomColor: tokens.divider, opacity: done ? 0.55 : 1 }}>
           <Pressable onPress={() => openTitle(r)} accessibilityRole="link" accessibilityLabel={r.title}>
-            <View style={{ width: 54, aspectRatio: 2 / 3, borderRadius: 8, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
+            <View style={{ width: 56, aspectRatio: 2 / 3, borderRadius: 10, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
               {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : <Icon name={r.kind === "tv" ? "tv" : "film"} size={16} color={tokens.muted} />}
             </View>
           </Pressable>
@@ -183,7 +298,7 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Pressable onPress={() => openTitle(r)} style={{ flex: 1, minWidth: 0 }}>
                 <Text size={15} weight="700" numberOfLines={1}>{r.title}</Text>
-                <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>{meta}</Text>
+                <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>{metaOf(r)}</Text>
               </Pressable>
               {done ? null : (
                 <Pressable onPress={() => setMenu(r)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.rateQueueMore} style={{ padding: 2 }}>
@@ -191,23 +306,51 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
                 </Pressable>
               )}
             </View>
-            <View style={{ opacity: pending ? 0.6 : 1 }} pointerEvents={pending || done ? "none" : "auto"}>
-              <StarRow spread size={20} value={done ?? pending ?? null} onChange={(n) => void rate(r, n)} />
+            <View style={{ opacity: now ? 0.6 : 1 }} pointerEvents={now || done ? "none" : "auto"}>
+              <StarRow spread size={20} value={done ?? now ?? null} onChange={(n) => void rateRow(r, n)} />
             </View>
-            {done ? (
-              <Text size={13} weight="700" color={tokens.success}>{`✓ ${t.rateQueueSaved(num(done, locale))}`}</Text>
-            ) : null}
+            {done ? <Text size={13} weight="700" color={tokens.success}>{`✓ ${t.rateQueueSaved(num(done, locale))}`}</Text> : null}
           </View>
         </View>
       );
     },
-    [saved, busy, tokens, t, locale, openTitle, rate],
+    [saved, busy, tokens, t, locale, openTitle, rateRow, metaOf],
   );
+
+  const total = rated + open.reduce((a, b) => a + b, 0);
+  const label: Record<RateDeckId, (n: string) => string> = { movie: t.rateQueueMovies, tv: t.rateQueueShows, anime: t.rateQueueAnime };
+  const header = (
+    <View style={{ paddingHorizontal: PAGE_PAD, gap: 10, paddingBottom: 6 }}>
+      {/* التبويباتُ الثلاثةُ ثابتةُ المواضع (عددُها صفرٌ أحياناً ولا تختفي) — والمروحةُ تعتمد على مواضعها: الجارتان رأسا ما يجاور */}
+      <Segmented
+        items={RATE_DECKS.map((d, i) => ({ id: d, label: label[d](num(open[i], locale)) }))}
+        value={RATE_DECKS[deck]}
+        onChange={(v) => setCi(RATE_DECKS.indexOf(v as RateDeckId))}
+      />
+      <View style={{ gap: 6 }} accessibilityLiveRegion="polite">
+        <Text size={12} muted>{t.rateQueueProgress(num(rated, locale), num(total, locale))}</Text>
+        <View style={{ height: 4, borderRadius: 999, backgroundColor: tokens.surface2, overflow: "hidden" }}>
+          <View style={{ height: "100%", width: `${total ? (rated / total) * 100 : 0}%`, borderRadius: 999, backgroundColor: tokens.accent }} />
+        </View>
+      </View>
+    </View>
+  );
+  const rows = decks[deck];
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top }}>
-        <TopBar title={t.rateQueueTitle} onBack={back} onBackLong={home} backLabel={t.closeLabel} />
+        <TopBar
+          title={t.rateQueueTitle}
+          onBack={back}
+          onBackLong={home}
+          backLabel={t.closeLabel}
+          end={
+            <Pressable onPress={flip} hitSlop={8} accessibilityRole="button" accessibilityLabel={mode === "cards" ? t.rateQueueViewList : t.rateQueueViewCards} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+              <Icon name={mode === "cards" ? "view-rows" : "view-cards"} size={22} color={tokens.fg} />
+            </Pressable>
+          }
+        />
       </View>
       {!q.data ? (
         q.isError ? (
@@ -216,13 +359,29 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
             <Button label={t.errorRetry} variant="ghost" onPress={() => void q.refetch()} />
           </View>
         ) : (
-          <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 6, gap: 8 }}>
-            <View style={{ height: 28, width: 220, borderRadius: 14, backgroundColor: tokens.surface2, marginBottom: 4 }} />
-            {Array.from({ length: 6 }, (_, i) => (
-              <View key={i} style={{ height: 104, borderRadius: 16, backgroundColor: tokens.surface2 }} />
-            ))}
+          <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 6, gap: 12, alignItems: "center" }}>
+            <View style={{ height: 44, alignSelf: "stretch", borderRadius: 10, backgroundColor: tokens.surface2 }} />
+            <View style={{ width: "58%", aspectRatio: 2 / 3, borderRadius: 14, backgroundColor: tokens.surface2, marginTop: 16 }} />
           </View>
         )
+      ) : !q.data.items.length ? (
+        <Text muted style={{ textAlign: "center", paddingVertical: 56, paddingHorizontal: PAGE_PAD, lineHeight: 22 }}>{t.rateQueueEmpty}</Text>
+      ) : mode === "cards" ? (
+        <View style={{ flex: 1, paddingBottom: insets.bottom + 8 }}>
+          {header}
+          <RateDeck
+            decks={decks}
+            ci={deck}
+            onDeck={setCi}
+            onRate={save}
+            onRated={rated1}
+            onLater={laterOf}
+            onMenu={setMenu}
+            onOpen={openTitle}
+            tray={tray}
+            metaOf={metaOf}
+          />
+        </View>
       ) : (
         <FlatList
           data={rows}
@@ -231,34 +390,41 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
           extraData={[saved, busy]}
           refreshControl={refresh}
           initialNumToRender={8}
-          ItemSeparatorComponent={Gap}
-          ListHeaderComponent={
-            <View style={{ paddingTop: 6, paddingBottom: 12, gap: 10 }}>
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                <Chip label={t.rateQueueAll(num(counts.all, locale))} active={filter === "all"} onPress={() => setFilter("all")} />
-                {counts.movie ? <Chip label={t.rateQueueMovies(num(counts.movie, locale))} active={filter === "movie"} onPress={() => setFilter("movie")} /> : null}
-                {counts.tv ? <Chip label={t.rateQueueShows(num(counts.tv, locale))} active={filter === "tv"} onPress={() => setFilter("tv")} /> : null}
-              </View>
-              {rows.length ? <Text size={12} muted style={{ lineHeight: 18 }}>{t.rateQueueHint}</Text> : null}
-            </View>
+          ListHeaderComponent={header}
+          ListEmptyComponent={
+            <Text muted style={{ textAlign: "center", paddingVertical: 56, lineHeight: 22 }}>
+              {left.length ? t.rateQueueDeckDone(t.rateQueueDeckNames[deck]) : t.rateQueueEmpty}
+            </Text>
           }
-          ListEmptyComponent={<Text muted style={{ textAlign: "center", paddingVertical: 56, lineHeight: 22 }}>{t.rateQueueEmpty}</Text>}
-          contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 40 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         />
       )}
       {menu ? (
         <Sheet title={menu.title} onClose={() => setMenu(null)}>
           <View style={{ gap: 10, paddingBottom: 8 }}>
-            <Button label={t.rateQueueSkip} variant="ghost" onPress={() => skip(menu)} />
-            {menu.kind === "movie" ? <Button label={t.rateQueueNotWatched} variant="ghost" onPress={() => unwatch(menu)} /> : null}
+            {mode === "cards" ? (
+              <Button
+                label={t.rateQueueLater}
+                variant="ghost"
+                onPress={() => {
+                  setMenu(null);
+                  laterOf(menu);
+                }}
+              />
+            ) : null}
+            <Button label={t.rateQueueNotWatched} variant="ghost" onPress={() => notSeen(menu)} />
+            <Button
+              label={t.rateQueueOpenTitle}
+              variant="ghost"
+              onPress={() => {
+                setMenu(null);
+                openTitle(menu);
+              }}
+            />
           </View>
         </Sheet>
       ) : null}
       <ToastHost hostRef={toast} bottom={insets.bottom + 24} />
     </View>
   );
-}
-
-function Gap() {
-  return <View style={{ height: 8 }} />;
 }

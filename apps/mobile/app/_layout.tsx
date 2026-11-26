@@ -176,6 +176,8 @@ function Shell() {
         <Stack.Screen name="calendar" options={{ headerShown: false }} />
         {/* 🆕 D-1357 (V-C · C1) — «تقييماتي» أصليّاً: تُدفع فوق الرئيسيّة من عنوان قسم التقييمات و«الكلّ» */}
         <Stack.Screen name="ratings" options={{ headerShown: false }} />
+        {/* 🆕 «بانتظار تقييمك» بلا ترويسة النظام (لقطةُ أحمد: شريطُ «rate-queue» فوق رأسها) — رأسُها في الشاشة نفسِها */}
+        <Stack.Screen name="rate-queue" options={{ headerShown: false }} />
         {/* 🆕 D-1366 — «تقريرك» أصليّاً (V-C · C5) */}
         <Stack.Screen name="reports" options={{ headerShown: false }} />
         {/* 🆕 D-1367 — «الإحصائيات الكاملة» أصليّةً (V-C · C5 · ب) */}

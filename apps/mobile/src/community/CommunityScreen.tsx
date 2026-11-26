@@ -35,7 +35,7 @@ import type { Anchor } from "../library/HoldMenu";
 import { rememberFeedChoice, withFeedChoice } from "./feedChoice";
 import { lastSeen, rememberSeen } from "./feedSeen";
 import { FloatButton } from "../FloatButton";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { SortCycle } from "../library/SortCycle";
 import { sortTalkRooms, talkQuiet, type TalkSort } from "@/core/talkSort";
 import { COMMUNITY_PAGER_TABS, type BoardSection, type CommunityPagerTab, type CommunityPrefsBody } from "@/core/communityParams";
@@ -483,13 +483,19 @@ function TalkHead({
           عدد البوست وارفع الكتابات»): الشرائحُ في البداية والترتيبُ في الطرف، والخطُّ تحتهما. العددُ خرج — كان يحجز
           صفّاً كاملاً لرقمٍ لا يُفعل به شيء. ⚖️ ينقض «السطرَ الثاني الهادئ» من التصميم B (D-1201) بيد صاحبه.
           `flexWrap`: إن ضاق الصفُّ (خطٌّ مكبَّر · شاشةٌ ضيّقة) ينزل الترتيبُ سطراً بدل أن يُقصّ. */}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12, rowGap: 8, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-        {/* 🆕 D-1493 — «أعمالي» (و«من أتابعهم») أوّلاً ثمّ «الكل» (أحمد ٢٠ أكتوبر)، والترتيبُ زرٌّ واحدٌ يدور «الأحدث ⌄» */}
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          <Chip label={kind === "feed" ? t.feedScopeFollowing : t.talkScopeMine} active={mine} onPress={() => (mine ? undefined : scope(true))} />
-          <Chip label={t.allWord} active={!mine} onPress={() => (mine ? scope(false) : undefined)} />
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12, rowGap: 8, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
+        {/* 🆕 D-1493 — «أعمالي» (و«من أتابعهم») أوّلاً ثمّ «الكل» (أحمد ٢٠ أكتوبر)، والترتيبُ زرٌّ واحدٌ يدور «الأحدث ⌄».
+            «ت٥أ» (أحمد ٢٦ نوفمبر): الشريحتان عائلةُ المقسّم بلا خطِّها (`bare`) — خطُّ الصفِّ نفسُه تحتهما فيجلس الأصفرُ عليه */}
+        <Segmented
+          bare
+          items={[
+            { id: "mine", label: kind === "feed" ? t.feedScopeFollowing : t.talkScopeMine },
+            { id: "all", label: t.allWord },
+          ]}
+          value={mine ? "mine" : "all"}
+          onChange={(v) => (v === "mine" ? (mine ? undefined : scope(true)) : mine ? scope(false) : undefined)}
+        />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: 6 }}>
         <SortCycle
           label={t.talkSortAria}
           value={sort}

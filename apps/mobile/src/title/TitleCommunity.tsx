@@ -8,6 +8,7 @@ import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { Sheet } from "../library/Sheet";
 import { StarRow } from "./StarRow";
 import { radius } from "../theme";
@@ -148,11 +149,16 @@ export function CommunityTab({
 
       {/* 🆕 T532 — الرقاقاتُ حين يوجد من قيّم بلا كتابة؛ وإلّا فالتبويبُ كما كان */}
       {bare.length ? (
-        <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-          <Chip label={t.titleRevAll(num(data.reviews.length + bare.length, locale))} active={shown === "all"} onPress={() => setFilter("all")} />
-          <Chip label={t.titleRevWritten(num(data.reviews.length, locale))} active={shown === "written"} onPress={() => setFilter("written")} />
-          <Chip label={t.titleRevRatings(num(bare.length, locale))} active={shown === "ratings"} onPress={() => setFilter("ratings")} />
-        </View>
+        /* «ت٥أ» (أحمد ٢٦ نوفمبر): عائلةُ المقسّم بخطٍّ أصفر لا كبسولات */
+        <Segmented
+          items={[
+            { id: "all", label: t.titleRevAll(num(data.reviews.length + bare.length, locale)) },
+            { id: "written", label: t.titleRevWritten(num(data.reviews.length, locale)) },
+            { id: "ratings", label: t.titleRevRatings(num(bare.length, locale)) },
+          ]}
+          value={shown}
+          onChange={(v) => setFilter(v as typeof shown)}
+        />
       ) : null}
 
       {shown !== "ratings"

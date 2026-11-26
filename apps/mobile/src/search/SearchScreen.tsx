@@ -10,7 +10,7 @@ import { shell } from "../shell";
 import { Button, Text, Toast, toastReducer } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
-import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { OneTimeHint } from "../library/OneTimeHint";
 import { libraryQuery } from "../library/LibraryScreen";
 import { navHeight } from "../BottomNav";
@@ -478,21 +478,21 @@ export function SearchScreen() {
             {hintDue && !empty ? <OneTimeHint id="search-desc" text={t.hintSearchDesc} hidden={tourBusy} /> : null}
 
             {/* الرقاقاتُ الخمس — `chipRow`: تتمرّر أفقيّاً حتى حافّة الشاشة (`-mx-4 px-4`) */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -PAGE_PAD }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }} keyboardShouldPersistTaps="handled">
-              {SCOPES.map((s) => (
-                <Chip
-                  key={s}
-                  size="md"
-                  label={scopeLabel(s, t)}
-                  active={scope === s}
-                  onPress={() => {
-                    if (s === scope) return;
-                    haptic.pick();
-                    setScope(s);
-                  }}
-                />
-              ))}
-            </ScrollView>
+            {/* «ت٥أ» (أحمد ٢٦ نوفمبر): النطاقاتُ الخمسة عائلةُ المقسّم بخطٍّ أصفر تتمرّر حتى حافّة الشاشة — لا كبسولات */}
+            <View style={{ marginHorizontal: -PAGE_PAD }}>
+              <Segmented
+                scroll
+                inset={PAGE_PAD - 12}
+                items={SCOPES.map((s) => ({ id: s, label: scopeLabel(s, t) }))}
+                value={scope}
+                onChange={(v) => {
+                  const s = v as typeof scope;
+                  if (s === scope) return;
+                  haptic.pick();
+                  setScope(s);
+                }}
+              />
+            </View>
 
             {short && (scope === "artists" || scope === "members" || scope === "lists") ? (
               /* 🆕 D-1442 — الرقاقةُ تقرّر ما تحتها قبل الكتابة */

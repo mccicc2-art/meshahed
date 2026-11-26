@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { haptic } from "../haptics";
 import { Chip } from "../library/Chip";
+import { Segmented } from "../library/ToolsSheet";
 import { Sheet } from "../library/Sheet";
 import { StatusPill } from "../settings/ui";
 import { num } from "@/core/i18n";
@@ -134,11 +135,13 @@ export function ActivityList({
   return (
     <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: scopeIn ? 6 : 14 }}>
       {scopeIn ? null : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-          {SCOPES.map((s) => (
-            <Chip key={s} label={scopeLabel(s, t)} active={scope === s} onPress={() => (s === scope ? undefined : (haptic.pick(), setScope(s)))} />
-          ))}
-        </ScrollView>
+        /* «ت٥أ» (أحمد ٢٦ نوفمبر): النطاقاتُ عائلةُ المقسّم بخطٍّ أصفر تتمرّر — لا كبسولات */
+        <Segmented
+          scroll
+          items={SCOPES.map((s) => ({ id: s, label: scopeLabel(s, t) }))}
+          value={scope}
+          onChange={(v) => (v === scope ? undefined : (haptic.pick(), setScope(v as typeof scope)))}
+        />
       )}
       {card ? (
         /* بطاقةُ الأسبوع: ما ليس صفراً وحدَه (لا «0 أفلام»)، والساعاتُ إن عُرفت المدّة */

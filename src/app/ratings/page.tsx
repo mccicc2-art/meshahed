@@ -7,7 +7,7 @@ import { getT } from "@/lib/locale";
 import { localizeRows } from "@/lib/localize";
 import { posterUrl } from "@/core/media";
 import { Icon } from "@/components/Icon";
-import { chipClass } from "@/components/ui/controls";
+import { segmentedItem, segmentedTrackBare, segmentedTrackFull } from "@/components/ui/controls";
 import { PosterCard } from "@/components/PosterCard";
 import { webWords } from "@/components/webWords";
 import { RateQueueEntryServer } from "@/components/RateQueueServer";
@@ -79,24 +79,24 @@ export default async function RatingsPage({
         <RateQueueEntryServer locale={locale} className="mb-4" />
       </Suspense>
 
-      <div className="flex flex-wrap items-center gap-1.5 mb-4">
+      {/* «ت٥أ» (أحمد ٢٦ نوفمبر، استوديو المشاركة): صفُّ الفلتر عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات في أيِّ مكان */}
+      <div className={`${segmentedTrackFull} flex-wrap mb-4`}>
         {chips.map((c) => (
           <Link
             key={c.key}
             href={c.href}
-            className={chipClass(c.on, "sm")}
+            className={segmentedItem(c.on)}
           >
             {c.label} <span className="opacity-70 tabular-nums"><span dir="ltr">{c.count}</span></span>
           </Link>
         ))}
         {/* 🆕 R269 — الترتيبُ والنوعُ على الحاسوب — رقاقاتُ العائلة نفسِها (القاعدة ٣) */}
-        <span className="hidden desk:flex ms-auto items-center gap-1.5">
-          <Link href={hrefWith({ sort: null })} className={chipClass(sort === "new", "sm")}>{w.ratingsNewest}</Link>
-          <Link href={hrefWith({ sort: "top" })} className={chipClass(sort === "top", "sm")}>{w.ratingsTop}</Link>
-          <span aria-hidden className="mx-1 h-5 w-px bg-[color:var(--divider)]" />
-          <Link href={hrefWith({ m: null })} className={chipClass(!media, "sm")}>{t.ratingsAll}</Link>
-          <Link href={hrefWith({ m: "tv" })} className={chipClass(media === "tv", "sm")}>{t.shortShows}</Link>
-          <Link href={hrefWith({ m: "movie" })} className={chipClass(media === "movie", "sm")}>{t.shortMovies}</Link>
+        <span className={`${segmentedTrackBare} hidden desk:flex ms-auto`}>
+          <Link href={hrefWith({ sort: null })} className={segmentedItem(sort === "new")}>{w.ratingsNewest}</Link>
+          <Link href={hrefWith({ sort: "top" })} className={segmentedItem(sort === "top")}>{w.ratingsTop}</Link>
+          <Link href={hrefWith({ m: null })} className={segmentedItem(!media)}>{t.ratingsAll}</Link>
+          <Link href={hrefWith({ m: "tv" })} className={segmentedItem(media === "tv")}>{t.shortShows}</Link>
+          <Link href={hrefWith({ m: "movie" })} className={segmentedItem(media === "movie")}>{t.shortMovies}</Link>
         </span>
       </div>
 
