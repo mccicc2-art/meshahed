@@ -115,6 +115,8 @@ export function ShahidSyncHost() {
           /* 🆕 المهمّة ٥٦٨ — نقطةٌ لا نقطتان: القياسُ يقبل `[\w.-]` وحدها، فكان النوعُ بنقطتين يسقط من الصفّ بصمت */
           kind: `shahid.${kind}`,
           result: outcome.ok ? "ok" : outcome.reason,
+          /* 🆕 المهمّة ٥٧١ — لماذا لم تُقرأ: ردُّ شاهد أو انتقالُ الصفحة أو المهلة (قياسُ أحمد بعد R319: `unreadable` بلا سبب) */
+          ...(!outcome.ok && outcome.reason === "unreadable" ? { why: web.current?.why() || "job" } : {}),
           ...(outcome.ok ? { ep: outcome.episodes, mv: outcome.movies } : {}),
           ...(s ? { items: s.items, rec: s.rec, part: s.part, skip: s.skip, unm: s.unm } : {}),
         });

@@ -172,7 +172,11 @@ function ShahidLogin({ why, d, onClose, onFound }: PlatformLoginProps) {
       setCover(true);
       onFound(r.name, async () => {
         const read = await readShahid(web.current as ShahidWebRef, null, () => false);
-        if (!read || read === "auth") return { episodes: 0, movies: 0 };
+        /* 🆕 المهمّة ٥٧١ — العدُّ للسؤال فشل: سببُه في القياس، لا صفرٌ صامت */
+        if (!read || read === "auth") {
+          note("count", { why: read === "auth" ? "auth" : web.current?.why() || "-" });
+          return { episodes: 0, movies: 0 };
+        }
         const watched = read.progress.filter(isWatched);
         return { episodes: watched.filter((p) => read.episodes.has(p.assetId)).length, movies: watched.filter((p) => read.movieOf.has(p.assetId)).length };
       });

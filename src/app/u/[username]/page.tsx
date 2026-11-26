@@ -717,7 +717,10 @@ export default async function PublicProfilePage({
             🆕 T493 — **وفي كلّ عرض** (أحمد ٢١ نوفمبر: «وحده نفس مقاس التطبيق»): سقطت ارتفاعاتُ التابلت والحاسوب (١٥–٢٧rem
             و٢٥٠ على الحاسوب) — **ونقضٌ صريحٌ لنسب D-836/D-867 أعلاه (٣٫٢–٤:١)**: الغلافُ على الحاسوب يطول (~٥٠٠–٦٠٠px)
             ثمنَ أن يرى صاحبُه ما ضبطه في كلّ شاشة */}
-        <div className="relative aspect-[12/5] desk:col-span-2 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+        {/* ⚖️ T570 — **والحاسوبُ وحده سقفُه ٢٦٠** (أحمد ٢٦ نوفمبر بلقطته: «قلل الارتفاع جدا كبير»، ثمّ «أ»): نسبةُ ٢٫٤ على
+            عمودٍ عرضُه ~١١٢٠ تعطي ~٤٧٠px فلا يظهر من الصفحة شيءٌ قبل التمرير. **نقضٌ جزئيٌّ لـT493 في الحاسوب وحده** — والجوالُ
+            والتابلت على النسبة كما هما. والقصُّ يتبع `cover_pos` الذي اختاره صاحبُه، فتبقى نقطتُه ظاهرةً وإن قُصّ أكثرَ ممّا في صندوق التعديل */}
+        <div className="relative aspect-[12/5] desk:aspect-auto desk:h-[16.25rem] desk:col-span-2 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
           {/* 🆕 **والتدرّجُ أرضيّةٌ دائمةٌ لا فرعٌ مقابل** (D-657):
               **صورةٌ تفشل بعد الرسم لا تعيد تشغيل الفرع** — فيجب أن
               يكون تحتها أصلاً. **ومن سقط غلافُه يرى ما يراه من لا
@@ -996,7 +999,10 @@ export default async function PublicProfilePage({
                   يُعكس**: ٢٢ ثم ٢٤ مع الغلاف الأطول، **ودرجةٌ واحدةٌ
                   عند `lg` كالغلاف والدائرة** — **ثلاثتُها تكبر معاً أو
                   لا يكبر منها شيء.** */}
-              <div className="min-w-0 flex-1 flex items-center gap-1.5 text-22 lg:text-24">
+              {/* ⚖️ T570 — **ولا يتمدّد الاسمُ في الحاسوب** (`desk:flex-initial`، أحمد بلقطةٍ محوَّطة على «متابعة · رسالة» في منتصف الصفحة):
+                  العمودُ هناك يمتدّ إلى بطاقة الأرقام، و`flex-1` كان يأخذ الفراغَ كلَّه فيدفع الزرّين إلى طرفه البعيد. **والجوالُ كما هو**:
+                  عمودُه ضيّقٌ، والزرّان في آخر الصفّ هناك هما ما اعتاده */}
+              <div className="min-w-0 flex-1 desk:flex-initial flex items-center gap-1.5 text-22 lg:text-24">
                 <h1 className="hero-halo min-w-0 font-bold leading-tight truncate">
                   {displayName}
                 </h1>
@@ -1065,7 +1071,9 @@ export default async function PublicProfilePage({
               <p className="hero-halo mt-0.5 text-[calc(13px*var(--fs))] text-muted leading-tight">
                 {/* 🔴 و`text-white` كان عطلاً صامتاً في `daylight` — **و`--muted` يُقرأ على السمتين.** والاتّجاهُ LTR للمعرّف وحدَه
                     فلا ينقلب @ في RTL. */}
-                <span dir="ltr" className="block min-w-0 truncate">
+                {/* ⚖️ T570 — **`inline-block` لا `block`**: صندوقٌ LTR بعرض العمود يحاذي نصَّه يساراً، فجلس المعرّفُ في الطرف البعيد
+                    عن الاسم (في الحاسوب منتصفَ الصفحة). **وبعرض نصّه وحده يتبع اتّجاهَ الفقرة** فيجلس تحت الاسم في جهته، و`max-w-full` يُبقي القطع */}
+                <span dir="ltr" className="inline-block max-w-full align-top truncate">
                   @{profile.username}
                 </span>
               </p>

@@ -86,6 +86,27 @@ export function shahidBootScript(): string {
       localStorage.setItem("persist:modules", JSON.stringify(pm));
     } catch (e) {}
   };
+  /* 🆕 المهمّة ٥٧١ — **ترويسةُ الملفّ كما يبنيها شاهد حرفاً** (قياسُ جوال أحمد بعد R319: الدخولُ نجح والقراءةُ فشلت في أقلَّ من ثانية،
+     وكنّا نرسل \`{id, master}\` وحدها). شاهد يبني من كوكي \`profileType\` (وإلّا الملفِّ المختار): \`profile\` = عمرُ الطفل إن كان ·
+     \`ageRestriction\` (أو طفل) · المعرّف · \`master\` (كبارٌ ورئيسيّ)؛ و\`profile-key\` = العمر · \`ageRestriction\` · \`isAdult\`؛
+     ولغةُ الطلب لغةُ الملفّ (\`profileLanguage\`). مقيسٌ في كوده ٢٦ نوفمبر. ونوعٌ مجهول ⇐ كبارٌ رئيسيّ كما كان يعمل في الفحص */
+  var profileHeaders = function (pid) {
+    var b = null;
+    try { var c = cookie("profileType"); b = c ? JSON.parse(c) : null; } catch (e) { b = null; }
+    var sp = selected();
+    if (!b || !b.type) b = (sp && String(sp.id) === String(pid)) ? sp : b;
+    var known = !!(b && b.type);
+    var kid = known && b.type === "KID", adult = !known || b.type === "ADULT";
+    var age = kid ? (b.age || b.ageRangeMaxAge || null) : null;
+    var o = {}, k = {};
+    if (age) { o.age = age; k.age = age; }
+    o.ageRestriction = !!((b && b.ageRestriction) || kid);
+    o.id = pid;
+    o.master = known ? (adult && !!b["default"]) : true;
+    k.ageRestriction = o.ageRestriction;
+    k.isAdult = adult;
+    return { profile: JSON.stringify(o), key: JSON.stringify(k) };
+  };
   var last = "";
   var tick = function () {
     var st = state();
@@ -138,10 +159,13 @@ export function shahidBootScript(): string {
         if (auth) {
           var tk = token(), pid = profileId();
           if (!tk || !pid) { post({ t: "api", id: id, status: 401, body: "" }); return; }
-          var sp = selected();
           h.token = tk;
           h.country = "SAU";
-          h.profile = JSON.stringify({ id: pid, master: !!(sp && String(sp.id) === String(pid) ? sp["default"] : true) });
+          var ph = profileHeaders(pid);
+          h.profile = ph.profile;
+          h["profile-key"] = ph.key;
+          var pl = cookie("profileLanguage");
+          if (pl) { h.language = String(pl).toUpperCase(); h["Accept-Language"] = String(pl).toLowerCase(); }
         }
         var r = await fetch(${api} + ep + (query ? "?" + query : ""), { method: "GET", headers: h });
         post({ t: "api", id: id, status: r.status, body: await r.text() });
@@ -181,6 +205,8 @@ export type ShahidWebRef = {
   pick: (profileId: string) => void;
   /** يفتح نافذةَ «اختر من يشاهد» في شاهد نفسِه */
   picker: () => void;
+  /** 🆕 المهمّة ٥٧١ — لماذا فشل آخرُ طلب: `s<رقم>` ردُّ شاهد · `nav` انتقلت الصفحة · `time` لا جواب · `parse` ردٌّ غيرُ مفهوم */
+  why: () => string;
 };
 
 type Props = {
@@ -205,23 +231,46 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
   const web = useRef<WebView<object>>(null);
   const seq = useRef(0);
   const pending = useRef(new Map<number, (v: unknown) => void>());
+  /* 🆕 المهمّة ٥٧١ — سببُ آخر فشل، ومن ينتظر استقرارَ الصفحة بعد انتقالها */
+  const lastWhy = useRef("");
+  const settle = useRef(new Set<() => void>());
 
   useImperativeHandle(
     ref,
     () => ({
-      api: (ep, query, auth, ms = 30_000) =>
-        new Promise((resolve) => {
-          const id = ++seq.current;
-          const timer = setTimeout(() => {
-            pending.current.delete(id);
-            resolve(null);
-          }, ms);
-          pending.current.set(id, (v) => {
-            clearTimeout(timer);
-            resolve(v);
+      api: async (ep, query, auth, ms = 30_000) => {
+        const once = () =>
+          new Promise<unknown>((resolve) => {
+            const id = ++seq.current;
+            const timer = setTimeout(() => {
+              pending.current.delete(id);
+              lastWhy.current = "time";
+              resolve(null);
+            }, ms);
+            pending.current.set(id, (v) => {
+              clearTimeout(timer);
+              resolve(v);
+            });
+            web.current?.injectJavaScript(`window.__lz && window.__lz.api(${id}, ${JSON.stringify(ep)}, ${JSON.stringify(query)}, ${auth ? "true" : "false"}); true;`);
           });
-          web.current?.injectJavaScript(`window.__lz && window.__lz.api(${id}, ${JSON.stringify(ep)}, ${JSON.stringify(query)}, ${auth ? "true" : "false"}); true;`);
-        }),
+        const v = await once();
+        if (v !== null || lastWhy.current !== "nav") return v;
+        /* 🆕 المهمّة ٥٧١ — انتقلت الصفحةُ أثناء الطلب (لغةُ الملفّ أو صفحةُ الأطفال): يُنتظر استقرارُها ثمّ يُعاد الطلبُ مرّةً واحدة */
+        await new Promise<void>((done) => {
+          const t = setTimeout(() => {
+            settle.current.delete(f);
+            done();
+          }, 12_000);
+          const f = () => {
+            clearTimeout(t);
+            settle.current.delete(f);
+            done();
+          };
+          settle.current.add(f);
+        });
+        return once();
+      },
+      why: () => lastWhy.current,
       go: (next) => web.current?.injectJavaScript(`location.href = ${JSON.stringify(next)}; true;`),
       profiles: () =>
         new Promise((resolve) => {
@@ -255,9 +304,14 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
         if (!done) return;
         pending.current.delete(m.id);
         if (m.status === 401) return done("auth");
+        if (m.status !== 200 || !m.body) {
+          lastWhy.current = `s${m.status ?? 0}`;
+          return done(null);
+        }
         try {
-          done(m.status === 200 && m.body ? JSON.parse(m.body) : null);
+          done(JSON.parse(m.body));
         } catch {
+          lastWhy.current = "parse";
           done(null);
         }
       } else if (m.t === "profiles" && typeof m.id === "number") {
@@ -266,8 +320,10 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
         pending.current.delete(m.id);
         done({ list: Array.isArray(m.list) ? m.list : [], src: typeof m.src === "string" ? m.src : "" });
       } else if (m.t === "ready" && typeof m.profileId === "string") {
+        for (const f of [...settle.current]) f();
         onReady?.({ profileId: m.profileId, name: m.name ?? "" }, m.path ?? "");
       } else if (m.t === "state" && m.state) {
+        for (const f of [...settle.current]) f();
         onPageState?.(m.state, m.path ?? "", m.d ?? null);
       }
     },
@@ -275,6 +331,7 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
   );
 
   const onLoadStart = useCallback(() => {
+    if (pending.current.size) lastWhy.current = "nav";
     for (const done of pending.current.values()) done(null);
     pending.current.clear();
   }, []);
