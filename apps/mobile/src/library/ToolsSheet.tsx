@@ -230,6 +230,7 @@ export function Segmented({
   scroll,
   inset = 0,
   bare,
+  dense,
 }: {
   items: { id: string; label: string }[];
   value: string;
@@ -240,8 +241,13 @@ export function Segmented({
   inset?: number;
   /** بلا خطِّه السفليّ — صفٌّ أوسعُ يحمل الخطَّ ويضمّه وزرّاً بجانبه (`segmentedTrackBare` في الويب) */
   bare?: boolean;
+  /** 🆕 T585 — مقاسٌ صغيرٌ للعائلة نفسِها بارتفاع الرقاقة الصغيرة (~٢٦): لسطرٍ داخل قسمٍ لا لرأس صفحة (أحمد ٢٧ نوفمبر على صفّ
+     المنشأ في «السينما»: «ابغى ارتفاع الحالي مثل القديم .. ماخذ ارتفاع زياده»). الخطُّ الأصفر والفاصلُ كما هما، وتبقى مساحةُ
+     اللمس ٤٤ بـ`hitSlop` لأنّ الشكلَ وحدَه صغُر */
+  dense?: boolean;
 }) {
   const { tokens } = useApp();
+  const pad = dense ? { paddingTop: 2, paddingBottom: 5 } : { paddingVertical: 10 };
   const cells = items.map((s) => {
     const on = value === s.id;
     return (
@@ -250,9 +256,10 @@ export function Segmented({
         accessibilityRole="radio"
         accessibilityState={{ selected: on }}
         onPress={() => onChange(s.id)}
-        style={scroll || bare ? { alignItems: "center", paddingHorizontal: 12, paddingVertical: 10 } : { flex: 1, alignItems: "center", paddingHorizontal: 8, paddingVertical: 10 }}
+        hitSlop={dense ? { top: 10, bottom: 10 } : undefined}
+        style={scroll || bare ? { alignItems: "center", paddingHorizontal: 12, ...pad } : { flex: 1, alignItems: "center", paddingHorizontal: 8, ...pad }}
       >
-        <Text size={14} weight="600" color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{s.label}</Text>
+        <Text size={dense ? 13 : 14} weight="600" color={on ? tokens.fg : tokens.muted} numberOfLines={1}>{s.label}</Text>
         {on ? (
           <View style={{ position: "absolute", bottom: -1, left: scroll || bare ? 6 : 0, right: scroll || bare ? 6 : 0, height: 3, borderTopLeftRadius: 999, borderTopRightRadius: 999, backgroundColor: tokens.accent }} />
         ) : null}

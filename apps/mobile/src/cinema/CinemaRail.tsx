@@ -132,9 +132,11 @@ export function CinemaRail({
       {/* سطرُ «في السعودية» ورقاقاتُ المنشأ في طرفه المقابل — سطرٌ واحد (طلبُ أحمد) */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingStart: PAGE_PAD, marginBottom: 8 }}>
         <Text size={12} muted>{t.cinemaInSaudi}</Text>
-        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المنشأُ عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات */}
+        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المنشأُ عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات. 🆕 T585 (٢٧ نوفمبر «نفذ»): بالمقاس الصغير
+           `dense` كي يبقى السطرُ بارتفاع الكبسولات القديمة — التبويبُ الكاملُ زاد القسمَ ~١٣ نقطة بلا معلومةٍ جديدة */}
         <View style={{ flex: 1, paddingEnd: PAGE_PAD }}>
           <Segmented
+            dense
             items={(["all", "arabic", "foreign"] as const).map((o) => ({ id: o, label: `${o === "all" ? t.allWord : o === "arabic" ? t.cinemaArabic : t.cinemaForeign} ${count(o)}` }))}
             value={origin}
             onChange={(v) => setOrigin(v as typeof origin)}

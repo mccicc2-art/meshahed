@@ -129,7 +129,8 @@ export function CinemaRail({
       {/* سطرُ «في السعودية» ورقاقاتُ المنشأ في طرفه المقابل — سطرٌ واحدٌ لا صفّان (طلبُ أحمد) */}
       <div className="mb-2 flex items-center gap-3">
         <p className="shrink-0 text-xs text-muted">{labels.inSaudi}</p>
-        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المنشأُ عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات */}
+        {/* «ت٥أ» (أحمد ٢٦ نوفمبر): المنشأُ عائلةُ المقسّم بخطٍّ أصفر — لا كبسولات. 🆕 T585 (٢٧ نوفمبر): بارتفاع الرقاقة
+           الصغيرة القديمة (`py-1 text-12` ≈ ٢٨) — حشوةُ التبويب زادت القسمَ بلا معلومةٍ جديدة */}
         <div className={`${segmentedTrack} ms-auto overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
           {(["all", "arabic", "foreign"] as const).map((o) => (
             <button
@@ -137,7 +138,7 @@ export function CinemaRail({
               type="button"
               aria-pressed={origin === o}
               onClick={() => setOrigin(o)}
-              className={segmentedItem(origin === o, "px-3 pt-1 pb-2 text-13", false)}
+              className={segmentedItem(origin === o, "px-3 pt-0.5 pb-1.5 text-12 leading-[18px]", false)}
             >
               {o === "all" ? labels.all : o === "arabic" ? labels.arabic : labels.foreign}
               <span className="ms-1.5 tabular-nums opacity-60">{count(o)}</span>
