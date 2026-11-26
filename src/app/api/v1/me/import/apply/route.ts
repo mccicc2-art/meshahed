@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
     /* 🆕 مصدرُ الكتابة (هجرة ٢٦٥): مزامنةُ نتفليكس تُوسم `netflix` — عدّادُ صفحتها وشارتُها يقرآن هذا الوسم. كان يسقط هنا
        فيُكتب ما جاء من نتفليكس «استيراداً» ويبقى العدّادُ صفراً (أوّلُ تجربةٍ على جهاز، ٢٥ نوفمبر) */
     /* 🆕 `osn` — مزامنةُ OSN+ (هجرة ٢٦٨) */
-    const source = body.source === "netflix" || body.source === "osn" ? (body.source as "netflix" | "osn") : undefined;
+    /* 🆕 `shahid` — مزامنةُ شاهد (هجرة ٢٧١) */
+    const source = body.source === "netflix" || body.source === "osn" || body.source === "shahid" ? (body.source as "netflix" | "osn" | "shahid") : undefined;
     const done = await applyImportChunk({ shows, movies, lists, favorites, favoritesName, keep: body.keep === true, reviewFrom, ...(source ? { source } : {}) });
     return ok(done, []);
   });

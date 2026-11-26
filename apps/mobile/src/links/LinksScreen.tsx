@@ -20,6 +20,7 @@ import { Orbit, OrbitCounter, physLeft, slotPoints, slotsOf, type Slot } from ".
 import { canLinkNetflix, canLinkNow, deviceName, linksWrite, platformName, useLinks } from "./api";
 import { requestNetflixSync } from "./netflix/NetflixSyncHost";
 import { requestOsnSync } from "./osn/OsnSyncHost";
+import { requestShahidSync } from "./shahid/ShahidSyncHost";
 import { PLATFORM_KINDS } from "@/core/deviceLinks";
 import { DEVICE_KINDS } from "@/core/deviceLinks";
 import type { DeviceKind, DeviceLinksState, PlatformKind } from "@/core/contracts/deviceLinks";
@@ -264,7 +265,7 @@ export function LinksScreen() {
               onClose={() => setHoldP(null)}
               onSync={() => {
                 setHoldP(null);
-                if ((holdP === "osn" ? requestOsnSync : requestNetflixSync)("manual")) toast.current?.say(t.nfxSyncing);
+                if ((holdP === "osn" ? requestOsnSync : holdP === "shahid" ? requestShahidSync : requestNetflixSync)("manual")) toast.current?.say(t.nfxSyncing);
               }}
               onOpen={() => {
                 setHoldP(null);
@@ -362,13 +363,13 @@ export function LinksScreen() {
                   else intro();
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={t.linksLinkAction(platformName(k))}
+                accessibilityLabel={t.linksLinkAction(platformName(k, t))}
                 style={{ width: LIST_TILE + 8, alignItems: "center" }}
               >
                 <View>
                   <PlatformMark platform={k} size={LIST_TILE} state={platformStopped(k) ? "paused" : "idle"} />
                 </View>
-                <DeviceLabel name={platformName(k)} />
+                <DeviceLabel name={platformName(k, t)} />
                 {platformStopped(k) ? <Text size={10} muted>{t.linksStopped}</Text> : null}
               </Pressable>
             ))}
@@ -464,7 +465,7 @@ function PlusLock() {
 function PlatformHoldSheet({ platform, onClose, onSync, onOpen }: { platform: PlatformKind; onClose: () => void; onSync: () => void; onOpen: () => void }) {
   const { t } = useApp();
   return (
-    <Sheet title={platformName(platform)} onClose={onClose}>
+    <Sheet title={platformName(platform, t)} onClose={onClose}>
       <Group>
         <Row icon="repeat" title={t.nfxSyncNow} onPress={onSync} />
         <Row icon="link" title={t.linksOpenPage} onPress={onOpen} />
@@ -534,7 +535,7 @@ function KeepSheet({ d, onClose, onError }: { d: DeviceLinksState; onClose: () =
           ))}
           {d.tier !== "free"
             ? plats.map((p) => (
-                <OptionRow key={p.platform} selected={pickP.includes(p.platform)} title={platformName(p.platform)} subtitle={p.stopped ? t.linksStopped : t.stremioLinked} onSelect={() => toggleP(p.platform)} />
+                <OptionRow key={p.platform} selected={pickP.includes(p.platform)} title={platformName(p.platform, t)} subtitle={p.stopped ? t.linksStopped : t.stremioLinked} onSelect={() => toggleP(p.platform)} />
               ))
             : null}
         </OptionList>

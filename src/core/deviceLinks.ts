@@ -42,8 +42,9 @@ export type LinkTableName = "stremio_links" | "nuvio_links" | "home_server_links
  * (قوائمُ الأجهزة الخمسة وصفحاتُها لا تتغيّر)، ولها ترتيبُها وقائمتُها هنا.
  */
 /* 🆕 `osn` — OSN+ (هجرة ٢٦٨، المهمّة ٥٥٧): المنصّةُ الثانية بالطريقة نفسِها — متصفّحُ التطبيق وجلسةُ العضو على جهازه */
-export type PlatformKind = "netflix" | "osn";
-export const PLATFORM_KINDS: readonly PlatformKind[] = ["netflix", "osn"];
+/* 🆕 `shahid` — شاهد (هجرة ٢٧١، المهمّة ٥٦٧): المنصّةُ الثالثة بالطريقة نفسِها */
+export type PlatformKind = "netflix" | "osn" | "shahid";
+export const PLATFORM_KINDS: readonly PlatformKind[] = ["netflix", "osn", "shahid"];
 export function isPlatformKind(v: unknown): v is PlatformKind {
   return typeof v === "string" && (PLATFORM_KINDS as readonly string[]).includes(v);
 }

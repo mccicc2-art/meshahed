@@ -20,6 +20,7 @@ import { LinkIntroScreen } from "../../src/links/LinkIntroScreen";
 import { LinksScreen } from "../../src/links/LinksScreen";
 import { NetflixScreen } from "../../src/links/netflix/NetflixScreen";
 import { OsnScreen } from "../../src/links/osn/OsnScreen";
+import { ShahidScreen } from "../../src/links/shahid/ShahidScreen";
 import { useLinks } from "../../src/links/api";
 
 /**
@@ -64,6 +65,8 @@ const SCREENS = {
   netflix: NetflixScreen,
   /* 🆕 هجرة ٢٦٨ — صفحةُ OSN+: صفحةُ المنصّة نفسُها */
   osn: OsnScreen,
+  /* 🆕 هجرة ٢٧١ — صفحةُ شاهد: صفحةُ المنصّة نفسُها */
+  shahid: ShahidScreen,
   /* «سيرفرات البيت» (هجرة ٢٣٥) — رابطٌ قديمٌ قد يفتحها: قبل الهجرة شاشتُها، وبعدها المدار */
   "home-servers": HomeServersEntry,
 } as const;

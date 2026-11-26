@@ -13,7 +13,7 @@ import { Sheet } from "../../library/Sheet";
 import { SettingsScreen, Group, Row, RowsSkeleton, StatusPill } from "../../settings/ui";
 import { messageOf } from "../../settings/api";
 import { timeAgo } from "@/core/when";
-import { LINK_SOURCE_NAME, linkWhat } from "@/core/linkSignals";
+import { linkSourceName, linkWhat } from "@/core/linkSignals";
 import { PlatformMark } from "../DeviceMark";
 import { UnlinkSheet } from "../UnlinkSheet";
 import { useLinks } from "../api";
@@ -140,7 +140,7 @@ export function PlatformScreen({ drv }: { drv: PlatformDriver }) {
     /* 🆕 المهمّة ٥٦١ — «زامن الآن» يسمّي ما وصل («أُضيفت من OSN+: Chernobyl · S1 E3») وزرُّ «عرض» يفتح «ما وصل» — ستُّ ثوانٍ كي يُضغط */
     if (o.ok && o.episodes + o.movies > 0) {
       const what = o.added ? linkWhat(o.added, t) : "";
-      toast.current?.say(what ? t.linkAdded(LINK_SOURCE_NAME[drv.platform], what) : drv.str.added(o.episodes, o.movies), { label: t.linkAddedShow, onPress: () => setOverlay("added") }, 6000, "success");
+      toast.current?.say(what ? t.linkAdded(linkSourceName(drv.platform, t), what) : drv.str.added(o.episodes, o.movies), { label: t.linkAddedShow, onPress: () => setOverlay("added") }, 6000, "success");
     } else if (o.ok) toast.current?.say(t.nfxNothingNew);
     /* «profile» تقوله بطاقةُ المزامنة بزرّها — لا رسالةَ فوقها */
     else if (o.reason !== "signed-out" && o.reason !== "stopped" && o.reason !== "profile") toast.current?.say(t.nfxSyncFailed);

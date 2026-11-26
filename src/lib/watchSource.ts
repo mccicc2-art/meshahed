@@ -11,7 +11,7 @@
  */
 import type { WatchSource } from "@/core/activityDays";
 export type { WatchSource };
-export const WATCH_SOURCES: readonly WatchSource[] = ["stremio", "nuvio", "widget", "import", "auto", "plex", "jellyfin", "emby", "kodi", "netflix", "osn"];
+export const WATCH_SOURCES: readonly WatchSource[] = ["stremio", "nuvio", "widget", "import", "auto", "plex", "jellyfin", "emby", "kodi", "netflix", "osn", "shahid"];
 
 type Db = { from: (t: string) => { update: (v: Record<string, unknown>) => { in: (c: string, v: unknown[]) => PromiseLike<unknown> } } };
 

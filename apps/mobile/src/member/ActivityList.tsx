@@ -293,5 +293,7 @@ function sourceLabel(s: WatchSource, t: ReturnType<typeof useApp>["t"]): string 
   /* 🆕 هجرة ٢٦٥ — مزامنةُ نتفليكس: اسمُ منتجٍ لا يُترجم */
   if (s === "netflix") return "Netflix";
   if (s === "osn") return "OSN+";
+  /* 🆕 المهمّة ٥٦٧ — شاهد بلغة القارئ */
+  if (s === "shahid") return t.shahidName;
   return s === "stremio" ? t.srcStremio : s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }

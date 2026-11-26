@@ -212,10 +212,13 @@ const NETFLIX_RED = "#E50914";
 /** 🆕 المهمّة ٥٥٧ — «+» وردُ شعار OSN+ كما قيس في osnplus.com (‎#FF00D4)، ويغمق على أبيض `daylight` كي يُقرأ (أحمد ٢٦ نوفمبر «ب») */
 const OSN_PLUS = "#FF00D4";
 const OSN_PLUS_DAY = "#D600B2";
+/** 🆕 المهمّة ٥٦٧ — أخضرُ شاهد كما قيس في shahid.mbc.net (`bg-shahidGreen` ‎#00CC99)، وأغمقُ على أبيض `daylight` كي يُقرأ (أحمد «١أ») */
+const SHAHID_GREEN = "#00CC99";
+const SHAHID_GREEN_DAY = "#00996F";
 
 export function PlatformMark({ platform = "netflix", size = 56, state = "idle" }: { platform?: PlatformKind; size?: number; state?: "idle" | "on" | "waiting" | "paused" }) {
   const { tokens, themeId } = useApp();
-  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : 0.17)));
+  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : platform === "shahid" ? 0.24 : 0.17)));
   return (
     <View
       style={{
@@ -230,7 +233,12 @@ export function PlatformMark({ platform = "netflix", size = 56, state = "idle" }
         opacity: state === "paused" ? 0.55 : 1,
       }}
     >
-      {platform === "osn" ? (
+      {platform === "shahid" ? (
+        /* 🆕 المهمّة ٥٦٧ — «شاهد» بالعربيّة بأخضرهم (أحمد «١أ») — كتابةٌ لا شعار (لا شعارَ بلا إذن) */
+        <Text size={fs} weight="800" color={themeId === "daylight" ? SHAHID_GREEN_DAY : SHAHID_GREEN} numberOfLines={1}>
+          شاهد
+        </Text>
+      ) : platform === "osn" ? (
         /* 🆕 «OSN» بلون النصّ و«+» بوردِ شعارهم — كتابةٌ لا نسخةٌ من الشعار (لا شعارَ بلا إذن) */
         <Text size={fs} weight="800" style={{ writingDirection: "ltr", letterSpacing: 0.4 }} numberOfLines={1}>
           OSN

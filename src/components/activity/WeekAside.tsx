@@ -94,5 +94,7 @@ export function sourceName(s: WatchSource | null, t: ReturnType<typeof getDict>,
   /* 🆕 هجرة ٢٦٥ — اسمُ منتجٍ لا يُترجم */
   if (s === "netflix") return "Netflix";
   if (s === "osn") return "OSN+";
+  /* 🆕 المهمّة ٥٦٧ — شاهد بلغة القارئ */
+  if (s === "shahid") return t.shahidName;
   return s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }

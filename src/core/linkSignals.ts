@@ -10,13 +10,15 @@
  */
 import type { Dict } from "./i18n.ts";
 
-export type LinkSource = "netflix" | "osn" | "stremio" | "nuvio" | "plex" | "jellyfin" | "emby" | "kodi";
+export type LinkSource = "netflix" | "osn" | "shahid" | "stremio" | "nuvio" | "plex" | "jellyfin" | "emby" | "kodi";
 export type LinkSignalKind = "link_added" | "link_ask";
 
 /** ⚠️ «OSN+» يتبعها LRM (U+200E): في جملةٍ عربيّة تُقرأ «+OSN» بلاه — «+» حرفٌ محايدٌ يلتصق بالعربيّ بعده */
 export const LINK_SOURCE_NAME: Record<LinkSource, string> = {
   netflix: "Netflix",
   osn: "OSN+\u200E",
+  /* 🆕 المهمّة ٥٦٧ — «شاهد» اسمٌ عربيّ: يُكتب بلغة القارئ (`linkSourceName`)، وهذا للإنجليزيّة */
+  shahid: "Shahid",
   stremio: "Stremio",
   nuvio: "Nuvio",
   plex: "Plex",
@@ -26,6 +28,11 @@ export const LINK_SOURCE_NAME: Record<LinkSource, string> = {
 };
 
 const SOURCES = Object.keys(LINK_SOURCE_NAME) as LinkSource[];
+
+/** اسمُ المصدر في الجملة — شاهد بلغة القارئ («شاهد» · «Shahid»)، والباقي أسماءُ منتجاتٍ لا تُترجم */
+export function linkSourceName(source: LinkSource, t: Dict): string {
+  return source === "shahid" ? t.shahidName : LINK_SOURCE_NAME[source];
+}
 
 export type LinkSignalRow = {
   kind: LinkSignalKind;
@@ -106,7 +113,7 @@ export function linkWhat(r: Pick<LinkSignalRow, "title" | "works" | "season" | "
 
 /** جملةُ السطر كاملة */
 export function linkSignalText(r: LinkSignalRow, t: Dict): string {
-  const app = LINK_SOURCE_NAME[r.source];
+  const app = linkSourceName(r.source, t);
   if (r.kind === "link_ask") {
     if (!r.title) return t.linkAskUntitled(app);
     const ep = linkEpisodeLabel(r.season, r.episode);

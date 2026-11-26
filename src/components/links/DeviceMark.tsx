@@ -118,14 +118,20 @@ export function DeviceMark({ kind, size = 56, state = "idle" }: { kind: DeviceKi
  * (لا شعارَ بلا إذن)، «NETFLIX» بأحمرهم (يُقرأ على الداكن والفاتح)، و«OSN» بلون النصّ و«+» بوردِهم — أغمقَ على النهاريّ.
  * أوّلُ من يرسمها جرسُ الويب («أُضيفت من نتفليكس»).
  */
-export function PlatformMark({ platform, size = 56 }: { platform: "netflix" | "osn"; size?: number }) {
-  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : 0.17)));
+export function PlatformMark({ platform, size = 56 }: { platform: "netflix" | "osn" | "shahid"; size?: number }) {
+  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : platform === "shahid" ? 0.24 : 0.17)));
   return (
     <span
       className="relative grid shrink-0 place-items-center rounded-[var(--radius-control)] border border-border bg-surface"
       style={{ width: size, height: size }}
       aria-hidden
     >
+      {/* 🆕 المهمّة ٥٦٧ — «شاهد» بالعربيّة بأخضرهم (‎#00CC99، أغمقُ على النهاريّ) كتطبيق الجوّال */}
+      {platform === "shahid" ? (
+        <span className="font-extrabold leading-none" style={{ fontSize: fs, color: "light-dark(#00996F, #00CC99)" }}>
+          شاهد
+        </span>
+      ) : (
       <span dir="ltr" className="font-extrabold tracking-[0.4px] leading-none" style={{ fontSize: fs }}>
         {platform === "osn" ? (
           <>
@@ -135,6 +141,7 @@ export function PlatformMark({ platform, size = 56 }: { platform: "netflix" | "o
           <span style={{ color: "#E50914" }}>NETFLIX</span>
         )}
       </span>
+      )}
     </span>
   );
 }

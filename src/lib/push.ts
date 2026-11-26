@@ -12,7 +12,7 @@ import { getMovieIn, getTvIn } from "@/lib/tmdb";
 import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
 import type { HomeServer } from "@/core/homeServer";
 import type { SignalKind, SignalRow } from "@/core/signals";
-import { LINK_SOURCE_NAME, linkEpisodeLabel, linkWhat, type LinkSource } from "@/core/linkSignals";
+import { LINK_SOURCE_NAME, linkEpisodeLabel, linkSourceName, linkWhat, type LinkSource } from "@/core/linkSignals";
 import type { PlatformAdded } from "@/core/contracts/deviceLinks";
 import { isPersonaId } from "@/core/personas";
 import {
@@ -1115,7 +1115,7 @@ const ALERTS_URL = "/messages?tab=alerts";
  * مفتوح (متصفّحُها المخفيّ لا يعمل في الخلفية)، فالإشعارُ يصل لحظةَ الفتح ويبقى في مركز إشعارات الجوال. مفتاحُ «ما يُسجَّل تلقائياً»
  * (`auto`) يكتمه كأخيه «وصل من Kodi». والوسمُ واحدٌ للمنصّة: دفعةٌ ثانيةٌ تحلّ محلَّ الأولى ولا تتراكم.
  */
-export function notifyPlatformAdded(input: { to: string; source: "netflix" | "osn"; added: PlatformAdded }) {
+export function notifyPlatformAdded(input: { to: string; source: "netflix" | "osn" | "shahid"; added: PlatformAdded }) {
   quiet(() =>
     deliver({
       to: input.to,
@@ -1123,7 +1123,7 @@ export function notifyPlatformAdded(input: { to: string; source: "netflix" | "os
       build: (t) => {
         const what = linkWhat(input.added, t);
         if (!what) return null;
-        return { title: t.autoPushTitle(LINK_SOURCE_NAME[input.source]), body: what, url: ALERTS_URL, tag: `link-${input.source}` };
+        return { title: t.autoPushTitle(linkSourceName(input.source, t)), body: what, url: ALERTS_URL, tag: `link-${input.source}` };
       },
     }),
   );

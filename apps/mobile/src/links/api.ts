@@ -48,7 +48,7 @@ export function canLinkNetflix(d: DeviceLinksState, platform: PlatformKind = "ne
   return d.limit == null || d.used < d.limit;
 }
 
-/** 🆕 المهمّة ٥٥٧ — اسمُ المنصّة كما يُكتب في كلِّ مكان: اسمُ منتجٍ لا يُترجم */
-export function platformName(p: PlatformKind): string {
-  return p === "osn" ? "OSN+" : "Netflix";
+/** 🆕 المهمّة ٥٥٧ — اسمُ المنصّة كما يُكتب في كلِّ مكان: اسمُ منتجٍ لا يُترجم — 🆕 المهمّة ٥٦٧: إلّا «شاهد»، اسمٌ عربيٌّ بلغة القارئ */
+export function platformName(p: PlatformKind, t: { shahidName: string }): string {
+  return p === "osn" ? "OSN+" : p === "shahid" ? t.shahidName : "Netflix";
 }

@@ -3857,6 +3857,23 @@ const ar = {
       : movies
         ? `أُضيف من OSN+ ${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
         : `أُضيفت من OSN+ ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")}`,
+  /* 🆕 المهمّة ٥٦٧ — شاهد: ما يختلف عن نتفليكس وOSN+ وحده (الاسم). اسمٌ عربيّ فيُكتب بلغة القارئ */
+  shahidName: "شاهد",
+  shahidConsentLead: "يتسجّل ما تشاهده في شاهد في مكتبتك وحده.",
+  shahidConsent1Title: "تدخل من صفحة شاهد نفسها",
+  shahidConsent1Sub: "كلمة مرورك تُكتب عند شاهد، ولوبز لا يراها ولا يحفظها.",
+  shahidContinue: "تابع إلى شاهد",
+  shahidImportLaterNote: "يمكنك الاستيراد لاحقاً من صفحة شاهد.",
+  shahidStoppedSub: "خرج شاهد من حسابك على هذا الجهاز. ما دخل مكتبتك باقٍ.",
+  shahidProfileSub: "طلب شاهد اختيار الملف الشخصي قبل قراءة السجلّ، فتوقّفت المزامنة.",
+  shahidLoginHint: "ادخل بالبريد أو رقم الجوال، ثم اختر ملفك",
+  shahidSocialBlocked: "جوجل وأبل لا يسمحان بالدخول من داخل التطبيقات. ادخل بالبريد أو رقم الجوال.",
+  shahidAdded: (episodes: number, movies: number) =>
+    episodes && movies
+      ? `أُضيفت من شاهد ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")} و${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
+      : movies
+        ? `أُضيف من شاهد ${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
+        : `أُضيفت من شاهد ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")}`,
   /* 🆕 المهمّة ٥٦١ — الجرسُ وإشعارُ الجوال لكلِّ ربط (أحمد ٢٦ نوفمبر: «المفترض يجي تنبيه فيه حين اضافت عمل من اي ربط») */
   linkEpisodes: (n: number) => arCount(n, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة"),
   linkMovies: (n: number) => arCount(n, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم"),
@@ -6790,6 +6807,22 @@ const en: Dict = {
       : movies
         ? `Added from OSN+: ${enCount(movies, "movie", "movies")}`
         : `Added from OSN+: ${enCount(episodes, "episode", "episodes")}`,
+  shahidName: "Shahid",
+  shahidConsentLead: "What you watch on Shahid is added to your library on its own.",
+  shahidConsent1Title: "You sign in on Shahid's own page",
+  shahidConsent1Sub: "Your password is typed at Shahid. Loopz never sees or stores it.",
+  shahidContinue: "Continue to Shahid",
+  shahidImportLaterNote: "You can import later from the Shahid page.",
+  shahidStoppedSub: "Shahid signed you out on this device. Everything already in your library stays.",
+  shahidProfileSub: "Shahid asked to pick a profile before reading your history, so syncing stopped.",
+  shahidLoginHint: "Sign in with email or phone, then pick your profile",
+  shahidSocialBlocked: "Google and Apple don't allow signing in from inside apps. Sign in with email or phone.",
+  shahidAdded: (episodes: number, movies: number) =>
+    episodes && movies
+      ? `Added from Shahid: ${enCount(episodes, "episode", "episodes")} and ${enCount(movies, "movie", "movies")}`
+      : movies
+        ? `Added from Shahid: ${enCount(movies, "movie", "movies")}`
+        : `Added from Shahid: ${enCount(episodes, "episode", "episodes")}`,
   linkEpisodes: (n: number) => enCount(n, "episode", "episodes"),
   linkMovies: (n: number) => enCount(n, "movie", "movies"),
   linkWorks: (n: number) => enCount(n, "title", "titles"),
