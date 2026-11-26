@@ -17,7 +17,7 @@ import type { ListDetailPayload } from "../contracts";
  * كان في ورقة التعديل (لا رجعةَ فيه) — انتقل إلى هنا ولم يُنسخ.
  * ⚖️ قائمةُ غيرك: ما يخصّك منها وحده — التشغيلُ إن حفظتها، والإضافةُ والأعضاءُ إن كنت عضواً فيها.
  */
-export type ListMoreAction = "add" | "smart" | "invite" | "members" | "edit" | "cover" | "reorder";
+export type ListMoreAction = "add" | "smart" | "invite" | "members" | "edit" | "cover" | "reorder" | "unsave";
 
 /** هل في الورقة شيءٌ لهذه القائمة؟ — بلا صفوفٍ لا يُرسم «⋯» أصلاً */
 export function hasListMore(d: ListDetailPayload): boolean {
@@ -53,6 +53,8 @@ export function ListMoreSheet({
   /* الدعوةُ: قائمةٌ فيها أعضاءٌ تفتح ورقتَهم (ومنها «ادعُ»)، وإلّا ورقةُ الدعوة مباشرةً — كما كانت رقاقةُ «ادعُ» */
   if (d.can_invite) rows.push(<Row key="invite" icon="person-plus" title={t.listMoreInvite} subtitle={t.listMoreInviteSub} onPress={() => onAction(members.length > 1 ? "members" : "invite")} />);
   else if (members.length > 1) rows.push(<Row key="members" icon="people" title={t.listMembersTitle(members.length, LIST_MEMBERS_MAX)} onPress={() => onAction("members")} />);
+  /* 🆕 T583 («١ب») — قائمةٌ حفظتَها: إلغاءُ الحفظ هنا (والعلامةُ في صفّ الغلاف تفعله أيضاً — «٣أ»)، ويُخرجها من صفّ المشاهدة */
+  if (!d.mine && d.saved_by_me) rows.push(<Row key="unsave" icon="bookmark" title={t.listUnsaveLabel} onPress={() => onAction("unsave")} />);
   if (d.mine) {
     rows.push(<Row key="edit" icon="edit" title={t.listEditTitle} subtitle={t.listMoreEditSub} onPress={() => onAction("edit")} />);
     if (d.items.length > 0) rows.push(<Row key="cover" icon="image" title={t.listMoreCover} onPress={() => onAction("cover")} />);

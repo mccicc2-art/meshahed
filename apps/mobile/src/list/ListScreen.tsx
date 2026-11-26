@@ -10,7 +10,7 @@ import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
 import { Button, Text, TopBar, TOP_BAR_H, type ToastTone } from "../ui";
-import { Icon } from "../icons";
+import { Icon, type IconName } from "../icons";
 import { radius } from "../theme";
 import { num } from "@/core/i18n";
 import { backdropUrl } from "@/core/media";
@@ -288,11 +288,14 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
     if (!d || !d.can_save || saveBusy.current) return;
     saveBusy.current = true;
     const want = !d.saved_by_me;
-    qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? { ...p, saved_by_me: want, saves: Math.max(0, p.saves + (want ? 1 : -1)) } : p));
+    /* 🆕 T583 («١ب») — الحفظُ يضعها في «تابِع المشاهدة» معاً، وإلغاؤه يُخرجها (الخادمُ يفعل الأمرين — `lists/save`) */
+    qc.setQueryData<ListDetailPayload>(qk.list(id), (p) => (p ? { ...p, saved_by_me: want, saves: Math.max(0, p.saves + (want ? 1 : -1)), playlist: want ? true : null } : p));
     try {
       await write<{ saved: boolean }>("/api/v1/lists/save", { listId: id, save: want } satisfies SaveListBody);
       if (want) say(t.listSavedToast, "success");
       else say(t.listUnsavedToast, "info");
+      /* صفُّ «تابِع المشاهدة» في الرئيسية يتبدّل معها */
+      void qc.invalidateQueries({ queryKey: qk.tag("home") });
     } catch (e) {
       fail(e);
     } finally {
@@ -401,6 +404,7 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
   const coverH = insets.top + Math.round(width * 0.72);
   /* الشريطُ فوق الغلاف شفّافٌ وأزرارُه بيضاء؛ إذا صعد الغلافُ صار شريطَ الصفحة بلونها واسمِ القائمة (الرجوعُ في مكانه دائماً — D-1624) */
   const [solid, setSolid] = useState(false);
+  const listRef = useRef<FlatList<ListDetailItem>>(null);
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const next = e.nativeEvent.contentOffset.y > coverH - insets.top - TOP_BAR_H - 8;
@@ -412,6 +416,15 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
   const WHITE_MUTED = "rgba(255,255,255,0.78)";
   const count = d ? (d.smart ? t.smartListLabel : t.listCount(d.items.length)) : "";
 
+  /* 🆕 T583 — **خطوةُ المشاهدة**: أوّلُ عملٍ بترتيب القائمة لم تُكمله ولم تتركه، ومعه هل بدأتَ القائمةَ أصلاً («ابدأ» أم «أكمل»).
+     ⚖️ موعدُ العرض لا يصل في عناصر القائمة، فعملٌ لم يُعرض بعدُ قد يكون هو الخطوة — صفحتُه تقول ذلك */
+  const next = useMemo(() => {
+    if (!d) return null;
+    const m = (it: ListDetailItem) => marks.get(`${it.kind}-${it.id}`) ?? null;
+    const started = d.items.some((it) => { const x = m(it); return !!x && (x.progress > 0 || x.completed); });
+    const item = d.items.find((it) => { const x = m(it); return !x || (!x.completed && !x.dropped); });
+    return item ? { item, started } : null;
+  }, [d, marks]);
   const header = (
     <View>
       <View style={{ height: coverH, backgroundColor: "#0b0b0b", overflow: "hidden" }}>
@@ -422,6 +435,16 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
           <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: PAGE_PAD, paddingBottom: 16, gap: 6 }}>
             <Text size={26} weight="800" color="#fff" numberOfLines={2} style={{ lineHeight: 34 }}>{d.name}</Text>
             {d.subtitle ? <Text size={14} color={WHITE_MUTED} numberOfLines={2} style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null}
+            {/* 🆕 T583 («٢ب ٣أ» — أحمد ٢٦ نوفمبر: «تحتها ماهي واضحة») — **صفُّ الحال صعد إلى الغلاف تحت الوصف**، ومعه علامةُ الحفظ
+                بعدد من حفظوها. كلٌّ زرٌّ بقامة الإصبع؛ القلبُ والنجمةُ والعلامةُ مفرّغةٌ حتى تفعلها أنت، والصفرُ لا يُكتب. للمعلنة وحدَها */}
+            {d.is_public ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: -4 }}>
+                <React_ icon={d.liked_by_me ? "heart-filled" : "heart"} n={d.likes ?? 0} disabled={!d.can_save || liking} label={d.liked_by_me ? t.listUnlikeLabel : t.listLikeLabel} onPress={() => void toggleLike()} />
+                <React_ icon="comment" n={d.reviews} label={t.listReviewsTitle} onPress={() => listRef.current?.scrollToEnd({ animated: true })} />
+                <React_ icon={d.my_review ? "star-filled" : "star"} text={d.rating !== null ? d.rating.toFixed(1) : null} disabled={!d.can_review} label={t.rateTitle} onPress={() => setReviewOpen(true)} />
+                <React_ icon={d.saved_by_me ? "bookmark-filled" : "bookmark"} n={d.saves} disabled={!d.can_save} label={d.saved_by_me ? t.listUnsaveLabel : t.listSaveChip} onPress={() => void toggleSave()} />
+              </View>
+            ) : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 34, marginTop: 2 }}>
               {/* 🆕 234 — **الشكلُ «أ»**: القائمةُ المشتركة صورٌ مكدّسةٌ وأسماؤها، والضغطةُ تفتح ورقةَ الأعضاء */}
               {sharedRow ? (
@@ -444,10 +467,15 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
                 </Pressable>
               ) : null}
               <Text size={13} color={WHITE_MUTED} numberOfLines={1}>{sharedRow || d.owner ? `· ${count}` : count}</Text>
-              {/* 🆕 T578 — **قائمةُ غيرك: زرٌّ واحدٌ بارز «احفظ»** في طرف السطر (كانت رقاقةً في طرف شريط الحال) */}
-              {!d.mine && d.can_save ? (
+              {/* 🆕 T578 — **قائمةُ غيرك: زرٌّ واحدٌ بارز** في طرف السطر. 🆕 T583 («١ب») — «احفظ» قبل الحفظ، ثمّ خطوةُ المشاهدة:
+                  «ابدأ المشاهدة» ثمّ «أكمل المشاهدة» تفتح أوّلَ عملٍ لم تُكمله بترتيب القائمة؛ وإلغاءُ الحفظ في العلامة و«⋯» */}
+              {!d.mine && d.can_save && (!d.saved_by_me || next) ? (
                 <View style={{ marginStart: "auto" }}>
-                  <Button label={d.saved_by_me ? t.listSavedBtn : t.listSaveChip} size="sm" onPress={() => void toggleSave()} accessibilityState={{ selected: d.saved_by_me }} />
+                  {d.saved_by_me && next ? (
+                    <Button label={next.started ? t.continueWatching : t.listStartWatching} size="sm" onPress={() => openCard(next.item)} />
+                  ) : (
+                    <Button label={t.listSaveChip} size="sm" onPress={() => void toggleSave()} />
+                  )}
                 </View>
               ) : null}
             </View>
@@ -492,22 +520,7 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
 
   const footer = d?.is_public ? (
     <View>
-      {/* شريطُ الحال — تشريحُ `ListCard`: ♥ الإعجاب (249) · 💬 الآراء · ★ المتوسّط وبابُ رأيي. للمعلنة وحدَها
-          (🆕 T578 — «احفظ» صعد إلى الغلاف) */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 20, marginTop: 6, marginHorizontal: PAGE_PAD, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-        <Pressable disabled={!d.can_save || liking} onPress={() => void toggleLike()} hitSlop={8} accessibilityLabel={d.liked_by_me ? t.listUnlikeLabel : t.listLikeLabel} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Icon name={d.can_save && !d.liked_by_me ? "heart" : "heart-filled"} size={18} color={tokens.accent} />
-          {(d.likes ?? 0) > 0 ? <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(d.likes ?? 0, locale)}</Text> : null}
-        </Pressable>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Icon name="comment" size={18} color={tokens.accent} />
-          <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{num(d.reviews, locale)}</Text>
-        </View>
-        <Pressable disabled={!d.can_review} onPress={() => setReviewOpen(true)} hitSlop={8} accessibilityLabel={t.listReviewsTitle} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Icon name={d.my_review ? "star-filled" : "star"} size={18} color={tokens.accent} />
-          <Text size={14} weight="700" style={{ fontVariant: ["tabular-nums"] }}>{d.rating !== null ? d.rating.toFixed(1) : num(0, locale)}</Text>
-        </Pressable>
-      </View>
+      {/* 🆕 T583 — شريطُ الحال صعد إلى الغلاف؛ الآراءُ هنا وحدَها، و💬 هناك يأتي إليها */}
       <View style={{ paddingHorizontal: PAGE_PAD, marginTop: 20, gap: 12 }}>
         <Text size={17} weight="700">{t.listReviewsTitle}</Text>
         {d.can_review ? (
@@ -526,9 +539,12 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
       } else if (a === "smart") {
         setSheet(null);
         router.push({ pathname: "/list/new", params: { edit: id, from: d?.smart_source === "library" ? "library" : "discover" } });
+      } else if (a === "unsave") {
+        setSheet(null);
+        void toggleSave();
       } else setSheet(a);
     },
-    [addTitles, router, id, d?.smart_source],
+    [addTitles, router, id, d?.smart_source, toggleSave],
   );
 
   return (
@@ -541,6 +557,7 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
           </View>
         ) : (
           <FlatList
+            ref={listRef}
             key={cols}
             data={d?.items ?? []}
             numColumns={cols}
@@ -639,5 +656,17 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
         <ToastHost hostRef={toastHost} bottom={insets.bottom + 16} />
       </View>
     </CardStoreContext.Provider>
+  );
+}
+
+/** 🆕 T583 — زرٌّ في صفّ الحال فوق الغلاف: رمزٌ أصفرُ وعددُه أبيض، والصفرُ لا يُكتب؛ قامةُ ٤٠ تصيبها الإصبع */
+function React_({ icon, n, text, label, onPress, disabled }: { icon: IconName; n?: number; text?: string | null; label: string; onPress: () => void; disabled?: boolean }) {
+  const { tokens } = useApp();
+  const value = text ?? (n && n > 0 ? num(n, "ar") : null);
+  return (
+    <Pressable onPress={onPress} disabled={disabled} hitSlop={6} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => ({ height: 40, flexDirection: "row", alignItems: "center", gap: 6, opacity: pressed ? 0.7 : 1 })}>
+      <Icon name={icon} size={20} color={tokens.accent} />
+      {value ? <Text size={15} weight="700" color="#fff" style={{ fontVariant: ["tabular-nums"] }}>{value}</Text> : null}
+    </Pressable>
   );
 }
