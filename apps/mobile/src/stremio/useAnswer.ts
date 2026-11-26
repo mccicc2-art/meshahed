@@ -6,7 +6,7 @@ import { useApp } from "../state";
 import { haptic } from "../haptics";
 import { messageOf } from "../settings/api";
 import type { ToastHostRef } from "../HoldHost";
-import type { StremioSignal } from "@/core/contracts/stremio";
+import { isPlatformSignal, type StremioSignal } from "@/core/contracts/stremio";
 import type { EpisodeRateBody, RateBody } from "../contracts";
 import { episodeLabel } from "./api";
 
@@ -85,7 +85,8 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: {
   );
 
   const answer = useCallback(
-    (s: StremioSignal, watched: boolean) => {
+    /** `quiet` (🆕 T579) — جوابٌ من ورقة «اختر منها»: يُخفى السؤالُ ولا تنقلب البطاقةُ إلى النجوم تحت الورقة */
+    (s: StremioSignal, watched: boolean, quiet?: boolean) => {
       /* 🆕 T361 — **ما سجّله Loopz بنفسه لا جوابَ له**: «حسناً» أو تقييمٌ من البطاقة = «رأيتُه» (`notice`) — يُخفى ويُرسل في الحال، بلا
          «تراجع»: لا كتابةَ تُعكس هنا، المشاهدةُ محفوظةٌ قبله */
       if (s.auto) {
@@ -96,7 +97,7 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: {
       haptic.pick();
       /* 🆕 T415 — ✓ على فيلمٍ أو نهايةٍ (`rate`) لا يُخفي البطاقة: تنقلب إلى النجوم في مكانها، و«تراجع» يبقى في الإشعار.
          🆕 T485 — وعلى أيِّ حلقة: نجومُ الحلقة أوّلاً (`rateStages`) */
-      const rateNext = rateInCard && watched && rateStages(s).length > 0;
+      const rateNext = rateInCard && watched && !quiet && rateStages(s).length > 0;
       if (rateNext) setRating((r) => new Map(r).set(s.id, s));
       else setHidden((h) => new Set(h).add(s.id));
       pending.current.set(s.id, { watched, timer: setTimeout(() => commit(s.id), UNDO_MS) });
@@ -106,7 +107,10 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: {
           : t.stremioDismissed
         : s.kind === "movie"
           ? t.stremioMarkedMovie
-          : t.stremioMarkedUpTo(episodeLabel(s, t.stremioMovie));
+          : /* 🆕 T579 — سؤالُ المنصّة يعلّم الحلقةَ وحدَها لا «حتى هنا» */
+            isPlatformSignal(s.source)
+            ? t.askMarkedEp(episodeLabel(s, t.stremioMovie))
+            : t.stremioMarkedUpTo(episodeLabel(s, t.stremioMovie));
       toast.current?.say(
         text,
         {
@@ -125,6 +129,50 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: {
       );
     },
     [commit, rateInCard, t, toast, unhide, unrate],
+  );
+
+  /**
+   * 🆕 T579 — **جوابٌ واحدٌ لحلقات عملٍ ظهرت معاً** (أحمد «٢ب»: «✓ كلها» · «✕ لا» في بطاقة العمل): تُخفى كلُّها وإشعارٌ واحدٌ بـ«تراجع»
+   * يعيدها كلَّها، ومؤقّتٌ واحدٌ يرسل أجوبتَها. ✓ في بطاقة الرئيسيّة ⇒ نجومُ **آخر حلقة** وحدَها (والعملُ بعدها إن كانت نهاية — T485).
+   */
+  const answerMany = useCallback(
+    (list: StremioSignal[], watched: boolean) => {
+      if (list.length < 2) {
+        if (list[0]) answer(list[0], watched);
+        return;
+      }
+      haptic.pick();
+      const last = list[list.length - 1];
+      const rateLast = rateInCard && watched && rateStages(last).length > 0;
+      const ids = list.map((x) => x.id);
+      setHidden((h) => {
+        const n = new Set(h);
+        for (const id of ids) if (!(rateLast && id === last.id)) n.add(id);
+        return n;
+      });
+      if (rateLast) setRating((r) => new Map(r).set(last.id, last));
+      const timer = setTimeout(() => ids.forEach((id) => commit(id)), UNDO_MS);
+      for (const id of ids) pending.current.set(id, { watched, timer });
+      const count = t.linkEpisodes(list.length);
+      toast.current?.say(
+        watched ? t.askManyMarked(count, last.title) : t.askManyDismissed(count),
+        {
+          label: t.undoWatched,
+          onPress: () => {
+            if (!ids.some((id) => pending.current.has(id))) return;
+            clearTimeout(timer);
+            for (const id of ids) {
+              pending.current.delete(id);
+              unhide(id);
+              unrate(id);
+            }
+          },
+        },
+        UNDO_MS,
+        watched ? "success" : "info",
+      );
+    },
+    [answer, commit, rateInCard, t, toast, unhide, unrate],
   );
 
   /**
@@ -236,5 +284,5 @@ export function useStremioAnswer(toast: RefObject<ToastHostRef | null>, opts?: {
     return () => sub.remove();
   }, [flushAll]);
 
-  return { hidden, answer, rating, rate, rateEpisode, skipRate };
+  return { hidden, answer, answerMany, rating, rate, rateEpisode, skipRate };
 }

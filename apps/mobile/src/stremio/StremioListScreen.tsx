@@ -7,11 +7,13 @@ import { Icon } from "../icons";
 import type { ToastHostRef } from "../HoldHost";
 import { SettingsScreen, RowsSkeleton } from "../settings/ui";
 import { timeAgo } from "@/core/when";
-import { SIGNAL_SOURCE_NAME } from "@/core/contracts/stremio";
+import { signalSourceLabel } from "@/core/contracts/stremio";
 import type { StremioSignal } from "@/core/contracts/stremio";
 import { episodeLabel, useStremio } from "./api";
 import { useStremioAnswer } from "./useAnswer";
-import { SignalStill } from "./StremioCard";
+/* 🆕 T579 — الدائرتان انتقلتا إلى `StremioCard` (ورقةُ «اختر منها» تستعملهما) — وتبقيان تُصدَّران من هنا كما كانتا */
+import { AnswerCircles, SignalStill } from "./StremioCard";
+export { AnswerCircles };
 
 const STILL_W = 96;
 const CIRCLE = 40;
@@ -91,7 +93,7 @@ export function StremioListScreen() {
                       {s.auto ? <Text size={12} weight="700" color={tokens.success}>{"✓ "}</Text> : null}
                       {s.auto ? (s.kind === "movie" ? t.autoAddedMovie : t.autoAddedEpisode) : null}
                     </Text>
-                    <Text size={11} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[s.source ?? "stremio"]} · ${timeAgo(s.seen_at, t)}`}</Text>
+                    <Text size={11} muted numberOfLines={1}>{`${signalSourceLabel(s.source ?? "stremio", t.shahidName)} · ${timeAgo(s.seen_at, t)}`}</Text>
                   </View>
                 </Pressable>
                 {s.auto ? (
@@ -112,35 +114,5 @@ export function StremioListScreen() {
         </View>
       ))}
     </SettingsScreen>
-  );
-}
-
-/**
- * 🆕 المهمّة ٥٦١ — **دائرتا الجواب ✕ و✓** — كانتا هنا وحدَهما، ونُقلتا مكوّناً حين احتاجهما جرسُ «التنبيهات» («شغّلت X في Stremio.
- * شاهدتها؟» يُجاب من الجرس — أحمد «١أ»): نسختان من الدائرتين كانتا ستتباعدان.
- */
-export function AnswerCircles({ label, movie, onNo, onYes, size = CIRCLE }: { label: string; movie: boolean; onNo: () => void; onYes: () => void; size?: number }) {
-  const { t, tokens } = useApp();
-  return (
-    <>
-      <Pressable
-        onPress={onNo}
-        hitSlop={4}
-        accessibilityRole="button"
-        accessibilityLabel={`${t.stremioNo} — ${label}`}
-        style={({ pressed }) => ({ width: size, height: size, borderRadius: size / 2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
-      >
-        <Icon name="close" size={16} color={tokens.muted} />
-      </Pressable>
-      <Pressable
-        onPress={onYes}
-        hitSlop={4}
-        accessibilityRole="button"
-        accessibilityLabel={`${movie ? t.stremioYesMovie : t.stremioYes} — ${label}`}
-        style={({ pressed }) => ({ width: size, height: size, borderRadius: size / 2, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
-      >
-        <Icon name="check" size={18} color={tokens.onAccent} />
-      </Pressable>
-    </>
   );
 }

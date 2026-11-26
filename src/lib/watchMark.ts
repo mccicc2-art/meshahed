@@ -186,7 +186,12 @@ export interface SignalRow {
   tmdb_id: number;
   season: number | null;
   episode: number | null;
+  /** 🆕 T579 — يومُ المشاهدة على المنصّة (سؤالُ نتفليكس وأخواتها) — به تُكتب */
+  seen_at?: string | null;
 }
+
+/** 🆕 T579 — منصّاتُ البثّ: سجلُّها يسمّي الحلقةَ التي شوهدت بعينها ويومَها */
+const PLATFORM_SOURCES: ReadonlySet<string> = new Set(["netflix", "osn", "shahid"]);
 
 /**
  * ✓ على سؤال: حلقةٌ = «شاهدتُ حتى هنا» وتُغلق معها أسئلةُ ما قبلها في المسلسل نفسِه؛ فيلمٌ = مشاهَدٌ ويدخل المكتبة.
@@ -195,7 +200,12 @@ export interface SignalRow {
  */
 export async function markSignalWatched(supabase: Db, userId: string, sig: SignalRow, src: WatchSource, lang?: TmdbLang | null): Promise<number> {
   let marked = 0;
-  if (sig.media_type === "tv" && sig.season != null && sig.episode != null) {
+  /* 🆕 T579 — **سؤالُ المنصّة يعلّم الحلقةَ نفسَها بيوم مشاهدتها** كما كان الاستيرادُ سيكتبها — لا «حتى هنا»: الملفُّ مشتركٌ، وما قبلها
+     في السجلّ سؤالٌ له جوابُه (قد يكون الآخرُ شاهده) */
+  const at = sig.seen_at && !Number.isNaN(Date.parse(sig.seen_at)) ? new Date(sig.seen_at).toISOString() : new Date().toISOString();
+  if (PLATFORM_SOURCES.has(src) && sig.media_type === "tv" && sig.season != null && sig.episode != null) {
+    marked = await markEpisodeAt(supabase, userId, sig.tmdb_id, sig.season, sig.episode, at, src, lang);
+  } else if (sig.media_type === "tv" && sig.season != null && sig.episode != null) {
     marked = await markWatchedUpTo(supabase, userId, sig.tmdb_id, sig.season, sig.episode, undefined, src, lang);
     /* ما قبلها في المسلسل نفسِه أُجيب عنه بهذا الجواب — الخاصّةُ (الموسم ٠) وحدَها كما في `markWatchedUpTo` */
     if (sig.season > 0) {
@@ -211,7 +221,7 @@ export async function markSignalWatched(supabase: Db, userId: string, sig: Signa
     const runtime = m?.runtime && Number.isInteger(m.runtime) && m.runtime > 0 && m.runtime <= 10_000 ? m.runtime : null;
     const { data: added, error } = await supabase
       .from("watched_movies")
-      .upsert({ user_id: userId, movie_tmdb_id: sig.tmdb_id, runtime }, { onConflict: "user_id,movie_tmdb_id", ignoreDuplicates: true })
+      .upsert({ user_id: userId, movie_tmdb_id: sig.tmdb_id, runtime, ...(PLATFORM_SOURCES.has(src) ? { watched_at: at } : {}) }, { onConflict: "user_id,movie_tmdb_id", ignoreDuplicates: true })
       .select("id");
     if (error) failed(error);
     await tagSource(supabase, "watched_movies", added as { id: number }[] | null, src);
@@ -219,6 +229,27 @@ export async function markSignalWatched(supabase: Db, userId: string, sig: Signa
   }
   await closeSignal(supabase, userId, sig.id, true);
   return marked;
+}
+
+/**
+ * 🆕 T579 — حلقةٌ واحدةٌ بيومها (سؤالُ المنصّة): حدودُ A-15 نفسُها، وموسمٌ لا يعرفه TMDB لا يُعلَّم، والمسلسلُ يُتابَع، والشارةُ على
+ * ما أُدرج وحده. ما كان مشاهَداً يبقى بتاريخه (`ignoreDuplicates`).
+ */
+async function markEpisodeAt(supabase: Db, userId: string, tmdbId: number, season: number, episode: number, at: string, source: WatchSource, lang?: TmdbLang | null): Promise<number> {
+  if (!Number.isInteger(season) || season < 0 || season > 1000 || !Number.isInteger(episode) || episode < 1 || episode > 20_000) return 0;
+  const { getTvFor } = await import("@/lib/tmdb");
+  const { airedPerSeason } = await import("@/core/progress");
+  const tv = await getTvFor(tmdbId, lang);
+  if (season !== 0 && !airedPerSeason(tv).has(season)) return 0;
+  const runtime = tv.episode_run_time?.[0] ?? null;
+  const { data: added, error } = await supabase
+    .from("watched_episodes")
+    .upsert({ user_id: userId, show_tmdb_id: tmdbId, season_number: season, episode_number: episode, runtime, watched_at: at }, { onConflict: "user_id,show_tmdb_id,season_number,episode_number", ignoreDuplicates: true })
+    .select("id");
+  if (error) failed(error);
+  await tagSource(supabase, "watched_episodes", added as { id: number }[] | null, source);
+  await ensureShowFollowed(supabase, userId, tmdbId, tv.name ?? null, tv.poster_path ?? null);
+  return (added as unknown[] | null)?.length ?? 0;
 }
 
 /** يُغلق السؤالَ بجوابه — ما دام منتظراً */

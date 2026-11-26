@@ -80,6 +80,8 @@ export function OsnSyncHost() {
   const st = useOsnSync();
   const web = useRef<OsnWebRef>(null);
   const [after, setAfter] = useState<number | null | undefined>(undefined);
+  /* 🆕 T579 — «إضافة مشاهداتي تلقائياً» مطفأ ⇒ هذه المزامنةُ تسأل ولا تكتب (يُقرأ مع حدِّها من الخادم) */
+  const ask = useRef(false);
   const busy = useRef(false);
   const lastCheck = useRef(0);
   const startedAt = useRef(0);
@@ -137,6 +139,7 @@ export function OsnSyncHost() {
         set({ job: null, phase: null, last: { at: Date.now(), kind: job.kind, outcome: { ok: false, reason: "server" } } });
         return;
       }
+      ask.current = p.auto_add === false;
       setAfter(afterOf(p));
     });
     const timer = setTimeout(() => finish({ ok: false, reason: "unreadable" }), JOB_MS);
@@ -159,6 +162,7 @@ export function OsnSyncHost() {
     try {
       const outcome = await runOsnSync(web.current as OsnWebRef, uid, after, {
         auto: state.job?.kind === "auto",
+        ask: ask.current,
         stopped: () => !state.job,
         phase: (phase) => set({ phase }),
         pct: (pct) => set({ pct }),

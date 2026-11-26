@@ -42,6 +42,8 @@ export interface PlatformLinkInfo {
   works: number;
   /** 🆕 الأرقامُ الثلاثة في صفحة نتفليكس (الفكرة «ب»): مسلسلاتٌ وحلقاتٌ وأفلامٌ في المكتبة بمصدرها. اختياريّةٌ: خادمٌ أقدمُ لا يرسلها */
   counts?: { shows: number; episodes: number; movies: number };
+  /** 🆕 T579 (هجرة ٢٧٢) — «إضافة مشاهداتي تلقائياً». `false`: ما يظهر في السجلّ يصير سؤالاً «شاهدتها؟». غائبٌ (خادمٌ أقدم) = نعم */
+  auto_add?: boolean;
 }
 
 export interface DeviceLinksState {
@@ -84,7 +86,51 @@ export type DeviceLinksBody =
 export type NetflixLinkBody =
   | { action: "link"; profile_label?: string | null; import_all: boolean }
   | { action: "sync"; last_item_at: string | null; added?: PlatformAdded }
-  | { action: "revoke" };
+  | { action: "revoke" }
+  /** 🆕 T579 — مفتاحُ «إضافة مشاهداتي تلقائياً» */
+  | { action: "auto_add"; value: boolean }
+  /** 🆕 T579 — ما ظهر في السجلّ والمفتاحُ مطفأ: أسئلةُ «شاهدتها؟» (`auto`: مزامنةُ الفتح ⇒ إشعارُ جوال) */
+  | { action: "ask"; items: PlatformAskItem[]; auto?: boolean };
+
+/** 🆕 T579 — سؤالٌ واحد: حلقةٌ أو فيلمٌ طابقه الخادمُ في TMDB، ويومُ مشاهدته على المنصّة (ISO) */
+export interface PlatformAskItem {
+  kind: "tv" | "movie";
+  tmdb_id: number;
+  season: number | null;
+  episode: number | null;
+  at: string;
+  /** اسمُ العمل كما يُقرأ — لإشعار الجوال وحده */
+  title?: string | null;
+}
+/** 🆕 T579 — بابُ كلِّ منصّة (`platformRoute`) — مكتوبةً حرفاً: فاحصُ المسارات (`appRoutes.test`) لا يقرأ مساراً مركّباً */
+export const PLATFORM_ROUTE = {
+  netflix: "/api/v1/me/links/netflix",
+  osn: "/api/v1/me/links/osn",
+  shahid: "/api/v1/me/links/shahid",
+} as const satisfies Record<PlatformKind, string>;
+/** أقصى ما يُسأل عنه في المزامنة الواحدة — ما زاد يبقى في سجلّ المنصّة لا في الرئيسيّة */
+export const ASK_MAX = 200;
+
+const ISO_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+/** الأسئلةُ بعد التنقية — ما لا يصحّ يسقط وحدَه */
+export function parseAskItems(raw: unknown): PlatformAskItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: PlatformAskItem[] = [];
+  for (const v of raw.slice(0, ASK_MAX)) {
+    if (!v || typeof v !== "object") continue;
+    const o = v as Record<string, unknown>;
+    const kind = o.kind === "tv" || o.kind === "movie" ? o.kind : null;
+    const id = typeof o.tmdb_id === "number" && Number.isInteger(o.tmdb_id) && o.tmdb_id > 0 ? o.tmdb_id : null;
+    const at = typeof o.at === "string" && ISO_AT.test(o.at) && !Number.isNaN(Date.parse(o.at)) ? o.at : null;
+    if (!kind || !id || !at) continue;
+    const season = kind === "tv" ? count(o.season, 1000) : null;
+    const episode = kind === "tv" ? count(o.episode, 20_000) : null;
+    if (kind === "tv" && (season == null || episode == null || episode < 1)) continue;
+    const title = typeof o.title === "string" && o.title.trim() ? o.title.trim().slice(0, 200) : null;
+    out.push({ kind, tmdb_id: id, season, episode, at, title });
+  }
+  return out;
+}
 
 /**
  * 🆕 المهمّة ٥٦١ — **ما وصل في هذه المزامنة**: سطرٌ في الجرس لكلِّ دفعة، وإشعارُ جوالٍ للمزامنة التلقائيّة وحدَها (أحمد «٢ب»: الإشعارُ
@@ -119,6 +165,8 @@ export function parsePlatformAdded(raw: unknown): PlatformAdded | null {
 
 export interface PlatformLinkResult {
   linked: boolean;
+  /** 🆕 T579 — أسئلةٌ جديدةٌ كُتبت (`ask`) */
+  asked?: number;
 }
 
 /** 🆕 T552 — `GET /api/v1/me/links/netflix`: «ما دخل» من المكتبة نفسِها (كلُّ ما عليه وسمُ `netflix`)، الأحدثُ أوّلاً —

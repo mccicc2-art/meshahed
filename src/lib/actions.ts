@@ -1726,14 +1726,17 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
   const { supabase, user } = await requireUser("sig", 60, 60_000);
   const { data: row } = await supabase
     .from("watch_signals")
-    .select("id, source, media_type, tmdb_id, season, episode, state")
+    .select("id, source, media_type, tmdb_id, season, episode, state, seen_at")
     .match({ id, user_id: user.id })
     .maybeSingle();
-  const sig = row as { id: number; source?: string | null; media_type: string; tmdb_id: number; season: number | null; episode: number | null; state: string } | null;
+  const sig = row as { id: number; source?: string | null; media_type: string; tmdb_id: number; season: number | null; episode: number | null; state: string; seen_at?: string | null } | null;
   /* 🆕 هجرة ٢٣٥ — شارةُ السجلّ تقول من أين جاء السؤال (Stremio أو سيرفرُ البيت)، والغيابُ Stremio كما كان */
   /* 🆕 هجرة ٢٦٧ — و`nuvio`: ✓ على سؤالٍ جاء من Nuvio يكتب شارتَه في السجلّ */
+  /* 🆕 T579 — وسؤالُ المنصّة (`netflix` · `osn` · `shahid`): شارتُها، والحلقةُ وحدَها بيوم مشاهدتها (`markSignalWatched`) */
   const src: WatchSource =
-    sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" || sig?.source === "kodi" || sig?.source === "nuvio" ? sig.source : "stremio";
+    sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" || sig?.source === "kodi" || sig?.source === "nuvio" || sig?.source === "netflix" || sig?.source === "osn" || sig?.source === "shahid"
+      ? sig.source
+      : "stremio";
   if (!sig || sig.state !== "pending") return { marked: 0 };
   /* 🆕 هجرة ٢٣٧ — التعليمُ نفسُه في `watchMark.ts`: يقرؤه التسجيلُ بلا سؤال أيضاً */
   if (!watched) {

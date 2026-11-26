@@ -10,7 +10,7 @@ import { mark } from "../../perfMarks";
 import { radius } from "../../theme";
 import type { ToastHostRef } from "../../HoldHost";
 import { Sheet } from "../../library/Sheet";
-import { SettingsScreen, Group, Row, RowsSkeleton, StatusPill } from "../../settings/ui";
+import { SettingsScreen, Group, Row, RowsSkeleton, StatusPill, Toggle } from "../../settings/ui";
 import { messageOf } from "../../settings/api";
 import { timeAgo } from "@/core/when";
 import { linkSourceName, linkWhat } from "@/core/linkSignals";
@@ -20,7 +20,7 @@ import { useLinks } from "../api";
 import { Orbit } from "../Orbit";
 import type { DeviceLinksState, NetflixAddedList, PlatformKind } from "@/core/contracts/deviceLinks";
 import { NETFLIX_GATE, NETFLIX_LOGIN, NETFLIX_VIEWED, NetflixWeb, type NetflixWebRef, type NfxReady } from "./bridge";
-import { clearLocal, linkNetflix, readHistory, readLocal, unlinkNetflix, useNetflixAdded, writeLocal, type NfxLocal } from "./sync";
+import { clearLocal, linkNetflix, readHistory, readLocal, setPlatformAutoAdd, unlinkNetflix, useNetflixAdded, writeLocal, type NfxLocal } from "./sync";
 import { requestNetflixSignOut, requestNetflixSync, useNetflixSync, type NfxSyncState } from "./NetflixSyncHost";
 
 /**
@@ -128,6 +128,17 @@ export function PlatformScreen({ drv }: { drv: PlatformDriver }) {
   const [found, setFound] = useState<{ name: string; episodes: number; movies: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const say = (e: unknown) => toast.current?.say(messageOf(e, t as unknown as Record<string, unknown>, t.apiInternal));
+  /* 🆕 T579 — «إضافة مشاهداتي تلقائياً»: يتبدّل في الحال، ويرجع إن رفضه الخادم */
+  const [autoAdd, setAutoAdd] = useState<boolean | null>(null);
+  const flipAuto = async (next: boolean) => {
+    setAutoAdd(next);
+    try {
+      await setPlatformAutoAdd(drv.platform, next);
+    } catch (e) {
+      setAutoAdd(!next);
+      say(e);
+    }
+  };
 
   /* بعد كلِّ مزامنة: ملفُّ الجهاز يُقرأ من جديد، ونتيجةُ «زامن الآن» تُقال هنا */
   const lastAt = useRef(sync.last?.at ?? 0);
@@ -141,7 +152,8 @@ export function PlatformScreen({ drv }: { drv: PlatformDriver }) {
     if (o.ok && o.episodes + o.movies > 0) {
       const what = o.added ? linkWhat(o.added, t) : "";
       toast.current?.say(what ? t.linkAdded(linkSourceName(drv.platform, t), what) : drv.str.added(o.episodes, o.movies), { label: t.linkAddedShow, onPress: () => setOverlay("added") }, 6000, "success");
-    } else if (o.ok) toast.current?.say(t.nfxNothingNew);
+    } else if (o.ok && o.asked) toast.current?.say(t.nfxAskedToast(o.asked), undefined, 4000, "info");
+    else if (o.ok) toast.current?.say(t.nfxNothingNew);
     /* «profile» تقوله بطاقةُ المزامنة بزرّها — لا رسالةَ فوقها */
     else if (o.reason !== "signed-out" && o.reason !== "stopped" && o.reason !== "profile") toast.current?.say(t.nfxSyncFailed);
   }, [sync.last, uid, t, drv]);
@@ -347,6 +359,18 @@ export function PlatformScreen({ drv }: { drv: PlatformDriver }) {
       <Group label={t.nfxLinkGroup}>
         <Row icon="person" title={t.nfxChangeProfile} onPress={() => openLogin("profile")} />
         <Row icon="trash" title={t.linksUnlink} danger onPress={() => setOverlay("unlink")} />
+      </Group>
+
+      {/* ───── 🆕 T579 — الإضافة إلى مكتبتك (أحمد «١أ»: آخرَ الصفحة، مفتاحُ الإعدادات نفسُه) ─────
+          ملفٌّ يشاهد منه اثنان: يُطفأ فيصير ما في السجلّ سؤالاً «شاهدتها؟» في الرئيسيّة والجرس — والإضافةُ بجواب صاحبه وحده */}
+      <Group label={t.nfxAutoAddGroup}>
+        <Toggle
+          icon="people"
+          label={t.nfxAutoAdd}
+          hint={t.nfxAutoAddHint}
+          checked={autoAdd ?? nfx.auto_add !== false}
+          onChange={() => void flipAuto(!(autoAdd ?? nfx.auto_add !== false))}
+        />
       </Group>
     </SettingsScreen>
   );

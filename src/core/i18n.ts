@@ -3866,6 +3866,19 @@ const ar = {
   nfxProfileTitle: "اختر ملفك من جديد",
   nfxProfileSub: "طلبت نتفليكس اختيار الملف الشخصي قبل قراءة السجلّ، فتوقّفت المزامنة.",
   nfxPickProfile: "اختر الملف الشخصي",
+  /* 🆕 T579 — «إضافة مشاهداتي تلقائياً» آخرَ صفحة المنصّة، و«شاهدتها؟» في الرئيسيّة لكلِّ عملٍ دفعةً واحدة */
+  nfxAutoAddGroup: "الإضافة إلى مكتبتك",
+  nfxAutoAdd: "إضافة مشاهداتي تلقائياً",
+  nfxAutoAddHint: "أوقِفه إن شاركك أحدٌ في هذا الملف، فيسألك لوبز «شاهدتها؟» قبل الإضافة.",
+  nfxAskedToast: (n: number) => `وصل إلى الرئيسية ${arCount(n, "سؤال واحد", "سؤالان", "أسئلة", "سؤالاً", "سؤال")}: «شاهدتها؟»`,
+  askInHistory: "في سجلّك",
+  askEpisodesQ: (count: string) => `${count} · شاهدتها كلها؟`,
+  askAllYes: "✓ كلها",
+  askMarkedEp: (ep: string) => `أضفنا ${ep}`,
+  askPick: "اختر منها",
+  askPickTitle: "أيّها شاهدت؟",
+  askManyMarked: (count: string, title: string) => `أضفنا ${count} من ${title}`,
+  askManyDismissed: (count: string) => `لن نضيف ${count}`,
   nfxAdded: (episodes: number, movies: number) =>
     episodes && movies
       ? `أُضيفت من Netflix ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")} و${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
@@ -3932,6 +3945,8 @@ const ar = {
   linkAskUntitled: (app: string) => `شغّلت عملاً في ${app}. شاهدته؟`,
   linkAskPushTitle: (app: string) => `من ${app}`,
   linkAskMany: (count: string, app: string) => `${count} شغّلتها في ${app}. شاهدتها؟`,
+  /* 🆕 T579 — دفعةُ حلقاتٍ من عملٍ واحد في سجلّ المنصّة */
+  linkAskEpisodesOf: (count: string, title: string, app: string) => `شغّلت ${count} من ${title} في ${app}. شاهدتها؟`,
   linkPushMany: (what: string) => `أضفنا ${what} لمكتبتك`,
   linkAddedShow: "عرض",
 };
@@ -6859,6 +6874,18 @@ const en: Dict = {
   nfxProfileTitle: "Pick your profile again",
   nfxProfileSub: "Netflix asked which profile is watching before it showed your history, so syncing stopped.",
   nfxPickProfile: "Pick profile",
+  nfxAutoAddGroup: "Adding to your library",
+  nfxAutoAdd: "Add what I watch automatically",
+  nfxAutoAddHint: "Turn it off if someone shares this profile — Loopz will ask «Watched it?» before adding.",
+  nfxAskedToast: (n: number) => `${n === 1 ? "1 question" : `${n} questions`} on Home: «Watched it?»`,
+  askInHistory: "In your history",
+  askEpisodesQ: (count: string) => `${count} · Watched them all?`,
+  askAllYes: "✓ All",
+  askMarkedEp: (ep: string) => `Added ${ep}`,
+  askPick: "Pick",
+  askPickTitle: "Which did you watch?",
+  askManyMarked: (count: string, title: string) => `Added ${count} of ${title}`,
+  askManyDismissed: (count: string) => `Won't add ${count}`,
   nfxAdded: (episodes: number, movies: number) =>
     episodes && movies
       ? `Added from Netflix: ${enCount(episodes, "episode", "episodes")} and ${enCount(movies, "movie", "movies")}`
@@ -6919,6 +6946,7 @@ const en: Dict = {
   linkAskUntitled: (app: string) => `You played something in ${app}. Did you watch it?`,
   linkAskPushTitle: (app: string) => `From ${app}`,
   linkAskMany: (count: string, app: string) => `${count} you played in ${app}. Did you watch them?`,
+  linkAskEpisodesOf: (count: string, title: string, app: string) => `You played ${count} of ${title} in ${app}. Did you watch them?`,
   linkPushMany: (what: string) => `Added ${what} to your library`,
   linkAddedShow: "View",
 };

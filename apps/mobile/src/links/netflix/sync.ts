@@ -1,6 +1,7 @@
 import { File, Paths } from "expo-file-system";
 import { api, queryClient, write } from "../../api";
-import { importRecords, type ImportPhase } from "../../settings/importPipeline";
+import { askRecords, importRecords, type ImportPhase } from "../../settings/importPipeline";
+import type { RawRecord } from "@/core/importParse";
 import { LINKS_KEY } from "../api";
 import {
   buildNetflixRecords,
@@ -20,7 +21,8 @@ import {
   type NetflixViewing,
 } from "@/core/netflix";
 import { useQuery } from "@tanstack/react-query";
-import type { DeviceLinksState, NetflixAddedList, NetflixLinkBody, PlatformLinkInfo, PlatformLinkResult, PlatformAdded } from "@/core/contracts/deviceLinks";
+import { PLATFORM_ROUTE } from "@/core/contracts/deviceLinks";
+import type { DeviceLinksState, NetflixAddedList, NetflixLinkBody, PlatformKind, PlatformLinkInfo, PlatformLinkResult, PlatformAdded } from "@/core/contracts/deviceLinks";
 import type { NetflixWebRef, NfxReady } from "./bridge";
 
 /**
@@ -176,8 +178,32 @@ export async function readMovies(web: NetflixWebRef, ready: NfxReady, items: Net
 
 export type SyncPhase = "reading" | ImportPhase;
 export type SyncOutcome =
-  | { ok: true; episodes: number; movies: number; shows: number; newest: number | null; stats?: SyncStats; added?: PlatformAdded | null }
+  /** 🆕 T579 — `asked`: أسئلةٌ «شاهدتها؟» كُتبت بدل الإضافة (المفتاحُ مطفأ) */
+  | { ok: true; episodes: number; movies: number; shows: number; newest: number | null; stats?: SyncStats; added?: PlatformAdded | null; asked?: number }
   | { ok: false; reason: "signed-out" | "profile" | "unreadable" | "server" | "stopped" };
+
+/**
+ * 🆕 T579 — **الكتابةُ في المكتبة أو السؤال** — للمنصّات الثلاث: «إضافة مشاهداتي تلقائياً» مشغّلٌ (الافتراضيّ) ⇐ مسارُ الاستيراد الواحد
+ * كما كان؛ مطفأ (`hooks.ask`) ⇐ المطابقةُ نفسُها ثمّ أسئلةٌ «شاهدتها؟» في الرئيسيّة (`askRecords`) ولا يدخل المكتبةَ شيء.
+ */
+export async function importOrAsk(
+  platform: PlatformKind,
+  records: RawRecord[],
+  hooks: { stopped: () => boolean; phase: (p: ImportPhase) => void; pct: (n: number) => void; ask?: boolean },
+): Promise<{ episodes: number; movies: number; shows: number; unmatched: string[]; asked: number } | null> {
+  if (hooks.ask) {
+    const r = await askRecords(records, hooks, platform);
+    return r ? { episodes: 0, movies: 0, shows: 0, unmatched: r.unmatched, asked: r.asked } : null;
+  }
+  const r = await importRecords(records, hooks, { keep: true, writeSource: platform });
+  return r ? { episodes: r.episodes, movies: r.movies, shows: r.shows, unmatched: r.unmatched, asked: 0 } : null;
+}
+
+/** 🆕 T579 — مفتاحُ «إضافة مشاهداتي تلقائياً» لمنصّةٍ واحدة */
+export async function setPlatformAutoAdd(platform: PlatformKind, value: boolean): Promise<void> {
+  await write<PlatformLinkResult>(PLATFORM_ROUTE[platform], { action: "auto_add", value } satisfies NetflixLinkBody);
+  await queryClient.invalidateQueries({ queryKey: LINKS_KEY });
+}
 
 /**
  * 🆕 المهمّة ٥٦١ — **ملخّصُ ما وصل** لسطر الجرس وإشعار الجوال (الخادمُ يكتبه في `link_adds`): الأعدادُ من الخادم (ما كُتب فعلاً)، والاسمُ
@@ -211,7 +237,7 @@ export async function runNetflixSync(
   ready: NfxReady,
   uid: string,
   after: number | null,
-  hooks: { stopped: () => boolean; phase: (p: SyncPhase) => void; pct: (n: number) => void; auto?: boolean },
+  hooks: { stopped: () => boolean; phase: (p: SyncPhase) => void; pct: (n: number) => void; auto?: boolean; ask?: boolean },
 ): Promise<SyncOutcome> {
   hooks.phase("reading");
   hooks.pct(0);
@@ -226,16 +252,20 @@ export async function runNetflixSync(
   let movies = 0;
   let shows = 0;
   let unmatched: string[] = [];
+  /* 🆕 T579 — المفتاحُ مطفأ (`hooks.ask`) ⇒ ما في السجلّ أسئلةُ «شاهدتها؟» لا كتابةٌ في المكتبة */
+  let asked = 0;
   if (built.records.length) {
-    const res = await importRecords(built.records, hooks, { keep: true, writeSource: "netflix" });
+    const res = await importOrAsk("netflix", built.records, hooks);
     if (!res) return { ok: false, reason: "stopped" };
     episodes = res.episodes;
     movies = res.movies;
     shows = res.shows;
     unmatched = res.unmatched;
+    asked = res.asked;
   }
   const newest = built.newest ?? (items[0]?.at ?? null);
-  const added: NfxAdded[] = built.records.flatMap((r): NfxAdded[] =>
+  /* ما سُئل عنه لم يدخل المكتبة — فلا سطرَ له في «ما دخل» */
+  const added: NfxAdded[] = hooks.ask ? [] : built.records.flatMap((r): NfxAdded[] =>
     r.kind === "ep-name" ? [{ title: r.show, season: r.s, episode: r.e, at: r.at ?? "" }] : r.kind === "movie-name" ? [{ title: r.name, season: null, episode: null, at: r.at ?? "" }] : [],
   );
   const summary = platformAdded(added, episodes, movies, !!hooks.auto);
@@ -258,7 +288,7 @@ export async function runNetflixSync(
     partial: [...built.partial, ...(prev.partial ?? [])].slice(0, KEEP),
   });
   await queryClient.invalidateQueries({ queryKey: LINKS_KEY });
-  return { ok: true, episodes, movies, shows, newest, added: summary, stats: { items: fresh.length, rec: built.records.length, part: built.partial.length, skip: built.skipped, unm: unmatched.length } };
+  return { ok: true, episodes, movies, shows, newest, added: summary, asked, stats: { items: fresh.length, rec: built.records.length, part: built.partial.length, skip: built.skipped, unm: unmatched.length } };
 }
 
 /** الربطُ على الخادم بعد سؤال الاستيراد — `import_all`: «استيراد الكل»؛ وإلّا «من الآن فقط» */

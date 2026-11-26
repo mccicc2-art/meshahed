@@ -13,7 +13,7 @@ import { coalescedRefresh } from "@/core/refresh";
 import { backdropUrl } from "@/core/media";
 import { timeAgo } from "@/core/when";
 import { getDict, type Locale } from "@/core/i18n";
-import { SIGNAL_SOURCE_NAME, signalSourceOf, type StremioAnswerBody, type StremioSignal, type StremioState } from "@/core/contracts/stremio";
+import { isPlatformSignal, signalSourceLabel, signalSourceOf, type StremioAnswerBody, type StremioSignal, type StremioState } from "@/core/contracts/stremio";
 import type { EpisodeRateBody, RateBody } from "@/core/contracts/track";
 import { StarRatingRow } from "../ListReviewForm";
 
@@ -78,7 +78,8 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
 
   const it = rateFor ?? items?.[0];
   if (!it) return null;
-  const source = SIGNAL_SOURCE_NAME[signalSourceOf(it.source)];
+  /* 🆕 T579 — «شاهد» اسمٌ عربيٌّ بلغة القارئ؛ وسؤالُ المنصّة يعلّم الحلقةَ وحدَها */
+  const source = signalSourceLabel(signalSourceOf(it.source), t.shahidName);
   const ep = episodeLabel(it);
   const img = backdropUrl(it.image_path, "w300");
 
@@ -86,7 +87,7 @@ export function WatchSignalCard({ locale, className = "" }: { locale: Locale; cl
     setBusy(true);
     try {
       await v1Post("/api/v1/me/stremio/answer", { id: it.id, watched } satisfies StremioAnswerBody, t);
-      toast(watched ? (ep ? t.stremioMarkedUpTo(ep) : t.stremioMarkedMovie) : it.kind === "movie" ? t.stremioDismissedMovie : t.stremioDismissed);
+      toast(watched ? (ep ? (isPlatformSignal(signalSourceOf(it.source)) ? t.askMarkedEp(ep) : t.stremioMarkedUpTo(ep)) : t.stremioMarkedMovie) : it.kind === "movie" ? t.stremioDismissedMovie : t.stremioDismissed);
       /* T415 — الجوابُ هنا يُحفظ في الحال (لا «تراجع» في الويب)، فالنجومُ تأتي بعده مباشرةً */
       const hasEp = it.kind === "tv" && it.season != null && it.episode != null;
       if (watched && (hasEp || it.rate)) {

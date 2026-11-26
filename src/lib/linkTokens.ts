@@ -3,7 +3,7 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 import { createServiceClient, hasServiceKey } from "@/lib/supabase/service";
 import { isGold, isPlus, type PlanBearer } from "@/core/plan";
 import type { SignalSource } from "@/core/contracts/stremio";
-import type { PlatformAdded } from "@/core/contracts/deviceLinks";
+import type { PlatformAdded, PlatformAskItem } from "@/core/contracts/deviceLinks";
 import { markSignalWatched, type SignalRow } from "@/lib/watchMark";
 import {
   acceptOnUnbound,
@@ -110,6 +110,8 @@ export interface PlatformLinkRow {
   last_item_at: string | null;
   since_at: string | null;
   stopped_at: string | null;
+  /** 🆕 T579 (هجرة ٢٧٢) — قبل الهجرة غائب (= نعم) */
+  auto_add?: boolean;
 }
 
 async function readPlatformRows(db: Db, userId: string): Promise<LinkRow[]> {
@@ -134,7 +136,9 @@ export async function platformLinksOf(userId: string): Promise<PlatformLinkRow[]
   if (!hasServiceKey()) return [];
   try {
     const db = await createServiceClient();
-    const { data, error } = await db.from("platform_links").select(PLATFORM_COLS).eq("user_id", userId).limit(10);
+    /* 🆕 T579 — والمفتاحُ معها (هجرة ٢٧٢)؛ قبل الهجرة العمودُ غائبٌ فتُقرأ الصفوفُ بدونه كما كانت */
+    const withAuto = await db.from("platform_links").select(`${PLATFORM_COLS}, auto_add`).eq("user_id", userId).limit(10);
+    const { data, error }: { data: unknown[] | null; error: unknown } = withAuto.error ? await db.from("platform_links").select(PLATFORM_COLS).eq("user_id", userId).limit(10) : withAuto;
     if (error) return [];
     return ((data ?? []) as unknown as PlatformLinkRow[]).filter((r) => isPlatformKind(r.platform) && (r.last_used_at ?? r.created_at) >= aliveSince());
   } catch {
@@ -193,6 +197,17 @@ export async function recordPlatformSync(userId: string, platform: PlatformKind,
   } catch {
     return false;
   }
+}
+
+/**
+ * 🆕 T579 — «إضافة مشاهداتي تلقائياً» لمنصّةٍ مربوطة (أحمد: «احيانا شخصين يستخدمون نفس الملف الشخصي»). يكتبه الخادمُ وحده
+ * كـ`auto_mark`. يعيد `false` إن لم تكن مربوطة أو قبل الهجرة.
+ */
+export async function setPlatformAutoAdd(userId: string, platform: PlatformKind, value: boolean): Promise<boolean> {
+  if (!hasServiceKey()) return false;
+  const db = await createServiceClient();
+  const { data, error } = await db.from("platform_links").update({ auto_add: value }).eq("user_id", userId).eq("platform", platform).select("id");
+  return !error && (data?.length ?? 0) > 0;
 }
 
 /** فكُّ منصّة — الصفُّ يُحذف وتنفتح خانتُه. **ما دخل المكتبة يبقى** (أحمد: «ما استُورد يبقى») */
@@ -591,4 +606,51 @@ export async function recordLinkAdd(userId: string, source: PlatformKind, added:
   } catch {
     return false;
   }
+}
+
+/**
+ * ====== 🆕 أسئلةُ «شاهدتها؟» من سجلّ المنصّة (T579، هجرة ٢٧٢) ======
+ * ⚠️ هنا لا في ملفٍّ وحدَه: سياجُ مفتاح الخدمة (D-898) يحصر عميلَه في هذا الملفّ وإخوته — كـ`recordLinkAdd`.
+ *
+ * أحمد ٢٦ نوفمبر: «احيانا شخصين يستخدمون نفس الملف الشخصي .. يقدر يطفي التسجيل التلقائي و يسير يسأله هل شاهدت او لا».
+ * المفتاحُ مطفأ ⇒ التطبيقُ يقرأ السجلَّ ويطابقه كعادته ثمّ يرسل ما طابق إلى هنا بدل الكتابة في المكتبة، فيصير كلُّ عنصرٍ سؤالاً في
+ * `watch_signals` — **الجدولُ الذي يسأل منه Stremio وKodi**: بطاقةُ «من تطبيقاتك» والجرسُ وإشعارُ الجوال (`runLinkAskPush`) كما هي.
+ *
+ * - `played_at` = الآن: السؤالُ «شُغِّل» فيظهر في الرئيسيّة والجرس ويرنّ (المنصّةُ تقول «شاهدها» لا «بدأها» — لا انتظار).
+ * - `seen_at` = يومُ المشاهدة على المنصّة: ✓ يكتب الحلقةَ بيومها (`markSignalWatched`).
+ * - **لا يُسأل مرّتين**: ما في المكتبة أصلاً، وما سُئل عنه من المنصّة نفسِها من قبل (أُجيب أو ينتظر) — «✕ لا» جوابٌ نهائيّ.
+ */
+
+const askKey = (k: "tv" | "movie", id: number, s: number | null, e: number | null) => `${k}-${id}-${s ?? -1}-${e ?? -1}`;
+
+/** يكتب الأسئلةَ الجديدة ويعيد عددها — `null` إن تعذّرت الكتابة (قبل الهجرة: قيدُ المصدر يرفض) */
+export async function recordPlatformAsks(userId: string, platform: PlatformKind, items: PlatformAskItem[]): Promise<number | null> {
+  if (!hasServiceKey()) return null;
+  if (!items.length) return 0;
+  const db = await createServiceClient();
+  const shows = [...new Set(items.filter((i) => i.kind === "tv").map((i) => i.tmdb_id))];
+  const movies = [...new Set(items.filter((i) => i.kind === "movie").map((i) => i.tmdb_id))];
+  const ids = [...new Set(items.map((i) => i.tmdb_id))];
+  const [eps, mvs, asked] = await Promise.all([
+    shows.length
+      ? db.from("watched_episodes").select("show_tmdb_id, season_number, episode_number").eq("user_id", userId).in("show_tmdb_id", shows).limit(20_000)
+      : Promise.resolve({ data: [] as unknown[] }),
+    movies.length ? db.from("watched_movies").select("movie_tmdb_id").eq("user_id", userId).in("movie_tmdb_id", movies).limit(5000) : Promise.resolve({ data: [] as unknown[] }),
+    db.from("watch_signals").select("media_type, tmdb_id, season, episode").eq("user_id", userId).eq("source", platform).in("tmdb_id", ids).limit(20_000),
+  ]);
+  const skip = new Set<string>();
+  for (const r of (eps.data ?? []) as { show_tmdb_id: number; season_number: number; episode_number: number }[]) skip.add(askKey("tv", r.show_tmdb_id, r.season_number, r.episode_number));
+  for (const r of (mvs.data ?? []) as { movie_tmdb_id: number }[]) skip.add(askKey("movie", r.movie_tmdb_id, null, null));
+  for (const r of (asked.data ?? []) as { media_type: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null }[]) skip.add(askKey(r.media_type, r.tmdb_id, r.season, r.episode));
+  const now = new Date().toISOString();
+  const rows: Record<string, unknown>[] = [];
+  for (const i of items) {
+    const k = askKey(i.kind, i.tmdb_id, i.season, i.episode);
+    if (skip.has(k)) continue;
+    skip.add(k);
+    rows.push({ user_id: userId, source: platform, media_type: i.kind, tmdb_id: i.tmdb_id, season: i.season, episode: i.episode, seen_at: i.at, played_at: now });
+  }
+  if (!rows.length) return 0;
+  const { error } = await db.from("watch_signals").insert(rows);
+  return error ? null : rows.length;
 }

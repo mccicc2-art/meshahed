@@ -80,6 +80,8 @@ async function stateOf(uid: string): Promise<DeviceLinksState> {
         since_at: p.since_at,
         works: works.get(p.platform) ?? 0,
         counts: split.get(p.platform) ?? { shows: 0, episodes: 0, movies: 0 },
+        /* 🆕 T579 — غائبٌ قبل الهجرة ⇒ نعم كما كان */
+        auto_add: p.auto_add !== false,
       };
     }),
   };

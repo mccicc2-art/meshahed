@@ -1180,7 +1180,9 @@ export async function runLinkAskPush(nowMs = Date.now()): Promise<{ ran: boolean
     for (const a of byUser.get(user) ?? []) if (await claim(db, `ask:${a.id}`)) fresh.push(a);
     if (!fresh.length) continue;
     const first = fresh[0];
-    const app = LINK_SOURCE_NAME[(first.source in LINK_SOURCE_NAME ? first.source : "stremio") as LinkSource];
+    const srcOf = (first.source in LINK_SOURCE_NAME ? first.source : "stremio") as LinkSource;
+    /* 🆕 T579 — أسئلةُ المنصّة تصل دفعةً من عملٍ واحد (حلقاتُ ليلةٍ واحدة): «٤ حلقات من Dark» لا «٤ أعمال» */
+    const oneWork = fresh.every((a) => a.media_type === first.media_type && a.tmdb_id === first.tmdb_id);
     const nameIn = async (language: "ar-SA" | "en-US") => {
       try {
         const d = first.media_type === "tv" ? await getTvIn(first.tmdb_id, language) : await getMovieIn(first.tmdb_id, language);
@@ -1189,15 +1191,19 @@ export async function runLinkAskPush(nowMs = Date.now()): Promise<{ ran: boolean
         return "";
       }
     };
-    const [ar, en] = fresh.length === 1 ? await Promise.all([nameIn("ar-SA"), nameIn("en-US")]) : ["", ""];
+    const [ar, en] = fresh.length === 1 || oneWork ? await Promise.all([nameIn("ar-SA"), nameIn("en-US")]) : ["", ""];
     await deliver({
       to: user,
       group: "auto",
       build: (t, lang) => {
         const title = (lang === "ar" ? ar || en : en || ar).slice(0, 120);
         const ep = linkEpisodeLabel(first.season, first.episode);
+        /* «شاهد» اسمٌ عربيٌّ يُكتب بلغة القارئ (`linkSourceName`) */
+        const app = linkSourceName(srcOf, t);
         const body =
-          fresh.length > 1
+          fresh.length > 1 && oneWork && first.media_type === "tv" && title
+            ? t.linkAskEpisodesOf(t.linkEpisodes(fresh.length), title, app)
+            : fresh.length > 1
             ? t.linkAskMany(t.linkWorks(fresh.length), app)
             : !title
               ? t.linkAskUntitled(app)

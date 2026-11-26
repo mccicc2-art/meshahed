@@ -3,6 +3,7 @@ import { api, write } from "../api";
 import { groupForResolve, type RawRecord } from "@/core/importParse";
 import { buildImport, IMPORT_CHUNK } from "@/core/importBuild";
 import type { ImportPayload, ImportRunSource, ResolveRequest, ResolveResult } from "@/core/importer";
+import { ASK_MAX, PLATFORM_ROUTE, type NetflixLinkBody, type PlatformAskItem, type PlatformKind, type PlatformLinkResult } from "@/core/contracts/deviceLinks";
 
 /**
  * ====== 🆕 مسارُ الاستيراد بعد القراءة — المطابقةُ ثمّ التجميعُ ثمّ الكتابة ======
@@ -130,3 +131,40 @@ export async function importRecords(
     fixPairs: fixPairsFrom(resolved.values()),
   };
 }
+
+/**
+ * ====== 🆕 T579 — **ما في السجلّ أسئلةٌ لا كتابة** (منصّةٌ أطفأ صاحبُها «إضافة مشاهداتي تلقائياً») ======
+ * المطابقةُ نفسُها (`me/import/resolve` بدفعاتها) ثمّ التجميعُ نفسُه (`buildImport`) — **ثمّ لا كتابةَ في المكتبة**: ما طابق يُرسل إلى
+ * بابِ المنصّة (`ask`) فيصير سؤالاً «شاهدتها؟» في الرئيسيّة والجرس. ما شوهد بنسبةٍ ناقصة لم يصل هنا أصلاً (قاعدةُ ٩٠٪ قبل القراءة).
+ * يعيد عددَ الأسئلة التي كُتبت، وما لم يُطابَق — أو `null` إن أُوقف.
+ */
+export async function askRecords(
+  records: RawRecord[],
+  hooks: { stopped: () => boolean; phase: (p: ImportPhase) => void; pct: (n: number) => void },
+  platform: PlatformKind,
+): Promise<{ asked: number; unmatched: string[] } | null> {
+  hooks.phase("matching");
+  const { requests, keys } = groupForResolve(records);
+  const resolved = new Map<string, ResolveResult>();
+  for (let i = 0; i < requests.length; i += IMPORT_CHUNK.resolve) {
+    if (hooks.stopped()) return null;
+    const slice: ResolveRequest[] = requests.slice(i, i + IMPORT_CHUNK.resolve);
+    const out = (await api<{ results: ResolveResult[] }>("/api/v1/me/import/resolve", { method: "POST", body: { requests: slice } })).data.results;
+    out.forEach((r, n) => resolved.set(keys[i + n], r));
+    hooks.pct(Math.round(((i + slice.length) / requests.length) * 100));
+  }
+  const { shows, movies, unmatched } = buildImport(records, resolved);
+  const now = new Date().toISOString();
+  const items: PlatformAskItem[] = [
+    ...shows.flatMap((sh) => sh.episodes.map((e): PlatformAskItem => ({ kind: "tv", tmdb_id: sh.tmdbId, season: e.s, episode: e.e, at: e.at ?? now, title: sh.title }))),
+    ...movies.filter((m) => m.watched).map((m): PlatformAskItem => ({ kind: "movie", tmdb_id: m.tmdbId, season: null, episode: null, at: m.at ?? now, title: m.title })),
+  ]
+    /* الأحدثُ أوّلاً — وما زاد على الحدّ يبقى في سجلّ المنصّة */
+    .sort((a, b) => (a.at < b.at ? 1 : -1))
+    .slice(0, ASK_MAX);
+  hooks.phase("writing");
+  if (!items.length) return { asked: 0, unmatched };
+  const r = await write<PlatformLinkResult>(PLATFORM_ROUTE[platform], { action: "ask", items } satisfies NetflixLinkBody);
+  return { asked: r.asked ?? 0, unmatched };
+}
+

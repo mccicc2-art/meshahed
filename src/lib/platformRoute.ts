@@ -1,9 +1,9 @@
-import { linkPlatform, recordLinkAdd, recordPlatformSync, revokePlatform } from "@/lib/linkTokens";
+import { linkPlatform, recordLinkAdd, recordPlatformAsks, recordPlatformSync, revokePlatform, setPlatformAutoAdd } from "@/lib/linkTokens";
 import { sharedLimited } from "@/lib/sharedLimit";
 import { createClient } from "@/lib/supabase/server";
 import { handle, requireUser, limited, fail } from "@/lib/v1";
 import { ok, type Result } from "@/core/contracts/result";
-import { parsePlatformAdded, type NetflixAddedItem, type NetflixAddedList, type NetflixLinkBody, type PlatformLinkResult } from "@/core/contracts/deviceLinks";
+import { parseAskItems, parsePlatformAdded, type NetflixAddedItem, type NetflixAddedList, type NetflixLinkBody, type PlatformLinkResult } from "@/core/contracts/deviceLinks";
 import { notifyPlatformAdded } from "@/lib/push";
 import type { PlatformKind } from "@/core/deviceLinks";
 
@@ -104,6 +104,25 @@ export async function platformPOST(platform: PlatformKind, req: Request) {
       const added = parsePlatformAdded(body.added);
       if (added && (await recordLinkAdd(uid, platform, added)) && added.auto) notifyPlatformAdded({ to: uid, source: platform, added });
       return ok<PlatformLinkResult>({ linked: true }, [...tags]);
+    }
+
+    /* 🆕 T579 — «إضافة مشاهداتي تلقائياً» لهذه المنصّة وحدَها */
+    if (body?.action === "auto_add") {
+      if (typeof body.value !== "boolean") return fail("invalid_input", { field: "value" });
+      const lim = limited(`v1:${platform}-auto:${uid}`, 20, 60_000);
+      if (lim) return lim;
+      if (!(await setPlatformAutoAdd(uid, platform, body.value))) return fail("conflict");
+      return ok<PlatformLinkResult>({ linked: true }, [...tags]);
+    }
+
+    /* 🆕 T579 — المفتاحُ مطفأ: ما ظهر في السجلّ أسئلةُ «شاهدتها؟» في الرئيسيّة والجرس (إشعارُ الجوال من `runLinkAskPush` كأسئلة Stremio) */
+    if (body?.action === "ask") {
+      const items = parseAskItems(body.items);
+      const lim = limited(`v1:${platform}-ask:${uid}`, 20, 60_000);
+      if (lim) return lim;
+      const asked = await recordPlatformAsks(uid, platform, items);
+      if (asked == null) return fail("upstream");
+      return ok<PlatformLinkResult>({ linked: true, asked }, [...tags, "me:stremio"]);
     }
 
     return fail("invalid_input");

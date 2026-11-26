@@ -43,15 +43,21 @@ export interface StremioNoticeBody {
   id: number;
 }
 
-/* 🆕 هجرة ٢٦٧ — `nuvio`: إضافةُ Stremio نفسُها مثبّتةً في Nuvio برابطه الخاصّ، فالسؤالُ يقول من أين جاء */
-export type SignalSource = "stremio" | "nuvio" | "plex" | "jellyfin" | "emby" | "kodi";
-export const SIGNAL_SOURCES: readonly SignalSource[] = ["stremio", "nuvio", "plex", "jellyfin", "emby", "kodi"];
+/* 🆕 هجرة ٢٦٧ — `nuvio`: إضافةُ Stremio نفسُها مثبّتةً في Nuvio برابطه الخاصّ، فالسؤالُ يقول من أين جاء
+   🆕 هجرة ٢٧٢ (T579) — و`netflix` · `osn` · `shahid`: منصّةٌ أطفأ صاحبُها «إضافة مشاهداتي تلقائياً» — ما ظهر في سجلّها سؤالٌ هنا */
+export type SignalSource = "stremio" | "nuvio" | "plex" | "jellyfin" | "emby" | "kodi" | "netflix" | "osn" | "shahid";
+export const SIGNAL_SOURCES: readonly SignalSource[] = ["stremio", "nuvio", "plex", "jellyfin", "emby", "kodi", "netflix", "osn", "shahid"];
+/** 🆕 T579 — منصّاتُ البثّ: سؤالُها عن سجلّها لا عن تشغيل، و✓ عليه يعلّم الحلقةَ نفسَها بيوم مشاهدتها (لا «حتى هنا») */
+export const PLATFORM_SIGNALS: readonly SignalSource[] = ["netflix", "osn", "shahid"];
+export const isPlatformSignal = (s: SignalSource | null | undefined): boolean => !!s && (PLATFORM_SIGNALS as readonly string[]).includes(s);
 /** قيمةٌ معروفةٌ أو Stremio — صفٌّ قبل العمود، أو قيمةٌ لا نعرفها */
 export function signalSourceOf(v: unknown): SignalSource {
   return typeof v === "string" && (SIGNAL_SOURCES as readonly string[]).includes(v) ? (v as SignalSource) : "stremio";
 }
 /** اسمُ المصدر كما يُكتب — أسماءُ منتجاتٍ لا تُترجم */
-export const SIGNAL_SOURCE_NAME: Record<SignalSource, string> = { stremio: "Stremio", nuvio: "Nuvio", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", kodi: "Kodi" };
+export const SIGNAL_SOURCE_NAME: Record<SignalSource, string> = { stremio: "Stremio", nuvio: "Nuvio", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", kodi: "Kodi", netflix: "Netflix", osn: "OSN+\u200E", shahid: "Shahid" };
+/** 🆕 T579 — اسمُ المصدر للقارئ: «شاهد» اسمٌ عربيٌّ يُكتب بلغته (كالجرس — `linkSourceName`)، والباقي أسماءُ منتجاتٍ لا تُترجم */
+export const signalSourceLabel = (s: SignalSource, shahidName: string): string => (s === "shahid" ? shahidName : SIGNAL_SOURCE_NAME[s]);
 
 /** 🆕 مصدرٌ يسأل دائماً — إضافةٌ تعرف «شغّلها» لا «خلّصها» (Stremio وNuvio): «سجّل بلا سؤال» لا يمسّه أبداً */
 export const ALWAYS_ASKS: readonly SignalSource[] = ["stremio", "nuvio"];

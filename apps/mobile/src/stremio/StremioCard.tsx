@@ -12,13 +12,16 @@ import { radius } from "../theme";
 import { SectionHeader, PAGE_PAD } from "../home/Section";
 import { backdropUrl } from "@/core/media";
 import { timeAgo } from "@/core/when";
-import { ALWAYS_ASKS, SIGNAL_SOURCE_NAME, type StremioSignal } from "@/core/contracts/stremio";
+import { ALWAYS_ASKS, isPlatformSignal, signalSourceLabel, type SignalSource, type StremioSignal } from "@/core/contracts/stremio";
+import { Sheet } from "../library/Sheet";
 import { episodeLabel } from "./api";
 import { rateStages } from "./useAnswer";
 
 /** عرضُ اللقطة 16:9 (قرار ٦: ١١٦ نقطة) — والنصُّ بجانبها بارتفاعها */
 const STILL_W = 116;
 const STILL_H = Math.round((STILL_W * 9) / 16);
+/** دائرتا الجواب — قطرُ «عرض الكل» (٤٠)؛ والجرسُ يمرّر ٣٤ */
+const ANSWER_CIRCLE = 40;
 
 /** لقطةُ الحلقة (أو خلفيّةُ العمل) — صورةٌ فشلت يحلّ محلَّها رمزُ النوع كـ`MediaRow` (D-1323) */
 export function SignalStill({ s, width }: { s: StremioSignal; width: number }) {
@@ -58,11 +61,15 @@ export function StremioCard({
   onRate,
   onRateEpisode,
   onSkipRate,
+  onAnswerMany,
 }: {
   /** المنتظرةُ بعد إخفاء ما أُجيب عنه */
   items: StremioSignal[];
   count: number;
-  onAnswer: (s: StremioSignal, watched: boolean) => void;
+  /** `quiet` (T579): جوابٌ من ورقة «اختر منها» — بلا نجومٍ في البطاقة */
+  onAnswer: (s: StremioSignal, watched: boolean, quiet?: boolean) => void;
+  /** 🆕 T579 — جوابٌ واحدٌ لحلقات عملٍ ظهرت معاً من منصّة (`useStremioAnswer.answerMany`) */
+  onAnswerMany?: (list: StremioSignal[], watched: boolean) => void;
   onAll: () => void;
   onOpen: (s: StremioSignal) => void;
   /** 🆕 T415 — ما أُجيب عنه بـ✓ وينتظر نجومه (`useStremioAnswer`) */
@@ -147,6 +154,11 @@ export function StremioCard({
       />
     );
   }
+  /* 🆕 T579 — **حلقاتُ عملٍ واحدٍ ظهرت معاً في سجلّ منصّة: سؤالٌ واحد** (أحمد «٢ب»). حلقةٌ واحدة ⇒ البطاقةُ كما هي */
+  if (onAnswerMany && isPlatformSignal(s.source) && s.kind === "tv") {
+    const group = sameWork(items, s, rating);
+    if (group.length > 1) return <GroupCard key={`g${s.source}-${s.tmdb_id}`} group={group} count={count} onAnswer={onAnswer} onAnswerMany={onAnswerMany} onAll={onAll} onOpen={onOpen} />;
+  }
   return (
     <View>
       <SectionHeader
@@ -170,7 +182,7 @@ export function StremioCard({
             {/* 🆕 T497 — السؤالُ يسمّي ما يسأل عنه: «S1 E1 · شاهدت الحلقة؟» و«شاهدت الفيلم؟» */}
             <Text size={13} weight="500" numberOfLines={1}>{s.kind === "movie" ? t.stremioAskMovieLine : `${ep} · ${t.stremioAsk}`}</Text>
             {/* 🆕 هجرة ٢٣٥ — «من أجهزتك» (البطاقة «أ»): المصدرُ اسمٌ في السطر، و«بدأ التشغيل» لـStremio و«شاهدتها/شاهدته» لسيرفر البيت */}
-            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${ALWAYS_ASKS.includes(src) ? t.stremioOpened : s.kind === "movie" ? t.serverFinishedMovie : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
+            <Text size={12} muted numberOfLines={1}>{`${signalSourceLabel(src, t.shahidName)} · ${sourceVerb(src, s.kind, t)} ${timeAgo(s.seen_at, t)}`}</Text>
           </View>
         </Pressable>
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -266,7 +278,7 @@ function DoneCard({
               <Text size={13} weight="700" color={tokens.success}>{plain ? "✓ " : `✓ ${status}`}</Text>
               {plain ? status : ""}
             </Text>
-            <Text size={12} muted numberOfLines={1}>{`${SIGNAL_SOURCE_NAME[src]} · ${!s.auto && ALWAYS_ASKS.includes(src) ? t.stremioOpened : s.kind === "movie" ? t.serverFinishedMovie : t.serverFinished} ${timeAgo(s.seen_at, t)}`}</Text>
+            <Text size={12} muted numberOfLines={1}>{`${signalSourceLabel(src, t.shahidName)} · ${s.auto ? (s.kind === "movie" ? t.serverFinishedMovie : t.serverFinished) : sourceVerb(src, s.kind, t)} ${timeAgo(s.seen_at, t)}`}</Text>
           </View>
         </Pressable>
         {cur ? (
@@ -293,7 +305,145 @@ function DoneCard({
   );
 }
 
+/**
+ * فعلُ سطر المصدر: Stremio وNuvio «بدأ التشغيل»، وسيرفرُ البيت «شاهدتها/شاهدته»، و🆕 T579 المنصّةُ «في سجلّك» (السؤالُ عمّا ظهر في سجلّها
+ * لا عمّا شغّلتَه أنت — الملفُّ مشترك)
+ */
+function sourceVerb(src: SignalSource, kind: "tv" | "movie", t: ReturnType<typeof useApp>["t"]): string {
+  if (isPlatformSignal(src)) return t.askInHistory;
+  if (ALWAYS_ASKS.includes(src)) return t.stremioOpened;
+  return kind === "movie" ? t.serverFinishedMovie : t.serverFinished;
+}
+
+/** حلقاتُ العمل نفسِه من المنصّة نفسِها المنتظرةُ — بترتيبها (موسماً ثمّ حلقة) — ولا يدخلها ما ينتظر نجومَه */
+function sameWork(items: StremioSignal[], s: StremioSignal, rating?: ReadonlyMap<number, StremioSignal>): StremioSignal[] {
+  return items
+    .filter((x) => x.source === s.source && x.kind === "tv" && x.tmdb_id === s.tmdb_id && !x.auto && !rating?.has(x.id) && x.season != null && x.episode != null)
+    .sort((a, b) => (a.season ?? 0) - (b.season ?? 0) || (a.episode ?? 0) - (b.episode ?? 0));
+}
+
+/** «S1 E1–E4»، أو «S1 E9 – S2 E2» حين تعبر موسماً */
+function rangeLabel(group: StremioSignal[], movieWord: string): string {
+  const a = group[0];
+  const b = group[group.length - 1];
+  return a.season === b.season ? `${episodeLabel(a, movieWord)}–E${b.episode}` : `${episodeLabel(a, movieWord)} – ${episodeLabel(b, movieWord)}`;
+}
+
+/**
+ * ====== 🆕 T579 — **بطاقةُ العمل: حلقاتٌ ظهرت معاً في سجلّ المنصّة** (أحمد «٢ب»، الصورةُ المعتمدة) ======
+ * القسمُ ورأسُه واللقطةُ كالسؤال الواحد. السطرُ «٤ حلقات · شاهدتها كلها؟»، والمصدرُ «Netflix · S1 E1–E4 · قبل ساعة». وتحتها ثلاثةٌ من
+ * مصنع الأزرار بارتفاع ٣٤: «✓ كلها» (أساسيّ) · «اختر منها» · «✕ لا». «اختر منها» يفتح **الورقةَ الواحدة** بصفٍّ لكلِّ حلقةٍ ودائرتَي
+ * الجواب نفسِهما (`AnswerCircles`) — والجوابُ هناك بلا نجوم (`quiet`)، والورقةُ تُغلق حين لا يبقى فيها شيء.
+ */
+function GroupCard({
+  group,
+  count,
+  onAnswer,
+  onAnswerMany,
+  onAll,
+  onOpen,
+}: {
+  group: StremioSignal[];
+  count: number;
+  onAnswer: (s: StremioSignal, watched: boolean, quiet?: boolean) => void;
+  onAnswerMany: (list: StremioSignal[], watched: boolean) => void;
+  onAll: () => void;
+  onOpen: (s: StremioSignal) => void;
+}) {
+  const { t, tokens } = useApp();
+  const [picking, setPicking] = useState(false);
+  const s = group[group.length - 1];
+  const src = s.source ?? "stremio";
+  const newest = group.reduce((m, x) => (x.seen_at > m ? x.seen_at : m), s.seen_at);
+  const n = t.linkEpisodes(group.length);
+  return (
+    <View>
+      <SectionHeader
+        title={t.devicesFrom}
+        icon="play"
+        onTitle={onAll}
+        action={<Text size={12} weight="700" color={tokens.accent}>{String(count)}</Text>}
+        seeAll={t.allWord}
+        onSeeAll={onAll}
+      />
+      <View style={{ marginHorizontal: PAGE_PAD, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 8, gap: 8 }}>
+        <Pressable
+          onPress={() => onOpen(s)}
+          accessibilityRole="button"
+          accessibilityLabel={`${s.title}، ${t.askEpisodesQ(n)}`}
+          style={({ pressed }) => ({ flexDirection: "row", gap: 12, opacity: pressed ? 0.85 : 1 })}
+        >
+          <SignalStill s={s} width={STILL_W} />
+          <View style={{ flex: 1, minWidth: 0, height: STILL_H, justifyContent: "space-between" }}>
+            <Text size={15} weight="700" numberOfLines={1}>{s.title}</Text>
+            <Text size={13} weight="500" numberOfLines={1}>{t.askEpisodesQ(n)}</Text>
+            <Text size={12} muted numberOfLines={1}>{`${signalSourceLabel(src, t.shahidName)} · ${rangeLabel(group, t.stremioMovie)} · ${timeAgo(newest, t)}`}</Text>
+          </View>
+        </Pressable>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button label={t.askAllYes} size="sm" style={styles.half} onPress={() => onAnswerMany(group, true)} />
+          <Button label={t.askPick} size="sm" variant="ghost" style={styles.half} onPress={() => setPicking(true)} />
+          <Button label={t.stremioNo} size="sm" variant="ghost" style={styles.half} onPress={() => onAnswerMany(group, false)} />
+        </View>
+      </View>
+      {picking ? (
+        <Sheet title={t.askPickTitle} onClose={() => setPicking(false)}>
+          <View style={{ gap: 4 }}>
+            {group.map((x) => (
+              <View key={x.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52, paddingHorizontal: 4 }}>
+                <Text size={15} weight="600" style={{ flex: 1 }}>{episodeLabel(x, t.stremioMovie)}</Text>
+                <AnswerCircles
+                  label={`${x.title} ${episodeLabel(x, t.stremioMovie)}`}
+                  movie={false}
+                  onNo={() => {
+                    if (group.length === 1) setPicking(false);
+                    onAnswer(x, false, true);
+                  }}
+                  onYes={() => {
+                    if (group.length === 1) setPicking(false);
+                    onAnswer(x, true, true);
+                  }}
+                />
+              </View>
+            ))}
+          </View>
+        </Sheet>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   center: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" },
   half: { flex: 1, minHeight: 34 },
 });
+
+/**
+ * 🆕 المهمّة ٥٦١ — **دائرتا الجواب ✕ و✓** — كانتا هنا وحدَهما، ونُقلتا مكوّناً حين احتاجهما جرسُ «التنبيهات» («شغّلت X في Stremio.
+ * شاهدتها؟» يُجاب من الجرس — أحمد «١أ»): نسختان من الدائرتين كانتا ستتباعدان.
+ */
+export function AnswerCircles({ label, movie, onNo, onYes, size = ANSWER_CIRCLE }: { label: string; movie: boolean; onNo: () => void; onYes: () => void; size?: number }) {
+  const { t, tokens } = useApp();
+  return (
+    <>
+      <Pressable
+        onPress={onNo}
+        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={`${t.stremioNo} — ${label}`}
+        style={({ pressed }) => ({ width: size, height: size, borderRadius: size / 2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+      >
+        <Icon name="close" size={16} color={tokens.muted} />
+      </Pressable>
+      <Pressable
+        onPress={onYes}
+        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={`${movie ? t.stremioYesMovie : t.stremioYes} — ${label}`}
+        style={({ pressed }) => ({ width: size, height: size, borderRadius: size / 2, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
+      >
+        <Icon name="check" size={18} color={tokens.onAccent} />
+      </Pressable>
+    </>
+  );
+}

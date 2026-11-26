@@ -1,7 +1,6 @@
 import { File, Paths } from "expo-file-system";
 import { useQuery } from "@tanstack/react-query";
 import { api, queryClient, write } from "../../api";
-import { importRecords } from "../../settings/importPipeline";
 import { LINKS_KEY } from "../api";
 import {
   buildShahidRecords,
@@ -22,7 +21,7 @@ import {
 } from "@/core/shahid";
 import type { DeviceLinksState, NetflixAddedList, NetflixLinkBody, PlatformLinkInfo, PlatformLinkResult } from "@/core/contracts/deviceLinks";
 import type { NfxAdded, NfxLocal, SyncOutcome, SyncPhase } from "../netflix/sync";
-import { platformAdded } from "../netflix/sync";
+import { platformAdded, importOrAsk } from "../netflix/sync";
 import type { ShahidWebRef } from "./bridge";
 
 /**
@@ -183,7 +182,7 @@ export async function runShahidSync(
   web: ShahidWebRef,
   uid: string,
   after: number | null,
-  hooks: { stopped: () => boolean; phase: (p: SyncPhase) => void; pct: (n: number) => void; auto?: boolean },
+  hooks: { stopped: () => boolean; phase: (p: SyncPhase) => void; pct: (n: number) => void; auto?: boolean; ask?: boolean },
 ): Promise<SyncOutcome> {
   hooks.phase("reading");
   hooks.pct(0);
@@ -198,16 +197,20 @@ export async function runShahidSync(
   let movies = 0;
   let shows = 0;
   let unmatched: string[] = [];
+  /* 🆕 T579 — المفتاحُ مطفأ (`hooks.ask`) ⇒ ما في السجلّ أسئلةُ «شاهدتها؟» لا كتابةٌ في المكتبة */
+  let asked = 0;
   if (built.records.length) {
-    const res = await importRecords(built.records, hooks, { keep: true, writeSource: "shahid" });
+    const res = await importOrAsk("shahid", built.records, hooks);
     if (!res) return { ok: false, reason: "stopped" };
     episodes = res.episodes;
     movies = res.movies;
     shows = res.shows;
     unmatched = res.unmatched;
+    asked = res.asked;
   }
   const newest = built.newest;
-  const added: NfxAdded[] = built.records.flatMap((r): NfxAdded[] =>
+  /* ما سُئل عنه لم يدخل المكتبة — فلا سطرَ له في «ما دخل» */
+  const added: NfxAdded[] = hooks.ask ? [] : built.records.flatMap((r): NfxAdded[] =>
     r.kind === "ep-name" ? [{ title: r.show, season: r.s, episode: r.e, at: r.at ?? "" }] : r.kind === "movie-name" ? [{ title: r.name, season: null, episode: null, at: r.at ?? "" }] : [],
   );
   const summary = platformAdded(added, episodes, movies, !!hooks.auto);
@@ -234,7 +237,7 @@ export async function runShahidSync(
     ].slice(0, KEEP),
   });
   await queryClient.invalidateQueries({ queryKey: LINKS_KEY });
-  return { ok: true, episodes, movies, shows, newest, added: summary, stats: { items: read.cw.length, rec: built.records.length, part: built.partial.length, skip: built.skipped, unm: unmatched.length } };
+  return { ok: true, episodes, movies, shows, newest, added: summary, asked, stats: { items: read.cw.length, rec: built.records.length, part: built.partial.length, skip: built.skipped, unm: unmatched.length } };
 }
 
 export async function linkShahid(profileLabel: string, importAll: boolean): Promise<void> {
