@@ -101,6 +101,8 @@ export type CommunityFeedRow =
       list_social: { likes: number; replies: number; liked_by_me: boolean } | null;
       /** 🆕 D-1448 — لا بديلَ ملوّناً لملصقه الداكن: التطبيقُ يرسم حوله إطاراً فاتحاً (`lib/vividPoster`) */
       poster_dark?: boolean;
+      /** 🆕 T602 (q22 «أ») — خلفيّةُ العمل للافتة تحت الرأي (`lib/feedBackdrop`) — غائبةٌ ⇒ اللافتةُ بلون السطح */
+      backdrop_path?: string;
     }
   | {
       kind: "news";

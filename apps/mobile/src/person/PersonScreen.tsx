@@ -50,6 +50,8 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<WorksTab>("all");
   const [more, setMore] = useState(false);
+  /* 🆕 T602 — الاسمُ في الشريط حين يخرج العنوانُ من الشاشة فقط: كان مكتوباً مرّتين في الإطار الأوّل */
+  const [named, setNamed] = useState(false);
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
   const [toast, setToast] = useReducer(toastReducer, null);
 
@@ -152,7 +154,7 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
       {/* D-1624 — الشريطُ الواحد: الرجوعُ في مكانه في كلِّ صفحة */}
-      <TopBar title={d?.name ?? ""} onBack={back} onBackLong={home} backLabel={t.closeLabel} bordered />
+      <TopBar title={named ? (d?.name ?? "") : ""} onBack={back} onBackLong={home} backLabel={t.closeLabel} bordered />
 
       {!d && q.isError ? (
         <View style={{ padding: PAGE_PAD, alignItems: "center", gap: 12, paddingTop: 48 }}>
@@ -160,13 +162,21 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
           <Button label={t.navSearch} variant="ghost" onPress={openSearch} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: PAGE_PAD, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ padding: PAGE_PAD, paddingBottom: insets.bottom + 32 }}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={32}
+          onScroll={(e) => {
+            const past = e.nativeEvent.contentOffset.y > 72;
+            if (past !== named) setNamed(past);
+          }}
+        >
           {/* الترويسةُ بعمودين — `w-28` الصورة، والحقائقُ إلى جانبها.
               🆕 D-1625 — **شجرةٌ واحدةٌ بخاناتٍ ثابتة** (أحمد ٢ نوفمبر: «كل شي له مكان ثابت سواءا المعلومة موجودة او لا» — «١أ · ٢ب»):
               كان هيكلٌ بثلاثة أسطر ثمّ شجرةٌ أخرى بعدد حقائقَ متغيّر وزرّين يظهران فجأة. الآن: الاسمُ في سطرين محجوزين، ثلاثُ خاناتٍ
               للحقائق (القسم · العمر · مكان الولادة) سطراً سطراً بـ«…» — فارغةٌ إن غابت — والزرّان في مكانهما من أوّل إطار، معطَّلين حتى يصل */}
           <View style={{ flexDirection: "row", gap: 16, alignItems: "flex-start" }}>
-            <View style={{ width: 112, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
+            <View style={{ width: 96, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
               {photo ? <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} /> : d ? <Icon name="people" size={30} color={tokens.muted} /> : null}
             </View>
             <View style={{ flex: 1, minWidth: 0, paddingTop: 4, gap: 4 }}>
@@ -179,16 +189,20 @@ export function PersonScreen({ id, from }: { id: number; from: NativeRoot }) {
                   {d && factRows[i] ? <Text size={12} muted numberOfLines={1}>{factRows[i]}</Text> : null}
                 </View>
               ))}
-              <Button
-                style={{ marginTop: 12 }}
-                label={d?.me.following ? t.followingUser : t.followUser}
-                variant={d?.me.following ? "ghost" : "primary"}
-                busy={follow.isPending}
-                disabled={!d}
-                onPress={() => { if (d) follow.mutate(!d.me.following); }}
-              />
-              <Button style={{ marginTop: 8 }} label={t.worksToListBtn} variant="ghost" busy={toList.isPending} disabled={!d} onPress={() => { if (d) toList.mutate(); }} />
             </View>
+          </View>
+          {/* 🆕 T602 (q29 «أ») — **الزرّان في صفٍّ واحد تحت الرأس**: كانا مكدّسَين بعرض عمود الحقائق فثقُلا ولم يُعرف أيُّهما الفعلُ
+              الأوّل. المتابعةُ أوّلاً بلون التمييز، والقائمةُ بجانبها محدَّدة — وكلاهما في مكانه من أوّل إطار، معطَّلٌ حتى يصل (D-1625) */}
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+            <Button
+              style={{ flex: 1 }}
+              label={d?.me.following ? t.followingUser : t.followUser}
+              variant={d?.me.following ? "ghost" : "primary"}
+              busy={follow.isPending}
+              disabled={!d}
+              onPress={() => { if (d) follow.mutate(!d.me.following); }}
+            />
+            <Button style={{ flex: 1 }} label={t.worksToListShort} variant="ghost" busy={toList.isPending} disabled={!d} onPress={() => { if (d) toList.mutate(); }} />
           </View>
 
           {d?.biography ? (

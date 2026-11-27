@@ -17,7 +17,7 @@ import { countedUnit } from "@/core/yearPersona";
  */
 export type YearPage =
   | { kind: "time"; minutes: number; months: { label: string; minutes: number }[] }
-  | { kind: "top"; title: string; poster: string | null; episodes: number; minutes: number; movie: boolean }
+  | { kind: "top"; title: string; poster: string | null; episodes: number; minutes: number; movie: boolean; next?: { title: string; poster: string | null; minutes: number }[] }
   | { kind: "taste"; persona: string; genres: { name: string; pct: number }[] }
   | { kind: "loved"; items: { title: string; poster: string | null; rating: number }[] };
 
@@ -28,6 +28,7 @@ const WORDS = {
   hour: { one: "ساعة واحدة", two: "ساعتان", few: "ساعات", many: "ساعةً", hundred: "ساعة", en1: "hour", enN: "hours" },
   day: { one: "يوم", two: "يومان", few: "أيام", many: "يوماً", hundred: "يوم", en1: "day", enN: "days" },
   ep: { one: "حلقة واحدة", two: "حلقتان", few: "حلقات", many: "حلقةً", hundred: "حلقة", en1: "episode", enN: "episodes" },
+  minute: { one: "دقيقة واحدة", two: "دقيقتان", few: "دقائق", many: "دقيقةً", hundred: "دقيقة", en1: "minute", enN: "minutes" },
 };
 
 export async function yearPageElement(c: YearFrameInput, page: YearPage) {
@@ -76,19 +77,51 @@ export async function yearPageElement(c: YearFrameInput, page: YearPage) {
   } else if (page.kind === "top") {
     const e = countedUnit(page.episodes, WORDS.ep, c.locale);
     const sub = page.movie ? (ar ? "فيلم سنتك" : "Your movie of the year") : ar ? "مسلسل سنتك" : "Your show of the year";
-    const [kick, title, eps] = await Promise.all([
+    /* 🆕 T602 (q30 «ب») — **المنصّةُ في الصورة كما في الشاشة**: الثاني والثالث ملصقان متجاوران تحت الأوّل برقم ترتيبهما وساعاتهما.
+       الملصقُ الأوّل يصغر (٢٦٠ بدل ٤٤٠) كي تبقى المنصّةُ داخل منطقة الأمان (٤٤٠–١٥٧٠)؛ وبلا ثانٍ يبقى كما كان */
+    const next = (page.next ?? []).slice(0, 2);
+    const podium = next.length > 0;
+    /* تحت الساعة دقائق (كـ`hm` في الشاشة) لا «ساعة واحدة» مقرّبة */
+    const hoursOf = (m: number) => {
+      const h = m < 60 ? countedUnit(Math.max(1, Math.round(m)), WORDS.minute, c.locale) : countedUnit(Math.round(m / 60), WORDS.hour, c.locale);
+      return h.value ? `${h.value} ${h.unit}` : h.unit;
+    };
+    const SW = 130;
+    const CW = SW + 110;
+    const tdir = (x: string) => (/[\u0600-\u06FF]/.test(x) ? "rtl" : "ltr");
+    const [kick, title, eps, ...side] = await Promise.all([
       t(sub, 40, { color: MUTED, face: "app-regular" }),
-      t(page.title, 64, { lines: 2 }),
-      !page.movie && page.episodes > 0 ? t(e.value ? `${e.value} ${e.unit}` : e.unit, 44, { color: Y }) : null,
+      t(page.title, podium ? 56 : 64, { lines: podium ? 1 : 2 }),
+      !page.movie && page.episodes > 0 ? t(e.value ? `${e.value} ${e.unit}` : e.unit, podium ? 38 : 44, { color: Y }) : null,
+      ...next.flatMap((x, i) => [
+        shapedText(String(i + 2), { width: SW, size: 44, lineHeight: 1.1, maxLines: 1, color: Y, dir: "ltr", face: "app", align: "center" }),
+        shapedText(x.title, { width: CW, size: 26, lineHeight: 1.2, maxLines: 1, color: FG, dir: tdir(x.title), face: "app", align: "center" }),
+        shapedText(hoursOf(x.minutes), { width: CW, size: 24, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular", align: "center" }),
+      ]),
     ]);
+    const PW = podium ? 260 : 440;
     body = (
-      <div style={{ position: "absolute", top: TOP, left: SIDE, width: INNER, display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
+      <div style={{ position: "absolute", top: TOP, left: SIDE, width: INNER, display: "flex", flexDirection: "column", alignItems: "center", gap: podium ? 22 : 28 }}>
         {img(kick)}
-        <div style={{ width: 440, height: 660, borderRadius: 28, overflow: "hidden", display: "flex", border: "3px solid rgba(255,255,255,0.12)", backgroundColor: "#111111" }}>
-          {page.poster ? <img src={page.poster} width={440} height={660} style={{ objectFit: "cover" }} /> : null}
+        <div style={{ width: PW, height: PW * 1.5, borderRadius: 28, overflow: "hidden", display: "flex", border: "3px solid rgba(255,255,255,0.12)", backgroundColor: "#111111" }}>
+          {page.poster ? <img src={page.poster} width={PW} height={PW * 1.5} style={{ objectFit: "cover" }} /> : null}
         </div>
         {img(title)}
         {img(eps)}
+        {podium ? (
+          <div style={{ display: "flex", flexDirection: row, justifyContent: "center", gap: 30, marginTop: 4 }}>
+            {next.map((x, i) => (
+              <div key={i} style={{ width: CW, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{ width: SW, height: SW * 1.5, borderRadius: 18, overflow: "hidden", display: "flex", backgroundColor: "#111111" }}>
+                  {x.poster ? <img src={x.poster} width={SW} height={SW * 1.5} style={{ objectFit: "cover" }} /> : null}
+                </div>
+                {img(side[i * 3] ?? null)}
+                {img(side[i * 3 + 1] ?? null)}
+                {img(side[i * 3 + 2] ?? null)}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
     );
   } else if (page.kind === "taste") {

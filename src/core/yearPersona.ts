@@ -43,19 +43,26 @@ export function yearPersona(
 
 /**
  * **المعدود في البطاقة**: الرقمُ كبيرٌ والكلمةُ صغيرةٌ تحته (وحدةٌ لا جملة)، فالتمييزُ بقاعدته — مفردٌ لواحد، ومثنّى **بلا رقم**
- * («مسلسلان» لا «٢ مسلسلان»)، وجمعٌ من ٣ إلى ١٠، ومنوَّنٌ من ١١ إلى ٩٩، ومفردٌ لمئةٍ فما فوق. يعيد الرقمَ (أو لا شيء للواحد والاثنين)
- * والكلمة.
+ * («مسلسلان» لا «٢ مسلسلان»)، وجمعٌ من ٣ إلى ١٠، ومنوَّنٌ من ١١ إلى ٩٩. يعيد الرقمَ (أو لا شيء للواحد والاثنين) والكلمة.
+ *
+ * 🆕 T602 (أحمد ٢٧ نوفمبر «٦ ب»): **ما فوق المئة بقاعدة النحو** — العبرةُ بآخر رقمين: «103 أعمال» · «115 عملاً» · «100 عمل» ·
+ * «101 عمل». كان كلُّ ما فوق المئة مفرداً («412 ساعة» من q19)؛ وبقي ذلك **في صورتَي الرئيسيّة والملف وحدَهما** باستثنائه
+ * («ماعدا الكادرات مثل الرئيسية والبروفايل»): `flatHundreds`.
  */
 export function countedUnit(
   n: number,
   w: { one: string; two: string; few: string; many: string; hundred: string; en1: string; enN: string },
   locale: Locale,
+  opts: { flatHundreds?: boolean } = {},
 ): { value: string | null; unit: string } {
   if (locale === "en") return { value: String(n), unit: n === 1 ? w.en1 : w.enN };
   if (n === 1) return { value: null, unit: w.one };
   if (n === 2) return { value: null, unit: w.two };
-  const r = n % 100;
   if (n >= 3 && n <= 10) return { value: String(n), unit: w.few };
-  if (r >= 11 && r <= 99 && n < 100) return { value: String(n), unit: w.many };
+  if (n < 100) return { value: String(n), unit: w.many };
+  if (opts.flatHundreds) return { value: String(n), unit: w.hundred };
+  const r = n % 100;
+  if (r >= 3 && r <= 10) return { value: String(n), unit: w.few };
+  if (r >= 11) return { value: String(n), unit: w.many };
   return { value: String(n), unit: w.hundred };
 }

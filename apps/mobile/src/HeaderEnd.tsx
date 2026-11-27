@@ -28,7 +28,7 @@ export function HeaderIconButton({
   color,
   probe,
 }: {
-  name: "chat" | "bell" | "settings";
+  name: "chat" | "bell" | "settings" | "search";
   label: string;
   onPress: () => void;
   count: number;
@@ -76,7 +76,8 @@ export const HEADER_END_INSET = 16 - (controlSize.headerBtn - AVATAR) / 2;
  *   تجاور عنواناً لا اسماً.
  * - مطلقا الموضع كلاهما، فالعنوانُ يبقى في منتصف الترويسة.
  */
-export function HeaderEdges({ from, messages = false }: { from: NativeRoot; messages?: boolean }) {
+/** 🆕 T602 (q27) — `search`: زرُّ بحثٍ بجانب الرسائل (تبويبُ «الأعضاء» في المجتمع) بدل الزرّ العائم الذي كان يغطّي البطاقات */
+export function HeaderEdges({ from, messages = false, search }: { from: NativeRoot; messages?: boolean; search?: { label: string; onPress: () => void } }) {
   const { t, tokens, me } = useApp();
   const router = useRouter();
   /* 🆕 D-1505 — الصورةُ بابُ القائمة الجانبيّة كصورة الرئيسيّة (الملفُّ أوّلُ ما فيها) — صورتان لبابٍ واحد */
@@ -92,6 +93,7 @@ export function HeaderEdges({ from, messages = false }: { from: NativeRoot; mess
       </View>
       {/* 🆕 T362 — زرُّ الرسائل بجانب الشعار من جهة العنوان، في «المجتمع» وحدَه (`messages`) — الصفُّ يتبع الاتّجاه فيبقى الشعارُ في الطرف */}
       <View style={{ position: "absolute", end: PAGE_PAD, top: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 4 }}>
+        {search ? <HeaderIconButton name="search" label={search.label} onPress={search.onPress} count={0} color={tokens.fg} /> : null}
         {messages && me ? <MessagesButton from={from} /> : null}
         <Logo size={LOGO} />
       </View>

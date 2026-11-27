@@ -176,8 +176,11 @@ export function ReportBody({
                 <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: tokens.muted, opacity: 0.5 }} />
                 {/* الفرقُ عن المدّة السابقة على سطر الاسم (D-805) — لاتينيٌّ يُقرأ من اليسار */}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4, direction: "ltr" }}>
-                  <Icon name={s.deltaPct >= 0 ? "trending" : "pause"} size={14} color={s.deltaPct >= 0 ? tokens.success : tokens.error} />
-                  <Text size={12} weight="700" color={s.deltaPct >= 0 ? tokens.success : tokens.error} style={{ fontVariant: ["tabular-nums"] }}>{`${s.deltaPct >= 0 ? "+" : ""}${s.deltaPct.toLocaleString("en-US")}%`}</Text>
+                  {/* 🆕 T602 (q27) — **النقصُ بلونٍ محايد لا أحمر**: الأحمرُ للخطأ، وقلّةُ المشاهدة في شهرٍ ليست خطأً. والسهمُ نفسُه مقلوباً */}
+                  <View style={s.deltaPct < 0 ? { transform: [{ scaleY: -1 }] } : undefined}>
+                    <Icon name="trending" size={14} color={s.deltaPct >= 0 ? tokens.success : tokens.muted} />
+                  </View>
+                  <Text size={12} weight="700" color={s.deltaPct >= 0 ? tokens.success : tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{`${s.deltaPct >= 0 ? "+" : ""}${s.deltaPct.toLocaleString("en-US")}%`}</Text>
                 </View>
               </>
             ) : null}
@@ -217,7 +220,7 @@ export function ReportBody({
           <H3>{picked ? (en ? `Watched on ${pickedName}` : s.period === "year" ? `شاهدت في ${pickedName}` : `شاهدت يوم ${pickedName}`) : en ? "Most watched" : "الأكثر مشاهدة"}</H3>
           {shown.length > 0 ? (
             /* 🆕 D-1590 — الملصقاتُ تتمدّد كما في «المحتوى» (`fill`، ٧٢–١٢٠) — مقاسٌ واحدٌ في القسمين */
-            <TopThree titles={shown} onTitle={onTitle} fill />
+            <TopThree titles={shown} onTitle={onTitle} fill day={!!picked} />
           ) : (
             /* قامةُ صفِّ الملصقات نفسُها فلا تقفز الصفحةُ حين يُختار يومٌ فارغ */
             <View style={{ height: TOP_W * 1.5 + 40, alignItems: "center", justifyContent: "center" }}>
@@ -453,7 +456,11 @@ const TOP_W = 72;
 const TOP_CAPTION = 44;
 /* 🆕 D-1584 — ١٢٠ (كانت ١٣٢) */
 const TOP_MAX = 120;
-export function TopThree({ titles, onTitle, fill }: { titles: ReportTitle[]; onTitle: (kind: "tv" | "movie", id: number) => void; fill?: boolean }) {
+/**
+ * 🆕 T602 (q25 «أ») — `day`: أعمالُ يومٍ مختار متجاورةٌ من بداية السطر بعرض ملصقها، بلا شارة «1» — في يومٍ بعملين كان كلُّ عملٍ
+ * يأخذ ثلثاً فتبقى خانةٌ فارغة بينهما، والرقمُ لا يرتّب شيئاً. «الأكثر مشاهدة» للمدّة كلّها يبقى أثلاثاً وأوّلُه بشارته.
+ */
+export function TopThree({ titles, onTitle, fill, day }: { titles: ReportTitle[]; onTitle: (kind: "tv" | "movie", id: number) => void; fill?: boolean; day?: boolean }) {
   const { tokens, locale } = useApp();
   const { width } = useWindowDimensions();
   const en = locale === "en";
@@ -475,10 +482,10 @@ export function TopThree({ titles, onTitle, fill }: { titles: ReportTitle[]; onT
       {titles.slice(0, 3).map((x, i) => {
         const uri = posterFor(x.poster, pw);
         return (
-          <Pressable key={x.key} onPress={() => onTitle(x.mediaType, x.tmdbId)} accessibilityRole="link" accessibilityLabel={x.title} style={({ pressed }) => ({ flex: 1, minWidth: 0, alignItems: "flex-start", opacity: pressed ? 0.8 : 1 })}>
+          <Pressable key={x.key} onPress={() => onTitle(x.mediaType, x.tmdbId)} accessibilityRole="link" accessibilityLabel={x.title} style={({ pressed }) => [day ? { width: pw } : { flex: 1, minWidth: 0 }, { alignItems: "flex-start", opacity: pressed ? 0.8 : 1 }]}>
             <View style={{ width: pw, aspectRatio: 2 / 3, borderRadius: 10, overflow: "hidden", backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
               {uri ? <Image source={{ uri }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name={x.mediaType === "tv" ? "tv" : "film"} size={18} color={tokens.muted} />}
-              {i === 0 ? (
+              {i === 0 && !day ? (
                 <View style={{ position: "absolute", top: 6, start: 6, width: 18, height: 18, borderRadius: 5, backgroundColor: tokens.accent, alignItems: "center", justifyContent: "center" }}>
                   <Text size={11} weight="700" color={tokens.onAccent}>1</Text>
                 </View>

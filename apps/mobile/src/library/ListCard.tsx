@@ -22,8 +22,7 @@ import { themeById, themeScheme } from "@/core/themes";
  * المختار) **أرضيّةُ البطاقة كلِّها من جهة النهاية**، حجابٌ بلون السطح من جهة
  * البداية يذوب إلى الصفر عند ٦٠٪ (D-686 — «خلّه ذكيّ حول الكلام»)، الاسمُ
  * عريضاً بسطرين، وجهُ الصاحب واسمُه، سطرُ العدّ، **وشريطُ الحال في القاع**:
- * ♥ الحفظ · 💬 الآراء · ★ التقييم — **والصفرُ يُطبع** (نقضٌ محصورٌ لـD-219
- * بتصميمه) — **ورقاقةُ التشغيل في طرفه** (D-674).
+ * ♥ الحفظ · 💬 الآراء · ★ التقييم — والصفرُ لا يُطبع (T602 أعاد D-219) — **ورقاقةُ التشغيل في طرفه** (D-674).
  *
  * 📐 المقاسات بأسماء الويب: `rounded-2xl` ١٤ (`--radius-card`) · `min-h-[10.5rem]` ١٦٨ · حشوة
  * `p-3.5` ١٤ · الاسم `text-15 font-bold` · السطور `text-12` · الملصقاتُ `w-[72%]`
@@ -48,8 +47,13 @@ import { themeById, themeScheme } from "@/core/themes";
    داخل الصفحة الفاتحة**: أرضيّةٌ داكنة، عمودُ كلامٍ صلب، ملصقاتٌ بألوانها في ٧٢٪، ونصٌّ أبيض — كبطاقات «أكمل
    المشاهدة» فوقها، وهي داكنةٌ في «النهاري» أصلاً. **اللوحةُ لوحةُ الثيم الرسميّ** (`tokensOf(null)`) لا أرقامٌ صمّاء،
    ويلبسها ما في داخل البطاقة كلُّه (الرقاقةُ والفاصلُ معها)؛ الحدُّ وحدَه من ثيم الصفحة. حجابٌ واحدٌ بقي. */
+/* 🆕 T602 (q32 «أ» · q27) — **لا كلامَ فوق صورةٍ مزدحمة**: الحجابُ صلبٌ تحت عمود الكلام كلِّه (٠–٥٠٪) ثمّ يذوب حتى ٧٠٪،
+   والكلامُ لا يتجاوز نصفَ البطاقة — كان «أفلام ديفيد فينشر» يذوب في شعار ALIEN لأنّ نصفَ الاسم فوق حجابٍ شبهِ شفّاف.
+   والغلافُ المختار في جهة النهاية بعرض الملصقات (٧٢٪) لا تحت البطاقة كلِّها: الحجابُ مقيسٌ على الملصقات، فكان الغلافُ
+   الكامل يُظهر صورتَه تحت الاسم. الصورةُ المعتمدة في الاستوديو: «البطاقةُ نفسها بلا زحمة». */
 const VEIL_DARK = require("../../assets/list-veil-dark.png");
-const MIN_H = 168;
+/* T602 — ١٧٦ لا ١٦٨: الاسمُ بثلاثة أسطر مع سطر الصاحب يبلغها، فتبقى بطاقاتُ الصفّ بقامةٍ واحدة */
+const MIN_H = 176;
 const PAD = 14;
 
 export type ListCardData = {
@@ -212,14 +216,14 @@ export function ListCard({
     >
       {/* الأرضيّة: الغلافُ كاملاً، وإلّا الملصقاتُ الثلاثة من جهة النهاية (`w-[72%]`) */}
       {card.cover ? (
-        <Image source={{ uri: card.cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+        <Image source={{ uri: card.cover }} style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "72%" }} contentFit="cover" transition={150} />
       ) : slots.length > 0 ? (
         <View style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "72%", flexDirection: "row", justifyContent: "flex-end" }}>
           {slots.map((uri, i) =>
             ev && i === slots.length - 1 ? (
               /* 🆕 T474 — خانةُ الحدث بتكبيرٍ متوسّط (نموذجُ أحمد): ٧٢٪ من عرض الملصق ملتصقاً بالقاع، وفوقه الملصقُ نفسُه مموّهاً
                  معتماً يحمل الشارةَ الصفراء — فلا تغطّي الشارةُ وجهاً */
-              <View key={i} style={{ flex: 1, height: "100%" }}>
+              <View key={i} style={slots.length >= 3 ? { flex: 1, height: "100%" } : { width: "33.34%", height: "100%" }}>
                 {uri ? (
                   <View style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}>
                     <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={12} cachePolicy="memory-disk" />
@@ -230,7 +234,8 @@ export function ListCard({
                 <EventBadge text={ev.badge} bg={c.accent} fg={c.onAccent} />
               </View>
             ) : uri ? (
-              <Image key={i} source={{ uri }} style={{ flex: 1, height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
+              /* 🆕 T602 — ملصقٌ أو اثنان بعرض ثلثٍ كالثلاثة، ملتصقان بالنهاية: كان الواحدُ يُمَطّ على ٧٢٪ فيُقصّ وجهُه */
+              <Image key={i} source={{ uri }} style={slots.length >= 3 ? { flex: 1, height: "100%" } : { width: "33.34%", height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
             ) : null,
           )}
         </View>
@@ -252,7 +257,7 @@ export function ListCard({
           ) : null}
           {/* 🆕 T454 — **الكلماتُ تملأ السطرَ الأوّلَ قبل أن تنزل** (`simple`) وسقفُ العرض ٦٤٪ (أحمد: «خل تو تطلع فوق
               وطلعها كاملة»): أندرويد يوازن السطرين افتراضاً (`highQuality`) فنزلت «to» وقُصّت «Doomsday» عند ٥٨٪ */}
-          <Text size={15} weight="700" color={c.fg} numberOfLines={2} textBreakStrategy="simple" style={{ flex: 1, maxWidth: "64%", lineHeight: 20 }}>
+          <Text size={15} weight="700" color={c.fg} numberOfLines={3} textBreakStrategy="simple" style={{ flex: 1, maxWidth: "52%", lineHeight: 20 }}>
             {card.name}
           </Text>
           {/* 🆕 D-952 — رمزُ الفلاتر (`sliders`) قبل المشاركة: الويبُ يضع «عدّل الشرط»
@@ -280,7 +285,7 @@ export function ListCard({
           ) : null}
         </View>
         {card.owner ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6, maxWidth: "58%" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6, maxWidth: "50%" }}>
             {card.owner_avatar ? (
               /* ختمُ لوبز من الأصول لا من الشبكة (`avatarSource`)، وخلفيّتُه `surface2` لأن الرمزَ شفّافٌ — كأفاتاره في المجتمع */
               <Image source={avatarSource(card.owner_avatar)} style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: c.surface2 }} contentFit="cover" />
@@ -292,7 +297,7 @@ export function ListCard({
             <Text size={12} color={c.muted} numberOfLines={1} style={{ flexShrink: 1 }}>{card.owner}</Text>
           </View>
         ) : null}
-        <Text size={12} color={sub2} numberOfLines={1} style={{ marginTop: 4, maxWidth: "58%" }}>
+        <Text size={12} color={sub2} numberOfLines={1} style={{ marginTop: 4, maxWidth: "50%" }}>
           {card.countText}
         </Text>
 
@@ -326,11 +331,17 @@ export function ListCard({
                   {/* **والصفرُ لا يُطبع** (D-219) — كقلب بطاقة الويب */}
                   {likes > 0 ? <Text size={12} color={c.muted} style={styles.nums}>{num(likes, locale)}</Text> : null}
                 </Pressable>
-                <Sep palette={c} />
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Icon name="comment" size={15} color={c.accent} />
-                  <Text size={12} color={c.muted} style={styles.nums}>{num(stats.reviews, locale)}</Text>
-                </View>
+                {/* 🆕 T602 (q27 · q32) — **الصفرُ لا يُطبع** (D-219 يعود؛ ينقض استثناءَه المحصور في هذه البطاقة بكلمة أحمد في الاستوديو):
+                    💬 بلا آراء لا يُرسم، و★ تبقى فعلاً بلا «0» */}
+                {stats.reviews > 0 ? (
+                  <>
+                    <Sep palette={c} />
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Icon name="comment" size={15} color={c.accent} />
+                      <Text size={12} color={c.muted} style={styles.nums}>{num(stats.reviews, locale)}</Text>
+                    </View>
+                  </>
+                ) : null}
                 <Sep palette={c} />
                 {/* ★ — فعلٌ يفتح ورقةَ الرأي لقائمة غيري (D-948)، رقمٌ ساكنٌ لقائمتي */}
                 <Pressable
@@ -341,7 +352,7 @@ export function ListCard({
                   style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                 >
                   <Icon name={card.hasMyReview ? "star-filled" : "star"} size={15} color={card.canReview && !card.hasMyReview ? c.muted : c.accent} />
-                  <Text size={12} weight="700" color={card.canReview && !card.hasMyReview ? c.muted : c.accent} style={styles.nums}>{num(stats.rating ?? 0, locale)}</Text>
+                  {stats.rating ? <Text size={12} weight="700" color={card.canReview && !card.hasMyReview ? c.muted : c.accent} style={styles.nums}>{num(stats.rating, locale)}</Text> : null}
                 </Pressable>
               </View>
             ) : null}

@@ -5,7 +5,6 @@ import { api } from "../api";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
-import { Segmented } from "../library/ToolsSheet";
 import { Sheet } from "../library/Sheet";
 import { ListCard } from "../library/ListCard";
 import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
@@ -23,8 +22,7 @@ import { NewListBar } from "../newlist/NewListBar";
  * واحد** (`PublicListsRail` — ٢٦٠ ≈ `w-[260px]`)، والعوالمُ المنسَّقة صفٌّ لكلِّ
  * عالمٍ و«الكل» ورقةٌ أصليّة بمجموعاته كلِّها (D-996 — كان باباً إلى `/news?tab=lists&fr=`).
  * **ما بقي ويبيّاً هنا صفحةُ القائمة نفسُها** (`/lists/[id]`) — المحطّةُ ٤ في ترتيب النقل.
- * **رقاقتا المصدر (الكل · لوبز · المجتمع) في الشاشة لا في الخادم** — تصفيةٌ
- * محلّيّةٌ لبياناتٍ وصلت، كما يفعل `lsrc` في الصفحة. **ولا فلترَ عالمٍ هنا**:
+ * 🆕 T602 — سقطت رقاقاتُ المصدر (الكل · منسّقة · المجتمع): الأقسامُ تقولها. **ولا فلترَ عالمٍ هنا**:
  * «الكل» على الصفّ يكفي.
  */
 const PAGE_PAD = 16;
@@ -41,7 +39,6 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
   const { t, tokens, me } = useApp();
   const { width } = useWindowDimensions();
   const cardW = Math.min(CARD_W, width - PAGE_PAD * 2 - 24);
-  const [src, setSrc] = useState<"all" | "curated" | "community">("all");
   /* 🆕 D-996 — «الكلّ» للعالم ورقةٌ أصليّة (كان باباً إلى `/news?tab=lists&fr=`): الردُّ يحمل
      مجموعاتِ العالم كاملةً، فالورقةُ تعرضها شبكةً بالبطاقة نفسِها ولا تطلب شيئاً */
   const [allOf, setAllOf] = useState<{ name: string; sets: LibraryListCard[] } | null>(null);
@@ -76,32 +73,23 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
 
   return (
     <View style={{ gap: 24 }}>
-      {/* المصدرُ — «ت٥أ» (أحمد ٢٦ نوفمبر): عائلةُ المقسّم بخطٍّ أصفر لا كبسولات */}
-      <View style={{ paddingHorizontal: PAGE_PAD }}>
-        <Segmented
-          items={[
-            { id: "all", label: t.browseAll },
-            { id: "curated", label: t.listsCurated },
-            { id: "community", label: t.publicListsRail },
-          ]}
-          value={src}
-          onChange={(v) => setSrc(v as typeof src)}
-        />
-      </View>
-      {/* 🆕 T450 — بابا الإنشاء تحت الرقائق: قائمةٌ تملؤها بيدك من الكتالوج كلِّه، وذكيّةٌ تملأ نفسَها (مجّانيّةٌ للجميع) */}
-      {me ? <NewListBar from="discover" style={{ marginHorizontal: PAGE_PAD, marginTop: -12 }} /> : null}
+      {/* 🆕 T602 (q32 «أ») — **سقط صفُّ المصدر «الكل · منسّقة · المجتمع»**: كان طبقةَ تنقّلٍ ثالثةً قبل أوّل قائمة، والأقسامُ
+          نفسُها تقوله. وبابا الإنشاء أوّلُ ما في التبويب */}
+      {me ? <NewListBar from="discover" style={{ marginHorizontal: PAGE_PAD }} /> : null}
       {!p ? (
         <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: PAGE_PAD }}>
           {[0, 1].map((i) => (
-            <View key={i} style={{ width: cardW, height: 168, borderRadius: 14, backgroundColor: tokens.surface2 }} />
+            <View key={i} style={{ width: cardW, height: 176, borderRadius: 14, backgroundColor: tokens.surface2 }} />
           ))}
         </View>
       ) : (
         <>
-          {src !== "curated" ? rail("foryou", t.listsForYou, p.for_you) : null}
-          {src !== "curated" ? rail("trending", t.listsTrending, p.trending) : null}
-          {src !== "curated" ? rail("community", t.publicListsRail, p.community) : null}
-          {src !== "community" ? p.franchises.map((f) => rail(f.slug, f.name, f.sets, f.sets.length > 1)) : null}
+          {/* الترتيب: لك · أوّلُ العوالم المنسَّقة (كان يُبلَغ برقاقة «منسّقة») · الرائجة · المجتمع · بقيّةُ العوالم */}
+          {rail("foryou", t.listsForYou, p.for_you)}
+          {p.franchises.slice(0, 1).map((f) => rail(f.slug, f.name, f.sets, f.sets.length > 1))}
+          {rail("trending", t.listsTrending, p.trending)}
+          {rail("community", t.publicListsRail, p.community)}
+          {p.franchises.slice(1).map((f) => rail(f.slug, f.name, f.sets, f.sets.length > 1))}
         </>
       )}
       {allOf ? (

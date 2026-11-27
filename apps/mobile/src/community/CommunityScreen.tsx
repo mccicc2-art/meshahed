@@ -213,7 +213,7 @@ export function CommunityScreen() {
   const [topH, setTopH] = useState(insets.top + HEADER_H + 46);
   /* 🆕 D-1448 — زرُّ القلم العائم للعضو: مسافةٌ تحت آخر بطاقةٍ بقدره فلا يغطّي ذيلَها */
   const canPost = !!d?.viewer.signed_in;
-  const bottomPad = navH + 24 + (canPost || tab === "people" ? 72 : 0);
+  const bottomPad = navH + 24 + (canPost && tab !== "people" ? 72 : 0);
   const { reveal } = chrome;
   useEffect(() => {
     reveal();
@@ -304,7 +304,11 @@ export function CommunityScreen() {
           <Text size={15} weight="700">{t.peopleTitle}</Text>
           {/* 🆕 D-1569 — صورةُ الحساب في البداية كالرئيسيّة، وشعارُ Loopz في الطرف، والجرسُ في الرئيسيّة وحدَها (أحمد ٢٩ أكتوبر)
               🆕 T362 — **وزرُّ الرسائل بجانب الشعار هنا** (أحمد ١٠ نوفمبر «١أ وتبقى فالرئيسية ايضا») */}
-          <HeaderEdges from="community" messages />
+          <HeaderEdges
+            from="community"
+            messages
+            search={tab === "people" ? { label: t.findMembers, onPress: () => router.navigate({ pathname: "/search", params: { focus: String(Date.now()), scope: "members" } }) } : undefined}
+          />
         </View>
         {/* 🆕 D-1237 — زرُّ الأدوات في طرف شريط التبويبات كما في «المكتبة» و«اكتشف» (D-1009) لا في الرأس (طلبُ أحمد
             بلقطتين، ٣ أكتوبر): ثلاثةُ جذورٍ بمكانين للزرّ نفسِه عيبٌ (القاعدة ٣). الهندسةُ هندسةُ المكتبة حرفاً. */}
@@ -393,19 +397,9 @@ export function CommunityScreen() {
           onClose={() => setComposing(null)}
         />
       ) : null}
-      {tab === "people" ? (
-        /* 🆕 ١٩ نوفمبر — في تبويب الأعضاء الزرُّ العائمُ «ابحث عن عضو» لا القلم (أحمد «ب صغرها درجة»): يفتح البحثَ على رقاقة «أعضاء»
-           واللوحةُ ظاهرة. الكتابةُ باقيةٌ من «النشاط» و«النقاشات». يعدّل D-267 («لا مربّعَ بحث» في الأعضاء): زرٌّ إلى البحث لا مربّع */
-        <FloatButton
-          compact
-          icon="search"
-          label={t.findMembers}
-          onPress={() => router.navigate({ pathname: "/search", params: { focus: String(Date.now()), scope: "members" } })}
-          style={{ bottom: navH + 16 }}
-          hidden={chrome.hidden}
-          drop={navH + 16 + 44 + 8}
-        />
-      ) : canPost ? (
+      {/* 🆕 T602 (q27) — **لا زرَّ عائماً فوق المحتوى في «الأعضاء»**: «ابحث عن عضو» صار أيقونةً في الرأس بجانب الرسائل
+          (كان يغطّي بطاقةَ المراجعة الأخيرة). والقلمُ في «النشاط» و«النقاشات» باقٍ لأنّه فعلُ الصفحة الأوّل (D-1448) */}
+      {tab === "people" ? null : canPost ? (
         /* 🆕 D-1448 — «بوست جديد» (لقطةُ أحمد الرابعة): القلمُ فوق شريط التبويب، بالزرّ العائم الواحد (`FloatButton`) */
         <FloatButton icon="edit" label={t.newPostTitle} showLabel={false} onPress={() => router.push("/new-post")} style={{ bottom: navH + 16 }} hidden={chrome.hidden} drop={navH + 16 + 48 + 8} />
       ) : null}

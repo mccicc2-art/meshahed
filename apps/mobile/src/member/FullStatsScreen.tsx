@@ -302,7 +302,7 @@ function TrendTab({ s }: { s: ReportStats }) {
 
       <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
         <H3>{en ? "Watch-time trend" : "اتجاه وقت المشاهدة"}</H3>
-        {s.deltaPct !== null ? <Text size={13} weight="700" color={s.deltaPct >= 0 ? tokens.success : tokens.error} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{`${s.deltaPct >= 0 ? "+" : ""}${n(s.deltaPct)}%`}</Text> : null}
+        {s.deltaPct !== null ? <Text size={13} weight="700" color={s.deltaPct >= 0 ? tokens.success : tokens.muted /* T602 (q27) — النقصُ محايدٌ لا أحمر */} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{`${s.deltaPct >= 0 ? "+" : ""}${n(s.deltaPct)}%`}</Text> : null}
       </View>
       {/* الاتّجاهُ يأخذ ما بقي من الشاشة (١٢٠–٢٠٠) */}
       <TrendChart s={s} />

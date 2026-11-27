@@ -55,7 +55,10 @@ export function textIsRtl(text: string): boolean {
   return strong ? !/[A-Za-z]/.test(strong) : I18nManager.isRTL;
 }
 
-function ClampedText({ text, onPress }: { text: string; onPress: () => void }) {
+/** 🆕 T602 (q22 «أ») — `big`: نصُّ الرأي ١٧ بتباعدٍ أوسع (الكلامُ هو البطل)؛ منشوراتُ النقاش تبقى ١٤ */
+function ClampedText({ text, onPress, big = false }: { text: string; onPress: () => void; big?: boolean }) {
+  const size = big ? 17 : 14;
+  const lh = big ? 27 : 21;
   const { t } = useApp();
   const [long, setLong] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
@@ -63,10 +66,10 @@ function ClampedText({ text, onPress }: { text: string; onPress: () => void }) {
   return (
     <View style={{ marginTop: 8 }}>
       <Pressable onPress={onPress}>
-        <Text size={14} content numberOfLines={open ? undefined : CLAMP_LINES} style={{ lineHeight: 21 }}>{text}</Text>
+        <Text size={size} content numberOfLines={open ? undefined : CLAMP_LINES} style={{ lineHeight: lh }}>{text}</Text>
       </Pressable>
       {long === null ? (
-        <Text size={14} content pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" onTextLayout={(e) => setLong(e.nativeEvent.lines.length > CLAMP_LINES)} style={{ lineHeight: 21, position: "absolute", left: 0, right: 0, top: 0, opacity: 0 }}>{text}</Text>
+        <Text size={size} content pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" onTextLayout={(e) => setLong(e.nativeEvent.lines.length > CLAMP_LINES)} style={{ lineHeight: lh, position: "absolute", left: 0, right: 0, top: 0, opacity: 0 }}>{text}</Text>
       ) : null}
       {long ? (
         <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8} accessibilityRole="button" style={{ alignSelf: rtl === I18nManager.isRTL ? "flex-start" : "flex-end", marginTop: 4 }}>
@@ -178,11 +181,13 @@ function Tail({ row, acts, onList, share }: { row: CommunityPostRow; acts: CardA
 }
 
 /** 🆕 D-1448 — `dark`: لا أخَ ملوّناً لملصقه الداكن (`poster_dark` من الخادم) ⇒ إطارٌ رفيعٌ بلون النصّ فلا يذوب في الخلفيّة */
-function RowPoster({ path, kind, lib, dark = false, onPress }: { path: string | null; kind: "tv" | "movie"; lib: CommunityPostRow["lib"]; dark?: boolean; onPress: () => void }) {
+function RowPoster({ path, kind, lib, dark = false, onPress, small = false }: { path: string | null; kind: "tv" | "movie"; lib: CommunityPostRow["lib"]; dark?: boolean; onPress: () => void; small?: boolean }) {
   const { tokens } = useApp();
-  const uri = posterFor(path, POSTER_W);
+  /* T602 — `small`: ملصقُ اللافتة تحت الرأي (٥٦) */
+  const w = small ? 56 : POSTER_W;
+  const uri = posterFor(path, w);
   return (
-    <Pressable onPress={onPress} accessibilityRole="link" style={{ width: POSTER_W, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, alignSelf: "flex-start", borderWidth: dark ? 1 : 0, borderColor: tokens.fg + "59" }}>
+    <Pressable onPress={onPress} accessibilityRole="link" style={{ width: w, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, alignSelf: "flex-start", borderWidth: dark ? 1 : 0, borderColor: tokens.fg + "59" }}>
       {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" transition={120} /> : (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Icon name={kind === "tv" ? "tv" : "film"} size={18} color={tokens.muted} />
@@ -358,6 +363,60 @@ export const FeedCard = memo(function FeedCard({ row, doors, acts }: { row: Comm
   return <ReviewOrNewsCard row={row} doors={doors} acts={acts} />;
 });
 
+/**
+ * 🆕 T602 (q22 «أ») — **العملُ لافتةً تحت الكلام** (استوديو المشاركة «م٢ أ»): كان ملصقُه على جانب البطاقة يأكل ثلثَ عرضها فينحشر
+ * الرأيُ في ثلاثة أسطرٍ بخطّ ١٤. الآن الكلامُ بعرض البطاقة كلِّها، وتحته خلفيّةُ العمل (`backdrop_path` من الخادم، وإلّا لونُ
+ * السطح) بظلٍّ من جهة البداية حيث الاسمُ — لا كلامَ فوق صورةٍ مكشوفة — وملصقُه بخيط حالتك في النهاية، ووسمُ الحلقة والتقييم.
+ */
+function WorkBanner({ row, onPress }: { row: Extract<CommunityPostRow, { kind: "comment" }>; onPress: () => void }) {
+  const { t, tokens } = useApp();
+  const a = row.item;
+  const bg = row.backdrop_path ? backdropUrl(row.backdrop_path, "w780") : null;
+  const isEp = a.kind === "ep_rate";
+  const shadeId = `rv-shade-${row.key}`;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="link" accessibilityLabel={a.title ?? undefined} style={({ pressed }) => ({ marginTop: 12, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, opacity: pressed ? 0.85 : 1 })}>
+      {bg ? (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <Image source={{ uri: bg }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
+          <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none" viewBox="0 0 100 100">
+            <Defs>
+              <SvgGradient id={shadeId} x1={I18nManager.isRTL ? "1" : "0"} y1="0" x2={I18nManager.isRTL ? "0" : "1"} y2="0">
+                <Stop offset="0" stopColor={tokens.surface} stopOpacity={0.96} />
+                <Stop offset="0.55" stopColor={tokens.surface} stopOpacity={0.8} />
+                <Stop offset="1" stopColor={tokens.surface} stopOpacity={0.15} />
+              </SvgGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100" height="100" fill={`url(#${shadeId})`} />
+          </Svg>
+        </View>
+      ) : null}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+          {/* الاسمُ كاملاً بسطرين لا «…» (q27) */}
+          <Text size={15} weight="700" numberOfLines={2} autoDir style={{ lineHeight: 20 }}>{a.title}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {isEp && a.epSeason != null && a.epEpisode != null ? (
+              <View style={{ borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface2, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1 }}>
+                <Text size={11} weight="600" style={{ fontVariant: ["tabular-nums"] }}>{t.epChip(a.epSeason, a.epEpisode, Math.max(0, (a.epCount ?? 1) - 1))}</Text>
+              </View>
+            ) : (
+              <Text size={12} muted>{a.media_type === "tv" ? t.typeSeries : t.typeMovie}</Text>
+            )}
+            {a.rating != null ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                <Icon name="star-filled" size={13} color={tokens.accent} />
+                <Text size={14} weight="700" color={tokens.accent} style={{ writingDirection: "ltr" }}>{a.rating.toFixed(1)}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+        <RowPoster path={a.poster_path} kind={a.media_type} lib={row.lib} dark={row.poster_dark} onPress={onPress} small />
+      </View>
+    </Pressable>
+  );
+}
+
 function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityPostRow, { kind: "talk" }>; doors: CardDoors; acts: CardActs }) {
   const { t, tokens, locale } = useApp();
   const [reveal, setReveal] = useState(false);
@@ -442,6 +501,8 @@ function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityPostRow,
                 <Icon name="dots" size={16} color={tokens.muted} />
               </Pressable>
             </View>
+            {/* 🆕 T602 (q22 «أ») — سطرُ العمل تحت الاسم للقوائم وحدَها؛ الرأيُ يحمل عملَه في اللافتة تحت الكلام */}
+            {isList ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Pressable onPress={titleDoor} style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
                 {isList ? <Icon name="list" size={13} color={tokens.muted} /> : null}
@@ -460,6 +521,7 @@ function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityPostRow,
                 </View>
               ) : null}
             </View>
+            ) : null}
           </View>
         </View>
 
@@ -470,7 +532,7 @@ function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityPostRow,
           </Pressable>
         ) : (
           <>
-            <ClampedText key={text} text={text} onPress={openText} />
+            <ClampedText key={text} text={text} onPress={openText} big={!isList} />
             {translated ? (
               <Pressable onPress={() => setOriginal((v) => !v)} hitSlop={8} style={{ alignSelf: "flex-start", marginTop: 4 }}>
                 <Text size={12} weight="700" muted>{original ? t.showTranslation : t.showOriginalText}</Text>
@@ -482,12 +544,13 @@ function ReviewOrNewsCard({ row, doors, acts }: { row: Exclude<CommunityPostRow,
         {isList ? (
           <Tail row={row} acts={acts} onList={() => a.listId && doors.onList(a.listId)} />
         ) : (
-          <Tail row={row} acts={acts} share={{ path: `/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`, title: a.title ?? "" }} />
+          <>
+            <WorkBanner row={row} onPress={titleDoor} />
+            <Tail row={row} acts={acts} share={{ path: `/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`, title: a.title ?? "" }} />
+          </>
         )}
       </View>
-      {!isList ? (
-        <RowPoster path={a.poster_path} kind={a.media_type} lib={row.lib} dark={row.poster_dark} onPress={titleDoor} />
-      ) : cover ? (
+      {isList && cover ? (
         <Pressable onPress={titleDoor} style={{ width: POSTER_W, aspectRatio: 16 / 9, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2, alignSelf: "flex-start" }}>
           <Image source={{ uri: cover }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
         </Pressable>
@@ -690,7 +753,8 @@ export function LeaderCard({ p, mode, rank, doors, follow = null, stats = null }
       <Text size={12} weight="700" color={mode === "rising" && !stats ? tokens.success : tokens.accent}>
         {stats ? stats.main : mode === "rising" ? t.peopleBoardDelta(p.total - p.prevTotal) : t.peopleBoardActions(p.total)}
       </Text>
-      <Text size={10} muted numberOfLines={stats ? 2 : 1} style={stats ? { textAlign: "center" } : undefined}>
+      {/* T602 — السطرُ يحجز مكانه وإن غاب تفصيلُه (لا صفرَ مطبوعاً): البطاقاتُ في الصفّ بقامةٍ واحدة */}
+      <Text size={10} muted numberOfLines={stats ? 2 : 1} style={stats ? { textAlign: "center" } : { minHeight: 14 }}>
         {stats ? stats.sub : mode === "rising" ? t.peopleBoardVsLast(p.total, p.prevTotal) : t.peopleBoardBreakdown(p.posts, p.reviews)}
       </Text>
     </Pressable>
@@ -720,7 +784,7 @@ export function TopReviewCard({ r, doors }: { r: CommunityTopReview; doors: Card
               <Text size={12} muted style={{ marginStart: "auto" }}>{timeAgoShort(r.createdAt, t)}</Text>
             </View>
             <Pressable onPress={() => doors.onTitle(r.mediaType, r.tmdbId)} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{r.title}</Text>
+              <Text size={12} muted numberOfLines={2} style={{ flexShrink: 1 }}>{/* T602 (q27) — اسمُ العمل كاملاً بسطرين */}{r.title}</Text>
               {r.rating > 0 ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                   <Icon name="star-filled" size={12} color={tokens.accent} />

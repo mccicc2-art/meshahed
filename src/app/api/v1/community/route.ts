@@ -18,6 +18,7 @@ import { BOARD_PREVIEW, COMMUNITY_PAGER_TABS, asCommunityTab, type CommunityPage
 import { buildCommunity, refreshCommunityAfter } from "@/lib/communityCore";
 import { feedRows, roomOut, listOut, followsLoopz } from "@/lib/communityPayload";
 import { vividizeFeed } from "@/lib/vividPoster";
+import { backdropFeed } from "@/lib/feedBackdrop";
 import { handle, limited, personasAware } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { CommunityPayload } from "@/core/contracts/community";
@@ -99,7 +100,8 @@ export async function GET(req: NextRequest) {
     }
 
     /* 🆕 D-1448 — الملصقُ الداكنُ يُستبدل بأخٍ ملوّن (التطبيقُ وحدَه؛ الويبُ يرسم من بياناته) — بمهلةٍ لا تؤخّر الخطّ */
-    await vividizeFeed([...feedOut, ...extra], locale === "en" ? "en" : "ar");
+    /* 🆕 T602 — وخلفيّةُ العمل للافتة تحت الرأي، بالمهلة نفسِها وفي الوقت نفسِه */
+    await Promise.all([vividizeFeed([...feedOut, ...extra], locale === "en" ? "en" : "ar"), backdropFeed([...feedOut, ...extra])]);
 
     const payload: CommunityPayload = {
       viewer: { signed_in: !!user, me_id: user?.id ?? null, admin: core.amAdmin },

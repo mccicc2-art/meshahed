@@ -4,6 +4,7 @@ import { getT, getFeedStrangers, getTranslateEnabled } from "@/lib/locale";
 import { buildFeedPage } from "@/lib/communityCore";
 import { feedRows } from "@/lib/communityPayload";
 import { vividizeFeed } from "@/lib/vividPoster";
+import { backdropFeed } from "@/lib/feedBackdrop";
 import { handle, limited, fail, personasAware } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { CommunityFeedPagePayload } from "@/core/contracts/community";
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     /* 🆕 D-1605 — والصفحاتُ الأقدمُ تحمل مراجعاتِ الشخصيّات المتابَعة بالحدّ نفسِه */
     const page = await buildFeedPage({ user, locale, before: new Date(before).toISOString(), limit: PAGE, translateOn, personas });
     const rows = feedRows(page.core, { meId: user?.id ?? "", showStrangers, sort: "latest", t, locale });
-    await vividizeFeed(rows, locale === "en" ? "en" : "ar");
+    await Promise.all([vividizeFeed(rows, locale === "en" ? "en" : "ar"), backdropFeed(rows)]);
     return ok({ rows, next_before: page.next_before });
   });
 }

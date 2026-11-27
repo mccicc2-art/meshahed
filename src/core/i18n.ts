@@ -1241,6 +1241,9 @@ const ar = {
      بقي اختياريّاً دفعةً واحدة ثم سقط** بعد أن سقط من مستهلكه
      (D-028/D-214). */
   peopleBoardBreakdown: (posts: number, reviews: number) => {
+    /* 🆕 T602 (q27) — **لا صفرَ مطبوعاً**: «0 مشاركة · 8 آراء» تحت «8 تفاعلات» صفرٌ ورقمٌ يكرّر العنوان. التفصيلُ يُكتب حين
+       يكون فيه نوعان فقط؛ وإلّا فهو العنوانُ نفسُه — فلا سطر (والبطاقةُ تحجز مكانه) */
+    if (posts <= 0 || reviews <= 0) return "";
     const u = (n: number, one: string, few: string) =>
       `${num(n, "ar")} ${n >= 3 && n <= 10 ? few : one}`;
     return `${u(posts, "مشاركة", "مشاركات")} · ${u(reviews, "رأي", "آراء")}`;
@@ -1649,6 +1652,8 @@ const ar = {
   shareLoadingPeople: "جارٍ التحميل…",
   // قائمة من أعمال فنان أو أجزاء سلسلة
   worksToListBtn: "أضِف أعماله إلى قائمة",
+  /** T602 — نصفُ الصفّ تحت رأس صفحة الشخص في التطبيق (q29 «أ») */
+  worksToListShort: "اجمع أعماله في قائمة",
   listMadeToast: (name: string) => `أُنشئت قائمة «${name}» ✓`,
   listGrewToast: (n: number) => `أُضيف ${n} إلى القائمة ✓`,
   listHadAllToast: "كل الأعمال موجودة في القائمة مسبقاً",
@@ -2794,17 +2799,16 @@ const ar = {
      معطّلاً، فلا بدّ أن يقول سببَ عدم حدوث شيء. */
   listNameRequired: "اكتب اسم القائمة أولاً",
   listsEmpty: "لا قوائم لديك بعد — اكتب اسماً في الأعلى وابدأ.",
-  listCount: (n: number) =>
-    n === 0 ? "فاضية" : n === 1 ? "عمل واحد" : n === 2 ? "عملان" : `${n} أعمال`,
+  /* 🆕 T602 (q27) — **العددُ بقواعد العربيّة** (D-733 · q19): «3 أعمال» · «13 عملاً» · «100 عمل» — كان «13 أعمال» في كلّ
+     بطاقة قائمة. نصُّ الخادم (`count_label`) يمرّ من هنا فيصل النسخَ القديمة من التطبيق أيضاً */
+  listCount: (n: number) => (n === 0 ? "فاضية" : arCounted(n, ["عمل واحد", "عملان", "أعمال", "عملاً", "عمل"])),
   // عدّاد محتوى القائمة: يُسقط الطرف الصفري فلا تظهر «٠ مسلسل»
-  listContentCount: (shows: number, movies: number) =>
-    shows > 0 && movies > 0
-      ? `${shows} مسلسل · ${movies} فيلم`
-      : movies > 0
-        ? `${movies} فيلم`
-        : shows > 0
-          ? `${shows} مسلسل`
-          : "لا عناصر",
+  listContentCount: (shows: number, movies: number) => {
+    if (shows <= 0 && movies <= 0) return "لا عناصر";
+    const sh = shows > 0 ? arCounted(shows, ["مسلسل واحد", "مسلسلان", "مسلسلات", "مسلسلاً", "مسلسل"]) : null;
+    const mv = movies > 0 ? arCounted(movies, ["فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم"]) : null;
+    return [sh, mv].filter(Boolean).join(" · ");
+  },
   listPublic: "معلنة",
   listPrivate: "خاصة",
   listDeleteYes: "احذف",
@@ -4871,6 +4875,7 @@ const en: Dict = {
     n === 1 ? "1 action" : `${num(n, "en")} actions`,
   // “1 posts” shipped and was caught on the live page — singular is not optional
   peopleBoardBreakdown: (posts: number, reviews: number) => {
+    if (posts <= 0 || reviews <= 0) return "";
     const u = (n: number, w: string) =>
       `${num(n, "en")} ${n === 1 ? w : `${w}s`}`;
     return `${u(posts, "post")} · ${u(reviews, "review")}`;
@@ -5070,6 +5075,7 @@ const en: Dict = {
   shareLoadingPeople: "Loading…",
   // A list from a person's filmography or a franchise's parts
   worksToListBtn: "Add filmography to a list",
+  worksToListShort: "List their work",
   listMadeToast: (name: string) => `Created “${name}” ✓`,
   listGrewToast: (n: number) => `Added ${n} to the list ✓`,
   listHadAllToast: "Everything is already in the list",
@@ -7028,4 +7034,19 @@ export function roleName(dep: string | null | undefined, t: Dict): string {
     default:
       return "";
   }
+}
+
+/**
+ * 🆕 T602 — **المعدودُ العربيّ** بصيغه الخمس: [واحد، مثنّى، ٣–١٠، ١١–٩٩، المئة ومضاعفاتها وما يليها بواحدٍ أو اثنين] (D-733).
+ * وما فوق المئة بآخر رقمين (أحمد «٦ ب»): «عمل واحد» · «عملان» · «3 أعمال» · «13 عملاً» · «100 عمل» · «103 أعمال» · «115 عملاً».
+ */
+export function arCounted(n: number, w: [one: string, two: string, few: string, many: string, hundred: string]): string {
+  if (n === 1) return w[0];
+  if (n === 2) return w[1];
+  if (n >= 3 && n <= 10) return `${n} ${w[2]}`;
+  if (n < 100) return `${n} ${w[3]}`;
+  const r = n % 100;
+  if (r >= 3 && r <= 10) return `${n} ${w[2]}`;
+  if (r >= 11) return `${n} ${w[3]}`;
+  return `${n} ${w[4]}`;
 }

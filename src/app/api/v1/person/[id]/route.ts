@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       if (!person) return fail("not_found");
       const name = await displayPersonName(personId, person.name, locale);
 
-      const works: PersonWork[] = credits.map((w) => ({
+      const all: PersonWork[] = credits.map((w) => ({
         kind: w.media_type === "tv" ? "tv" : "movie",
         id: w.id,
         title: titleOf(w),
@@ -48,6 +48,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         year: yearOf(w),
         group: w.media_type === "tv" ? (isTvProgram(w) ? "show" : "tv") : "movie",
       }));
+      /* 🆕 T602 (q29 «أ») — **البرامجُ آخرَ «الكل»**: ظهورُ المخرج ضيفاً في Late Show كان يسبق Oppenheimer لأنّ البرامج اليوميّة
+         أعلى شهرةً في TMDB من أيّ فيلم. الترتيبُ بالشهرة يبقى داخل كلّ فريق (فرزٌ مستقرّ)، والنقلُ هنا في الخادم فيصل النسخَ القديمة */
+      const works = [...all.filter((w) => w.group !== "show"), ...all.filter((w) => w.group === "show")];
 
       const dep = person.known_for_department;
       const department =
@@ -61,7 +64,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         birthday: person.birthday ?? null,
         deathday: person.deathday ?? null,
         place_of_birth: person.place_of_birth ?? null,
-        biography: person.biography ?? "",
+        /* 🆕 T602 — أرقامُ النبذة لاتينيّةٌ كباقي التطبيق: ويكيبيديا العربيّة تكتب «١٩٧٠» والسطرُ نفسُه فيه «1970» */
+        biography: westernDigits(person.biography ?? ""),
         biography_is_fallback: !!person.biographyIsFallback,
         me: { following },
         works,
@@ -71,4 +75,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     /* D-986 — يحمل `me.following`: لا يُخزَّن */
     { cacheControl: "private, no-store" },
   );
+}
+
+/** «٠–٩» و«۰–۹» إلى «0–9» — لا شيءَ غيرُ الأرقام يتغيّر */
+function westernDigits(text: string): string {
+  return text.replace(/[\u0660-\u0669\u06F0-\u06F9]/g, (c) => String((c.charCodeAt(0) & 0xf) % 10));
 }

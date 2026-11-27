@@ -520,7 +520,10 @@ async function yearPageImage(locale: Locale, kind: "time" | "top" | "taste" | "l
     if (kind === "top") {
       const t = st.top[0];
       if (!t) return new Response("nothing to share", { status: 409 });
-      page = { kind, title: t.title, poster: await dataUrl(posterUrl(t.poster_path, "w500")), episodes: t.episodes, minutes: t.minutes, movie: t.kind === "movie" };
+      /* T602 — الثاني والثالث للمنصّة كما في الشاشة (q30 «ب») */
+      const rest = st.top.slice(1, 3);
+      const [poster, ...restPosters] = await Promise.all([dataUrl(posterUrl(t.poster_path, "w500")), ...rest.map((x) => dataUrl(posterUrl(x.poster_path, "w342")))]);
+      page = { kind, title: t.title, poster, episodes: t.episodes, minutes: t.minutes, movie: t.kind === "movie", next: rest.map((x, i) => ({ title: x.title, poster: restPosters[i] ?? null, minutes: x.minutes })) };
     } else {
       if (!st.loved.length) return new Response("nothing to share", { status: 409 });
       const posters = await Promise.all(st.loved.map((x) => dataUrl(posterUrl(x.poster_path, "w185"))));
@@ -544,6 +547,10 @@ const UNITS = {
  * 🆕 **بطاقةُ سجلّ المشاهدة** («ن٥ ب»، `lib/historyCard`): البطلُ أكثرُ عملٍ دقائقَ بعد ما أُخفي، ثمّ رفٌّ من أربعة، ثمّ الباقي
  * باسمه («اذكر اسمه بالضبط»): واحدٌ أو اثنان باسميهما، وما زاد عددٌ بتمييزه. مدّةٌ فارغةٌ لا صورةَ لها (`409`).
  */
+/* T602 — صورةُ سجلّ المشاهدة (تُشارَك من «حصيلة الأسبوع» في الرئيسيّة) تبقى بمعدودها القديم فوق المئة (أحمد: «ماعدا الكادرات مثل
+   الرئيسية والبروفايل»)؛ وغيرُها بقاعدة النحو */
+const FLAT = { flatHundreds: true } as const;
+
 async function historyImage(locale: Locale, period: HistoryPeriod, hide: Set<string>) {
   const profile = await getProfile();
   const tz = asTimeZone(profile?.timezone);
@@ -581,7 +588,7 @@ async function historyImage(locale: Locale, period: HistoryPeriod, hide: Set<str
         : /* «و» تلتصق بالاسم العربيّ وتنفصل عن اللاتينيّ — «وLost» كانت تُرسم «Lostو» (كلمةٌ بخطّين تُقلب أجزاؤها) */
           restNames.map((n) => (/[\u0600-\u06FF]/.test(n) ? `و${n}` : `و ${n}`)).join(" ")
       : (() => {
-          const u = countedUnit(after.length, UNITS.work, locale);
+          const u = countedUnit(after.length, UNITS.work, locale, FLAT);
           return en ? `And ${after.length} ${u.unit}` : `و${u.value ?? ""} ${u.unit}`.replace("و ", "و");
         })();
 
@@ -594,7 +601,7 @@ async function historyImage(locale: Locale, period: HistoryPeriod, hide: Set<str
     { n: movies, w: UNITS.mv },
   ]
     .filter((x) => x.n > 0)
-    .map((x) => countedUnit(x.n, x.w, locale));
+    .map((x) => countedUnit(x.n, x.w, locale, FLAT));
 
   const el = await historyCardElement({
     locale,
@@ -610,7 +617,7 @@ async function historyImage(locale: Locale, period: HistoryPeriod, hide: Set<str
     stats,
     workLine: (w) => {
       if (w.movie) return en ? "Movie" : "فيلم";
-      const u = countedUnit(w.episodes, UNITS.ep, locale);
+      const u = countedUnit(w.episodes, UNITS.ep, locale, FLAT);
       return u.value ? `${u.value} ${u.unit}` : u.unit;
     },
   });

@@ -79,7 +79,9 @@ async function profile(handle: string, l: "ar" | "en") {
   const persona = follows.length ? yearPersona({ genres: ranked, animePct: ranked.find((g) => g.slug === "animation")?.pct ?? 0, thin: follows.length < 5 }, l, "all") : null;
   const shows = follows.filter((f) => f.media_type === "tv").length;
   const days = Math.floor((ep.minutes + mv.minutes) / 1440);
-  const parts = [shows ? said(countedUnit(shows, SHOW, l)) : null, mv.watched ? said(countedUnit(mv.watched, FILM, l)) : null, days ? said(countedUnit(days, DAY, l)) : null].filter(Boolean);
+  /* T602 — معاينةُ الملف تبقى بمعدودها القديم فوق المئة (أحمد: «ماعدا الكادرات مثل الرئيسية والبروفايل») */
+  const flat = { flatHundreds: true } as const;
+  const parts = [shows ? said(countedUnit(shows, SHOW, l, flat)) : null, mv.watched ? said(countedUnit(mv.watched, FILM, l, flat)) : null, days ? said(countedUnit(days, DAY, l, flat)) : null].filter(Boolean);
   return profilePreview({ lang: l, name, initial, avatar: av, persona, stats: parts.length ? parts.join(" · ") : null });
 }
 

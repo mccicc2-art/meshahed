@@ -351,7 +351,7 @@ export function PeopleLeaderboard({
                       المكوّنات** (D-275): المكوّناتُ تجمع `total` **والعنوانُ
                       فرقٌ**، فكانت تكذب كلَّ أسبوعٍ يكون فيه رصيدٌ سابق —
                       **وتصادفت مع الحقّ ما دام `prev = 0`.** */}
-                  <span className="block mt-0.5 text-[10px] opacity-80">
+                  <span className="block mt-0.5 min-h-[1.3em] text-[10px] opacity-80">
                     {mode === "rising"
                       ? t.peopleBoardVsLast(p.total, p.prevTotal)
                       : /* ⚖️ **والإعجابُ خرج من المكوّنات** (D-288، بعد

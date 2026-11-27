@@ -14,10 +14,11 @@ import { Icon } from "../icons";
 import { radius } from "../theme";
 import { haptic } from "../haptics";
 import { posterFor } from "../poster";
+import { profileUrl } from "@/core/media";
 import { markStorySeen } from "../statsDoor";
 import type { NativeRoot } from "../shell";
 import { REPORT_STALE, SvgGuard, hm, myReportKey } from "./ReportScreen";
-import { Track, rhythmLabel } from "./FullStatsScreen";
+import { rhythmLabel } from "./FullStatsScreen";
 import { countedUnit, yearPersona } from "@/core/yearPersona";
 import { primeLabel } from "@/core/statsFormat";
 import { num, type Locale } from "@/core/i18n";
@@ -46,9 +47,10 @@ export type StoryScope = "all" | "year";
 const PAD = 24;
 
 type Words = Parameters<typeof countedUnit>[1];
-const W: Record<"day" | "hour" | "ep" | "tv" | "mv" | "streak", Words> = {
+const W: Record<"day" | "hour" | "minute" | "ep" | "tv" | "mv" | "streak", Words> = {
   day: { one: "يوم واحد", two: "يومان", few: "أيام", many: "يوماً", hundred: "يوم", en1: "day", enN: "days" },
   hour: { one: "ساعة واحدة", two: "ساعتان", few: "ساعات", many: "ساعةً", hundred: "ساعة", en1: "hour", enN: "hours" },
+  minute: { one: "دقيقة واحدة", two: "دقيقتان", few: "دقائق", many: "دقيقةً", hundred: "دقيقة", en1: "minute", enN: "minutes" },
   ep: { one: "حلقة واحدة", two: "حلقتان", few: "حلقات", many: "حلقةً", hundred: "حلقة", en1: "episode", enN: "episodes" },
   tv: { one: "مسلسل واحد", two: "مسلسلان", few: "مسلسلات", many: "مسلسلاً", hundred: "مسلسل", en1: "show", enN: "shows" },
   mv: { one: "فيلم واحد", two: "فيلمان", few: "أفلام", many: "فيلماً", hundred: "فيلم", en1: "movie", enN: "movies" },
@@ -226,6 +228,20 @@ function counted(n: number, w: Words, locale: Locale) {
   return c.value ? `${num(n, locale)} ${c.unit}` : c.unit;
 }
 
+/**
+ * 🆕 T602 (أحمد «٥ أ») — **وقتُ القصّة كلماتٌ لا «h»**: «468 ساعة» · «ساعتان و40 دقيقة» · «25 دقيقة». القصّةُ تُقرأ كجملٍ وتُصوَّر
+ * وتُشارَك، و«468h» رمزٌ إنجليزيٌّ وسط سطرٍ عربيّ. من عشر ساعات تسقط الدقائق (D-1585). الإنجليزيّةُ تبقى بـ`hm`
+ */
+function storyTime(minutes: number, locale: Locale) {
+  if (locale === "en") return hm(minutes, locale);
+  const m = Math.max(0, Math.round(minutes));
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  if (h === 0) return counted(Math.max(1, m), W.minute, locale);
+  if (h >= 10) return counted(Math.round(m / 60), W.hour, locale);
+  return rest ? `${counted(h, W.hour, locale)} و${counted(rest, W.minute, locale)}` : counted(h, W.hour, locale);
+}
+
 function TimePage({ s }: { s: ReportStats }) {
   const { tokens, locale } = useApp();
   const en = locale === "en";
@@ -273,6 +289,8 @@ function TimePage({ s }: { s: ReportStats }) {
 
 function TopPage({ s, titles, scope }: { s: ReportStats; titles: StoryTitlesPayload | null; scope: StoryScope }) {
   const { tokens, locale } = useApp();
+  /* T602 — قامةُ الصفحة الفعليّة (بعد الشريط والتلميح والحوافّ الآمنة) لا قامةُ الشاشة: المقاساتُ منها كي لا تفيض المنصّة */
+  const [box, setBox] = useState(0);
   const en = locale === "en";
   /* الاسمُ بقاعدة لوبز من `story-titles` (إنجليزيٌّ إلّا العربيَّ الأصل)، وحتى يصل فاسمُ التقرير */
   const pick = (x: StoryTitle | ReportTitle | undefined) =>
@@ -281,27 +299,38 @@ function TopPage({ s, titles, scope }: { s: ReportStats; titles: StoryTitlesPayl
   const top = list[0];
   const next = list.slice(1, 3).filter((x): x is NonNullable<typeof x> => !!x);
   if (!top) return <View style={{ flex: 1 }} />;
-  const uri = posterFor(top.poster, 200);
-  const sub = [top.episodes > 1 ? counted(top.episodes, W.ep, locale) : null, hm(top.minutes, locale)].filter(Boolean).join(" · ");
+  /* 🆕 T602 (q30 «ب») — **منصّةٌ في منتصف الشاشة**: كان الثاني والثالث مدفوعَين إلى القاع (`marginTop: "auto"`) فيكبر الفراغُ تحت
+     الاسم كلّما طال الهاتف. الآن كتلةٌ واحدةٌ تتوسّط، والملصقاتُ تُقاس من ارتفاع الشاشة من قامة الصفحة نفسِها فتصغر في القصير (iPhone SE) ولا يفيض شيء */
+  const share = shareLine(top.minutes, s.minutes, s.titles, en);
+  /* الثابتُ: العنوانُ الصغير ٥٦ · الاسمُ بسطرين ٦٨+١٦ · السطرُ تحته ٢٤ · سطرُ النصيب ٢٤ · المنصّةُ بلا ملصقيها (فراغٌ ورقمٌ واسمٌ وساعات) ٨١.
+     الباقي يتقاسمه ملصقُ الأوّل (×١٫٥) وملصقا المنصّة (٠٫٤٨ من عرضه ×١٫٥) */
+  const fixed = 56 + 84 + 24 + (share ? 24 : 0) + (next.length ? 81 : 0);
+  const k = next.length ? 1.5 + 1.5 * 0.48 : 1.5;
+  const heroW = box ? Math.max(96, Math.min(200, Math.floor((box - fixed) / k))) : 0;
+  const sideW = Math.round(heroW * 0.48);
+  const uri = heroW ? posterFor(top.poster, heroW) : null;
+  const sub = [top.episodes > 1 ? counted(top.episodes, W.ep, locale) : null, storyTime(top.minutes, locale)].filter(Boolean).join(" · ");
+  if (!box) return <View style={{ flex: 1 }} onLayout={(e) => setBox(Math.round(e.nativeEvent.layout.height))} />;
   return (
-    <View style={{ flex: 1, alignItems: "center" }}>
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }} onLayout={(e) => setBox(Math.round(e.nativeEvent.layout.height))}>
       <Kicker>{scope === "year" ? (top.movie ? (en ? "Your movie of the year" : "فيلم سنتك") : en ? "Your show of the year" : "مسلسل سنتك") : en ? "Your most watched" : "أكثر عملٍ شاهدته"}</Kicker>
-      <View style={{ width: 200, aspectRatio: 2 / 3, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 2, borderColor: tokens.accent }}>
+      <View style={{ width: heroW, aspectRatio: 2 / 3, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 2, borderColor: tokens.accent }}>
         {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
       </View>
-      <Text size={26} weight="800" numberOfLines={2} autoDir style={{ textAlign: "center", marginTop: 18, lineHeight: 34 }}>{top.title}</Text>
-      <Text size={15} muted style={{ textAlign: "center", marginTop: 6, fontVariant: ["tabular-nums"] }}>{sub}</Text>
+      <Text size={26} weight="800" numberOfLines={2} autoDir style={{ textAlign: "center", marginTop: 16, lineHeight: 34 }}>{top.title}</Text>
+      <Text size={15} muted style={{ textAlign: "center", marginTop: 4, fontVariant: ["tabular-nums"] }}>{sub}</Text>
+      {share ? <Text size={13} weight="600" color={tokens.accent} style={{ textAlign: "center", marginTop: 6 }}>{share}</Text> : null}
       {next.length ? (
-        <View style={{ marginTop: "auto", width: "100%", gap: 8 }}>
-          <Text size={13} muted style={{ textAlign: "center" }}>{en ? "Then" : "ثمّ"}</Text>
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 28, marginTop: 22 }}>
           {next.map((t, i) => (
-            <View key={t.key} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: radius.card, backgroundColor: tokens.surface }}>
-              <Text size={16} weight="800" color={tokens.accent} style={{ width: 18, textAlign: "center" }}>{num(i + 2, locale)}</Text>
-              <View style={{ width: 32, aspectRatio: 2 / 3, borderRadius: 4, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-                {t.poster ? <Image source={{ uri: posterFor(t.poster, 32) ?? undefined }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+            <View key={t.key} style={{ width: sideW + 22, alignItems: "center" }}>
+              <View style={{ width: sideW, aspectRatio: 2 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+                {t.poster ? <Image source={{ uri: posterFor(t.poster, sideW) ?? undefined }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" /> : null}
               </View>
-              <Text size={15} weight="600" numberOfLines={1} autoDir style={{ flex: 1 }}>{t.title}</Text>
-              <Text size={13} muted style={{ fontVariant: ["tabular-nums"] }}>{hm(t.minutes, locale)}</Text>
+              {/* رقمُ المنصّة تحت الملصق لا فوقه — لا كلامَ فوق صورة (q27) */}
+              <Text size={16} weight="800" color={tokens.accent} style={{ marginTop: 6 }}>{num(i + 2, locale)}</Text>
+              <Text size={12} weight="700" numberOfLines={1} autoDir style={{ textAlign: "center", alignSelf: "stretch" }}>{t.title}</Text>
+              <Text size={11} muted style={{ fontVariant: ["tabular-nums"] }}>{storyTime(t.minutes, locale)}</Text>
             </View>
           ))}
         </View>
@@ -310,40 +339,94 @@ function TopPage({ s, titles, scope }: { s: ReportStats; titles: StoryTitlesPayl
   );
 }
 
+/**
+ * 🆕 T602 (q30 «ب») — **نصيبُ الأوّل من وقتك** سطراً تحت اسمه: نصف/ثلث/ربع حين يقرب الكسرُ (±3 نقاط) وإلّا نسبةٌ صريحة.
+ * لا يظهر لعملٍ وحيد (100% لا تقول شيئاً) ولا تحت 10%.
+ */
+function shareLine(topMin: number, totalMin: number, titles: number, en: boolean): string | null {
+  if (titles < 2 || totalMin <= 0) return null;
+  const pct = Math.round((topMin / totalMin) * 100);
+  if (pct < 10 || pct >= 100) return null;
+  const near = (x: number) => Math.abs(pct - x) <= 3;
+  if (near(50)) return en ? "About half your watch time" : "نحو نصف وقت مشاهدتك";
+  if (near(33)) return en ? "About a third of your watch time" : "نحو ثلث وقت مشاهدتك";
+  if (near(25)) return en ? "About a quarter of your watch time" : "نحو ربع وقت مشاهدتك";
+  return en ? `${pct}% of your watch time` : `${pct}% من وقت مشاهدتك`;
+}
+
 function TastePage({ s, scope }: { s: ReportStats; scope: StoryScope }) {
   const { tokens, locale } = useApp();
+  const { width } = useWindowDimensions();
   const en = locale === "en";
   const anime = s.mix.find((m) => m.key === "anime")?.pct ?? 0;
   const persona = yearPersona({ genres: s.taste.genres, animePct: anime, thin: s.taste.thin }, en ? "en" : "ar", scope);
   const genres = s.taste.genres.slice(0, 3);
   const artist = s.taste.artists[0] ?? null;
   const decade = s.releaseYears.reduce<{ decade: number; pct: number } | null>((b, x) => (!b || x.pct > b.pct ? x : b), null);
+  /* 🆕 T602 (q24 «أ») — **الفراغُ يمتلئ بأعمالك**: الرابعُ إلى السادس من أكثر ما شاهدت (الثلاثةُ الأولى في صفحة «أكثر عملٍ شاهدته»
+     قبلها فلا تتكرّر). أقلُّ من أربعة أعمال: لا قسم، ولا خانةَ فارغة */
+  const [box, setBox] = useState(0);
+  /* الملصقاتُ تأخذ ما بقي من قامة الصفحة بعد ما فوقها (نحو ٤٢٠ بشخصيّةٍ في سطرين)، وتحت ٦٤ لا قسم — لا فيضَ في iPhone SE */
+  const room = box ? Math.floor((box - 420) / 1.5) : 0;
+  const posterW = Math.min(108, Math.floor((width - PAD * 2 - 20) / 3), room);
+  const more = posterW >= 64 ? s.topTitles.slice(3, 6).filter((x) => !!x.poster) : [];
+  const photo = artist ? profileUrl(artist.photo, "w185") : null;
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, justifyContent: "center" }} onLayout={(e) => setBox(Math.round(e.nativeEvent.layout.height))}>
       <Kicker>{en ? "Your taste fingerprint" : "بصمة ذائقتك"}</Kicker>
-      <Text size={44} weight="800" color={tokens.accent} style={{ textAlign: "center", lineHeight: 56 }}>{persona}</Text>
-      {genres.length ? <Text size={14} muted style={{ textAlign: "center", marginTop: 6 }}>{genres.map((g) => g.name).join(" · ")}</Text> : null}
-      <View style={{ gap: 18, marginTop: 36 }}>
-        {genres.map((g) => (
-          <View key={g.slug} style={{ gap: 8 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text size={15} weight="700">{g.name}</Text>
-              <Text size={15} weight="700" color={tokens.accent} style={{ fontVariant: ["tabular-nums"], writingDirection: "ltr" }}>{`${g.pct}%`}</Text>
+      <Text size={40} weight="800" color={tokens.accent} style={{ textAlign: "center", lineHeight: 52 }}>{persona}</Text>
+      {/* 🆕 T602 (q24 «أ») — الأنواعُ الثلاثة مربّعاتٌ كالتي تحتها بدل الأشرطة: الرقمُ يُقرأ من بعيد والاسمُ تحته بسطرين */}
+      {genres.length ? (
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 28 }}>
+          {genres.map((g) => (
+            <Tile key={g.slug} label={g.name} value={`${g.pct}%`} big />
+          ))}
+        </View>
+      ) : null}
+      <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+        {decade ? <Tile label={en ? `From the ${decade.decade}s` : `من أعمال عقد ${decade.decade}`} value={`${decade.pct}%`} big /> : null}
+        {artist ? (
+          <View style={{ flex: 2, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+              {photo ? <Image source={{ uri: photo }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
             </View>
-            <Track pct={(g.pct / Math.max(1, genres[0].pct)) * 100} color={tokens.accent} />
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <Text size={12} muted numberOfLines={1}>{en ? "Most present" : "الأكثر حضوراً"}</Text>
+              {/* الاسمُ كاملاً بسطرين لا «Minami Takaya…» */}
+              <Text size={15} weight="800" color={tokens.accent} numberOfLines={2} autoDir style={{ lineHeight: 20 }}>{artist.name}</Text>
+            </View>
           </View>
-        ))}
+        ) : null}
       </View>
-      <View style={{ flexDirection: "row", gap: 10, marginTop: 28 }}>
-        {decade ? <Tile label={en ? `The ${decade.decade}s` : `عقد ${decade.decade}`} value={`${decade.pct}%`} /> : null}
-        {artist ? <Tile label={en ? "Most present" : "الأكثر حضوراً"} value={artist.name} /> : null}
-      </View>
+      {more.length ? (
+        <>
+          <Text size={15} weight="700" style={{ textAlign: "center", marginTop: 28, marginBottom: 12 }}>{en ? "From your fingerprint" : "أعمالٌ من بصمتك"}</Text>
+          <View style={{ flexDirection: "row", gap: 10, justifyContent: "center" }}>
+            {more.map((x) => (
+              <View key={x.key} style={{ width: posterW, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2 }}>
+                <Image source={{ uri: posterFor(x.poster, posterW) ?? undefined }} style={{ width: "100%", height: "100%" }} contentFit="cover" cachePolicy="memory-disk" />
+              </View>
+            ))}
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
 
-function Tile({ label, value }: { label: string; value: string }) {
+/** `big` — مربّعُ القصّة: الرقمُ فوق كبيراً والاسمُ تحته بسطرين (q24 «أ»)؛ بلا `big` كما كان: العنوانُ فوق والقيمةُ تحته */
+function Tile({ label, value, big }: { label: string; value: string; big?: boolean }) {
   const { tokens } = useApp();
+  if (big)
+    return (
+      <View style={{ flex: 1, minWidth: 0, padding: 12, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, gap: 2 }}>
+        {/* الصفُّ يضع الرقمَ في بداية السطر في الاتّجاهين؛ واتّجاهُه هو LTR كي لا تنقلب «%» */}
+        <View style={{ flexDirection: "row" }}>
+          <Text size={24} weight="800" color={tokens.accent} numberOfLines={1} style={{ writingDirection: "ltr", fontVariant: ["tabular-nums"] }}>{value}</Text>
+        </View>
+        <Text size={13} weight="600" numberOfLines={2} style={{ lineHeight: 18 }}>{label}</Text>
+      </View>
+    );
   return (
     <View style={{ flex: 1, minWidth: 0, padding: 14, borderRadius: radius.card, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, gap: 4 }}>
       <Text size={12} muted numberOfLines={1}>{label}</Text>
@@ -373,7 +456,7 @@ function HabitsPage({ s }: { s: ReportStats }) {
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 36 }}>
         {s.streak > 0 ? <Stat label={en ? "Longest streak" : "أطول سلسلة"} value={counted(s.streak, W.streak, locale)} /> : null}
         {s.activeDays > 0 ? <Stat label={en ? "Days you watched" : "أيامٌ شاهدت فيها"} value={counted(s.activeDays, W.day, locale)} /> : null}
-        {h.longestSessionMin > 0 ? <Stat label={en ? "Longest sitting" : "أطول جلسة"} value={hm(h.longestSessionMin, locale)} /> : null}
+        {h.longestSessionMin > 0 ? <Stat label={en ? "Longest sitting" : "أطول جلسة"} value={storyTime(h.longestSessionMin, locale)} /> : null}
         {tod && tod.pct > 0 ? <Stat label={en ? "Your time of day" : "وقتك المفضّل"} value={`${todLabel[tod.key]} · ${tod.pct}%`} /> : null}
       </View>
     </View>

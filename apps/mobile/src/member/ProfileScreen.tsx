@@ -182,6 +182,23 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     }, []),
   );
   const [grid, setGrid] = useState<Grid | null>(null);
+  /* 🆕 T602 (تسجيلُ أحمد ٢٧ نوفمبر: «اختار فلم … ثم اطلع يطلعني للبروفايل مو صفحة الافلام») — **ورقةُ الأفلام والمسلسلات
+     والأنمي تعود حيث كانت**، بوصفة ورقة المتابعين (D-1325) حرفاً: الورقةُ `Modal` تُغلق عند فتح العمل، فيُحفظ نوعُها وموضعُ
+     تمريرها، وحين يعود التركيزُ إلى الملف تُفتح عليهما بعد حركة الرجوع */
+  const gridBack = useRef<{ which: Grid; y: number } | null>(null);
+  const [gridY, setGridY] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      const keep = gridBack.current;
+      if (!keep) return;
+      gridBack.current = null;
+      const id = setTimeout(() => {
+        setGridY(keep.y);
+        setGrid(keep.which);
+      }, REOPEN_AFTER_BACK_MS);
+      return () => clearTimeout(id);
+    }, []),
+  );
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
   const [toast, setToast] = useReducer(toastReducer, null);
   const [leaving, setLeaving] = useState(false);
@@ -1030,7 +1047,24 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
           }}
         />
       ) : null}
-      {grid && d ? <GridSheet d={d} which={grid} posterW={posterW} width={width} onClose={() => setGrid(null)} onTitle={(k, id) => { setGrid(null); openTitle(k, id); }} /> : null}
+      {grid && d ? (
+        <GridSheet
+          d={d}
+          which={grid}
+          posterW={posterW}
+          width={width}
+          startY={gridY}
+          onClose={() => {
+            setGridY(0);
+            setGrid(null);
+          }}
+          onTitle={(k, id, y) => {
+            gridBack.current = { which: grid, y };
+            setGrid(null);
+            openTitle(k, id);
+          }}
+        />
+      ) : null}
       {sorting && d && sortItems.length > 1 ? (
         <ReorderSheet items={sortItems} onClose={() => setSorting(null)} onDone={(keys) => ("fav" in sorting ? saveFav(sorting.fav, keys) : saveSec(sorting.sec, keys))} />
       ) : null}
@@ -1648,6 +1682,7 @@ function GridSheet({
   which,
   posterW,
   width,
+  startY = 0,
   onClose,
   onTitle,
 }: {
@@ -1655,9 +1690,12 @@ function GridSheet({
   which: Grid;
   posterW: number;
   width: number;
+  /** T602 — موضعُ التمرير الذي تُفتح عليه بعد الرجوع من عمل */
+  startY?: number;
   onClose: () => void;
-  onTitle: (k: "tv" | "movie", id: number) => void;
+  onTitle: (k: "tv" | "movie", id: number, y: number) => void;
 }) {
+  const y = useRef(startY);
   const { t, locale } = useApp();
   const { height: winH } = useWindowDimensions();
   const rows: (ProfileTitle | ProfileShow)[] = which === "shows" ? d.overview.shows : which === "movies" ? d.overview.movies : d.overview.anime;
@@ -1689,7 +1727,7 @@ function GridSheet({
     }
     return { data: out, offsets: offs, total: y };
   }, [rows, cols, rowH, locale, t]);
-  const press = useCallback((it: CardItem) => onTitle(it.kind, it.id), [onTitle]);
+  const press = useCallback((it: CardItem) => onTitle(it.kind, it.id, y.current), [onTitle]);
   const renderRow = useCallback(
     ({ item }: { item: GridRow }) =>
       item.t === "head" ? (
@@ -1715,7 +1753,12 @@ function GridSheet({
         keyExtractor={(r) => r.key}
         getItemLayout={(_, index) => ({ length: data[index]?.t === "head" ? GRID_HEAD_H : rowH, offset: offsets[index] ?? 0, index })}
         style={{ height: Math.min(maxH, total) }}
-        initialNumToRender={5}
+        contentOffset={{ x: 0, y: Math.min(startY, Math.max(0, total - Math.min(maxH, total))) }}
+        onScroll={(e) => {
+          y.current = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={64}
+        initialNumToRender={5 + Math.ceil(startY / rowH)}
         maxToRenderPerBatch={3}
         windowSize={5}
         removeClippedSubviews
