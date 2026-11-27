@@ -14,7 +14,7 @@ import {
 import { applyTabPrefs, defaultTab } from "@/core/tabPrefs";
 import { railsHiddenFor, railOff } from "@/core/railPrefs";
 import { boardRows } from "@/core/communityFeed";
-import { BOARD_PREVIEW, COMMUNITY_PAGER_TABS, asCommunityTab, type CommunityPagerTab } from "@/core/communityParams";
+import { BOARD_ALL, BOARD_PREVIEW, COMMUNITY_PAGER_TABS, asCommunityTab, type CommunityPagerTab } from "@/core/communityParams";
 import { buildCommunity, refreshCommunityAfter } from "@/lib/communityCore";
 import { feedRows, roomOut, listOut, followsLoopz } from "@/lib/communityPayload";
 import { vividizeFeed } from "@/lib/vividPoster";
@@ -59,8 +59,11 @@ export async function GET(req: NextRequest) {
     const wantTalk = req.nextUrl.searchParams.get("talk") === "1";
     /* 🆕 T457 — بطاقاتُ التقييمات المجمّعة لتطبيقٍ يعرفها وحدَه (نهجُ `talk` نفسُه) — والمفتاحُ يُخفيها في يده بلا جلب */
     const wantRatings = req.nextUrl.searchParams.get("ratings") === "1";
+    /* 🆕 T603 — صفوفُ الأعضاء بعشرة تُمرَّر (أحمد اعتمد «أ» من الجولة الأولى): للتطبيق الذي يرسمها صفّاً أفقيّاً وحدَه (`rows=10`)
+       — نسخةٌ أقدم ترسم الثلاثة شبكةً، وعشرةٌ فيها أربعةُ أسطرٍ ونصف */
+    const boardRowsN = req.nextUrl.searchParams.get("rows") === "10" ? BOARD_ALL : BOARD_PREVIEW;
     /* 🆕 D-1605 — مراجعاتُ الشخصيّات المتابَعة في الخطّ لتطبيقٍ يعرفها وحدَه (D-1565: الأقدمُ لا يرسم شارتَها) */
-    const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly: false, talkSort, talk: wantTalk, personas: await personasAware() });
+    const core = await buildCommunity({ user, locale, scope, allView: null, translateOn, talkFollowedOnly: false, talkSort, talk: wantTalk, personas: await personasAware(), preview: boardRowsN });
     await refreshCommunityAfter(true);
 
     /* التبويبُ الأوّلُ بترتيب صاحبه (جوابُ أحمد ٢٨ سبتمبر: `defaultTab(tabPrefs, "activity")`) */
@@ -133,8 +136,8 @@ export async function GET(req: NextRequest) {
         ? { general_room: { posts: core.generalRoom?.posts ?? 0, last_at: core.generalRoom?.lastPostAt ?? null, faces: core.generalRoom?.faces ?? [] } }
         : {}),
       board: {
-        featured: off("featured") ? null : boardRows(core.featured, "featured", BOARD_PREVIEW),
-        top: off("topweek") ? null : boardRows(core.board, "top", BOARD_PREVIEW),
+        featured: off("featured") ? null : boardRows(core.featured, "featured", boardRowsN),
+        top: off("topweek") ? null : boardRows(core.board, "top", boardRowsN),
         reviews: off("topreviews") ? null : core.topReviews,
         talked_about: off("talked") || !core.talkedAbout ? null : roomOut(core, core.talkedAbout, t, locale),
         lists: off("savedlists") ? null : core.savedLists.map((c) => listOut(c, locale)),

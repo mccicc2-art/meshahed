@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, Share, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, Share, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -74,7 +74,7 @@ async function fetchCommunity() {
   /* 🆕 D-1461 — اختيارُ الجهاز يلبس كلَّ ردٍّ قبل الكاش: الخادمُ لا يرى كوكيز التطبيق فيعيد الأصل («الكل» + «الأكثر تفاعلاً») */
   /* 🆕 R58 — `talk=1`: منشوراتُ النقاش في الخطّ و«النقاش العام» (الخادمُ لا يرسلهما لنسخةٍ لا تعرفهما)
      🆕 T457 — `ratings=1`: بطاقاتُ «التقييمات بلا كتابة» بالنهج نفسِه — والمفتاحُ يُخفيها في اليد (`feedView`) */
-  return withFeedChoice((await api<CommunityPayload>("/api/v1/community?talk=1&ratings=1")).data);
+  return withFeedChoice((await api<CommunityPayload>("/api/v1/community?talk=1&ratings=1&rows=10")).data);
 }
 
 /** تسخينٌ اختياريّ — المفتاحُ مفتاحُ الشاشة فلا نداءَ يتكرّر */
@@ -902,6 +902,31 @@ function Grid({ rows, mode, doors, follow }: { rows: CommunityLeaderRow[]; mode:
   );
 }
 
+/**
+ * 🆕 T603 — **صفٌّ يُمرَّر بعشرة** (أحمد ٢٧ نوفمبر: «قائمات الأعضاء بدال يظهر فقط ٣ يكون يظهر عدد اكبر و فيه امكانية تمرير»، ثمّ
+ * «اعتمد هذا تصميمك الاول»): البطاقةُ ١١٢ كصفّ الشخصيّات فتظهر ثلاثٌ ونصف — النصفُ يقول إنّ وراءها المزيد — وزرُّ المتابعة تحت كلٍّ.
+ */
+function LeaderRow({ rows, mode, doors, acts, ids }: { rows: CommunityLeaderRow[]; mode: "featured" | "top"; doors: CardDoors; acts: CommunityActs; ids: ReadonlySet<string> }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }} style={{ marginHorizontal: -PAGE_PAD }}>
+      <View style={{ width: PAGE_PAD - 10 }} />
+      {rows.map((p, i) => (
+        <View key={p.id} style={{ width: PERSONA_CARD_W, flexDirection: "row" }}>
+          <LeaderCard
+            p={p}
+            mode={mode}
+            rank={i + 1}
+            doors={doors}
+            pill
+            follow={acts.signedIn && acts.meId && p.id !== acts.meId ? { state: acts.followState(p.id, ids.has(p.id)), onPress: () => acts.follow(p.id, ids.has(p.id)) } : null}
+          />
+        </View>
+      ))}
+      <View style={{ width: PAGE_PAD - 10 }} />
+    </ScrollView>
+  );
+}
+
 function ListsRow({ cards, doors }: { cards: CommunityListCard[]; doors: CardDoors }) {
   const { t } = useApp();
   return (
@@ -936,9 +961,10 @@ function ListsRow({ cards, doors }: { cards: CommunityListCard[]; doors: CardDoo
   );
 }
 
-/** اللوحةُ بترتيب أحمد (D-270/D-289/D-291): مميّزون · الأكثر · أعلى التعليقات · العملُ الذي يدور حوله الكلام · القوائم · الصاعدون */
+/** اللوحةُ بترتيب أحمد (T603 ثمّ D-289/D-291): الأكثر · مميّزون · أعلى التعليقات · العملُ الذي يدور حوله الكلام · القوائم · الصاعدون */
 function Board({ d, doors, acts, onAll }: { d: CommunityPayload; doors: CardDoors; acts: CommunityActs; onAll: (s: BoardSection) => void }) {
   const { t, tokens, locale } = useApp();
+  const { width } = useWindowDimensions();
   const b = d.board;
   const gap = <View style={{ height: 26 }} />;
   /* 🆕 D-1608 — الشخصيّاتُ بشكل صفِّ اللوحة (`LeaderCard` نفسُها) — والسطران تحت الاسم عددُ مراجعاتها وأنواعُها («٣ أ») */
@@ -950,26 +976,35 @@ function Board({ d, doors, acts, onAll }: { d: CommunityPayload; doors: CardDoor
   const lang = personaLang(locale);
   return (
     <View>
-      {b.featured?.length ? (
-        <>
-          <SectionHead icon="sparkle-star" color={TONE.featured} title={t.peopleBoardFeatured} onAll={() => onAll("featured")} />
-          <Grid rows={b.featured} mode="featured" doors={doors} />
-          {gap}
-        </>
-      ) : null}
+      {/* 🆕 T603 — **الأسبوعيُّ أوّلاً ثمّ المميّزون** (التصميمُ الأوّل الذي اعتمده أحمد ٢٧ نوفمبر) — ينقض ترتيبَ D-270 بكلمته:
+          الأسبوعيُّ يتغيّر كلَّ سبت فهو أحقُّ بالصدارة. وكلاهما صفٌّ يُمرَّر بعشرة */}
       {b.top?.length ? (
         <>
           <SectionHead icon="chart" color={tokens.accent} title={t.peopleBoardTop} onAll={() => onAll("top")} />
-          <Grid rows={b.top} mode="top" doors={doors} />
+          <LeaderRow rows={b.top} mode="top" doors={doors} acts={acts} ids={personaIds} />
+          {gap}
+        </>
+      ) : null}
+      {b.featured?.length ? (
+        <>
+          <SectionHead icon="sparkle-star" color={TONE.featured} title={t.peopleBoardFeatured} onAll={() => onAll("featured")} />
+          <LeaderRow rows={b.featured} mode="featured" doors={doors} acts={acts} ids={personaIds} />
           {gap}
         </>
       ) : null}
       {b.reviews?.length ? (
         <>
           <SectionHead icon="heart-filled" color={TONE.reviews} title={t.peopleBoardTopReview} onAll={() => onAll("reviews")} />
-          <View style={{ gap: 10 }}>
-            {b.reviews.map((r) => <TopReviewCard key={`${r.id}-${r.mediaType}-${r.tmdbId}`} r={r} doors={doors} />)}
-          </View>
+          {/* 🆕 T603 — صفٌّ يُمرَّر كالأعضاء (التصميمُ الأوّل): عشرٌ عموديّةٌ كانت تدفع ما بعدها شاشتين */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }} style={{ marginHorizontal: -PAGE_PAD }}>
+            <View style={{ width: PAGE_PAD - 10 }} />
+            {b.reviews.map((r) => (
+              <View key={`${r.id}-${r.mediaType}-${r.tmdbId}`} style={{ width: Math.min(320, width - PAGE_PAD * 2 - 24) }}>
+                <TopReviewCard r={r} doors={doors} />
+              </View>
+            ))}
+            <View style={{ width: PAGE_PAD - 10 }} />
+          </ScrollView>
           {gap}
         </>
       ) : null}

@@ -1249,6 +1249,11 @@ const ar = {
     return `${u(posts, "مشاركة", "مشاركات")} · ${u(reviews, "رأي", "آراء")}`;
   },
   peopleBoardRising: "نجومٌ صاعدون",
+  /* 🆕 T603 — بطاقةُ العضو برقمٍ واحد (الجولة الأولى «أ»): آراؤه حين لا مشاركاتٍ له — وإلّا تفاعلاته (`peopleBoardActions`) */
+  peopleBoardReviews: (n: number) => arCounted(n, ["رأيٌ واحد", "رأيان", "آراء", "رأياً", "رأي"]),
+  /** T603 — زرُّ المتابعة تحت بطاقة العضو */
+  followPill: "تابِع",
+  followingPill: "تتابعه",
   /* **والصعودُ فرقٌ لا رصيد**: نافذةُ الأسبوع ناقصَ التي قبلها —
    **فمن ثبت رقمُه ليس صاعداً وإن كان الأوّل.** */
   /* ⚠️ **ولا علامةَ `+` في العربية**: الفحصُ الحيّ أظهر «+٣» تُرسم
@@ -4881,6 +4886,9 @@ const en: Dict = {
     return `${u(posts, "post")} · ${u(reviews, "review")}`;
   },
   peopleBoardRising: "Rising stars",
+  peopleBoardReviews: (n: number) => (n === 1 ? "1 review" : `${num(n, "en")} reviews`),
+  followPill: "Follow",
+  followingPill: "Following",
   peopleBoardDelta: (n: number) => `+${num(n, "en")} vs last week`,
   // The two numbers being subtracted — the breakdown below a delta summed to
   // the total, not to the delta (D-275)

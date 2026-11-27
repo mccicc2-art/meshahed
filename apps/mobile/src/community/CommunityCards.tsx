@@ -4,7 +4,7 @@ import { I18nManager, Pressable, StyleSheet, View, type ViewInstance } from "rea
 import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop } from "react-native-svg";
 import { Image } from "expo-image";
 import { useApp } from "../state";
-import { Text } from "../ui";
+import { Button, Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
 import { posterFor } from "../poster";
@@ -719,7 +719,12 @@ export type LeaderFollow = { state: FollowState; onPress: () => void } | null;
 /** 🆕 D-1608 — سطرا البطاقة تحت الاسم حين لا يكونان أرقامَ اللوحة (شخصيّاتُ لوبز AI: عددُ المراجعات ثمّ الأنواع) */
 export type LeaderStats = { main: string; sub: string };
 
-export function LeaderCard({ p, mode, rank, doors, follow = null, stats = null }: { p: CommunityLeaderRow; mode: "featured" | "top" | "rising"; rank: number; doors: CardDoors; follow?: LeaderFollow; stats?: LeaderStats | null }) {
+/**
+ * 🆕 T603 — `pill`: **بطاقةُ صفّ الأعضاء كما اعتمدها أحمد** (الجولة الأولى «أ»، ٢٧ نوفمبر: «لا اعتمد هذا تصميمك الاول»): رقمٌ واحدٌ
+ * تحت الاسم — آراؤه حين لا مشاركاتٍ له وإلّا تفاعلاته — وزرُّ متابعةٍ تحته بدل علامة الزاوية. ينقض D-281 («المتابعةُ في عرض الكل
+ * وحدَه») بكلمته؛ والزرُّ زرُّ التطبيق الواحد (`Button` الصغير).
+ */
+export function LeaderCard({ p, mode, rank, doors, follow = null, stats = null, pill = false }: { p: CommunityLeaderRow; mode: "featured" | "top" | "rising"; rank: number; doors: CardDoors; follow?: LeaderFollow; stats?: LeaderStats | null; pill?: boolean }) {
   const { t, tokens, locale } = useApp();
   const who = displayNameOf(p, t.anonymousUser);
   const path = profileHref(p);
@@ -733,7 +738,7 @@ export function LeaderCard({ p, mode, rank, doors, follow = null, stats = null }
             <Text size={11} weight="700" color="#000">{num(rank, locale)}</Text>
           </View>
         ) : null}
-        {follow ? (
+        {follow && !pill ? (
           /* الزاويتان متقابلتان فلا تصطدم بالميداليّة: هذه `top-end` وتلك `bottom-start` · ٢٦ تُرى و٤٤ تُلمس */
           <Pressable
             onPress={follow.onPress}
@@ -751,12 +756,26 @@ export function LeaderCard({ p, mode, rank, doors, follow = null, stats = null }
         {p.hide_name ? null : <IdentityBadges flags={identityFlags(p)} nameSize={12} />}
       </View>
       <Text size={12} weight="700" color={mode === "rising" && !stats ? tokens.success : tokens.accent}>
-        {stats ? stats.main : mode === "rising" ? t.peopleBoardDelta(p.total - p.prevTotal) : t.peopleBoardActions(p.total)}
+        {stats ? stats.main : mode === "rising" ? t.peopleBoardDelta(p.total - p.prevTotal) : pill && p.posts <= 0 ? t.peopleBoardReviews(p.reviews) : t.peopleBoardActions(p.total)}
       </Text>
-      {/* T602 — السطرُ يحجز مكانه وإن غاب تفصيلُه (لا صفرَ مطبوعاً): البطاقاتُ في الصفّ بقامةٍ واحدة */}
-      <Text size={10} muted numberOfLines={stats ? 2 : 1} style={stats ? { textAlign: "center" } : { minHeight: 14 }}>
-        {stats ? stats.sub : mode === "rising" ? t.peopleBoardVsLast(p.total, p.prevTotal) : t.peopleBoardBreakdown(p.posts, p.reviews)}
-      </Text>
+      {pill ? (
+        follow ? (
+          <Button
+            size="sm"
+            variant={follow.state === "none" ? "primary" : "ghost"}
+            label={follow.state === "following" ? t.followingPill : follow.state === "requested" ? t.followRequested : t.followPill}
+            onPress={follow.onPress}
+            style={{ marginTop: 2, minHeight: 28, paddingHorizontal: 14 }}
+          />
+        ) : (
+          <View style={{ height: 30 }} />
+        )
+      ) : (
+        /* T602 — السطرُ يحجز مكانه وإن غاب تفصيلُه (لا صفرَ مطبوعاً): البطاقاتُ في الصفّ بقامةٍ واحدة */
+        <Text size={10} muted numberOfLines={stats ? 2 : 1} style={stats ? { textAlign: "center" } : { minHeight: 14 }}>
+          {stats ? stats.sub : mode === "rising" ? t.peopleBoardVsLast(p.total, p.prevTotal) : t.peopleBoardBreakdown(p.posts, p.reviews)}
+        </Text>
+      )}
     </Pressable>
   );
 }

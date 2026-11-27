@@ -89,10 +89,13 @@ async function localizeCore<T extends LocalizableRow>(
   const keyOf = (r: LocalizableRow) => `${r.media_type}-${r.tmdb_id}`;
 
   // عملٌ يحتاج ترجمةً: خطّ اسمه يخالف لغة الواجهة، أو لا اسم له أصلاً
+  /* 🆕 T603 — **أو لا ملصقَ له**: صفوفٌ حُفظت بلا ملصق (استيرادٌ قديم، أو كاتبٌ وصله الملصقُ فارغاً) كانت تُرسم مربّعاتٍ سوداء
+     في ورقة «أفلام» الملف (تسجيلُ أحمد ٢٧ نوفمبر — «Harry Potter and…»). يُسأل عنها TMDB هنا كما يُسأل عن الاسم، فيصل
+     ملصقُها في كلِّ ما يُرسم من هذه الدالّة أيّاً كان من كتبها. والـ٤٦ القديمة مُلئت من بيانات القاعدة نفسِها في اليوم ذاته */
   const wanted = new Map<string, LocalizableRow>();
   for (const r of rows) {
     const stale =
-      !r.title || ARABIC.test(r.title) !== wantsArabic || FOREIGN.test(r.title);
+      !r.title || !r.poster_path || ARABIC.test(r.title) !== wantsArabic || FOREIGN.test(r.title);
     if (!stale) continue;
     const k = keyOf(r);
     if (!wanted.has(k)) wanted.set(k, r);
