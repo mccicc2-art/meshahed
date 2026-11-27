@@ -61,3 +61,34 @@ export async function cardArt(t: StatTitle): Promise<{ title: string; poster: st
   const a = await loopzArt({ tmdbId: t.tmdbId, mediaType: t.mediaType, title: null, posterPath: t.poster }).catch(() => null);
   return { title: a?.title || t.title, poster: a?.posterPath ?? t.poster };
 }
+
+/**
+ * 🆕 **أعمالُ القصّة** (حصاد 2026 «ن٦ · ق٧» وقصّة «إحصائياتك»): الثلاثةُ الأوائل بالدقائق، و«أكثرُ ما أحببت» — أعلى أربعةٍ قيّمتَها
+ * ممّا شاهدته في المدّة (التعادلُ بالدقائق). الاسمُ والملصقُ بقاعدة لوبز (`cardArt`) للسبعة وحدَها: نداءُ TMDB مخبّأ ولا يُدفع لغيرها.
+ */
+export async function storyTitles(period: "year" | "all", locale: Locale, tz: string) {
+  const stats = await buildPeriodStats(period, 0, locale, tz);
+  if (stats.empty) return { top: [], loved: [] };
+  const all = stats.allTitles;
+  const rated = await myRatingsFor(all.map((x) => ({ tmdbId: x.tmdbId, mediaType: x.mediaType })));
+  const top = all.slice(0, 3);
+  const loved = all
+    .filter((x) => rated.has(x.key))
+    .sort((a, z) => (rated.get(z.key) ?? 0) - (rated.get(a.key) ?? 0) || z.minutes - a.minutes)
+    .slice(0, 4);
+  const shape = async (x: StatTitle) => {
+    const art = await cardArt(x);
+    return {
+      key: x.key,
+      kind: x.mediaType,
+      id: x.tmdbId,
+      title: art.title,
+      poster_path: art.poster,
+      minutes: x.minutes,
+      episodes: x.episodes,
+      rating: rated.get(x.key) ?? null,
+    };
+  };
+  const [t, l] = await Promise.all([Promise.all(top.map(shape)), Promise.all(loved.map(shape))]);
+  return { top: t, loved: l };
+}

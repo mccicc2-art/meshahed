@@ -77,3 +77,21 @@ export type MyReportPayload = { plus: boolean; stats: ReportStats };
 
 /** `POST /api/v1/me/report/repair` — ناتجُ `repairImpossibleDays` */
 export type ReportRepairPayload = { moved: number; remaining: number; stuck: number };
+
+/**
+ * 🆕 **أعمالُ القصّة** (`GET /api/v1/me/story-titles?p=year|all` — حصاد 2026 وقصّة «إحصائياتك»): الأوائلُ بالدقائق، و«أكثرُ ما
+ * أحببت» من تقييماتك لما شاهدته في المدّة (الأعلى تقييماً، ثمّ الأكثرُ دقائق). **الاسمُ بقاعدة لوبز** (إنجليزيٌّ إلّا العربيَّ الأصل)
+ * والملصقُ المطابق — كما تُرسم صورُ المشاركة، فلا تقول القصّةُ اسماً وصورتُها آخر.
+ */
+export type StoryTitle = {
+  key: string;
+  kind: "tv" | "movie";
+  id: number;
+  title: string;
+  poster_path: string | null;
+  minutes: number;
+  episodes: number;
+  /** تقييمُك ١–١٠ أو `null` */
+  rating: number | null;
+};
+export type StoryTitlesPayload = { top: StoryTitle[]; loved: StoryTitle[] };

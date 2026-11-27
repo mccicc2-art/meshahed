@@ -39,9 +39,10 @@ import { asStatsPeriod, buildPeriodStats, statsRange } from "@/lib/periodStats";
 import { hm, reportLead } from "@/core/statsFormat";
 import { asTimeZone } from "@/core/zone";
 import { yearCardElement, YEAR_CARD } from "@/lib/yearCard";
+import { yearPageElement, type YearPage } from "@/lib/yearPages";
 import { countedUnit, yearPersona } from "@/core/yearPersona";
 import { historyCardElement, HISTORY_CARD, type HistoryCardWork } from "@/lib/historyCard";
-import { asHistoryPeriod, cardArt, historyTitles, myRatingsFor, parseHide, type HistoryPeriod } from "@/lib/historyShare";
+import { asHistoryPeriod, cardArt, historyTitles, myRatingsFor, parseHide, storyTitles, type HistoryPeriod } from "@/lib/historyShare";
 
 export const runtime = "nodejs";
 
@@ -81,6 +82,12 @@ export async function GET(request: Request) {
   if (q.get("kind") === "year") {
     /* 🆕 `p=all` ⇐ بطاقةُ قصّة «إحصائياتك» (كلُّ الأوقات — ت٤ «ج») بالراسم نفسِه */
     return yearImage(locale, q.get("p") === "all" ? "all" : "year");
+  }
+  /* 🆕 حصاد 2026 — صورةُ صفحةٍ من القصّة («ن٦ · ق٧»: كلُّ صفحةٍ تُشارَك) */
+  if (q.get("kind") === "yearpage") {
+    const page = q.get("page");
+    if (page === "time" || page === "top" || page === "taste" || page === "loved") return yearPageImage(locale, page);
+    return new Response("bad page", { status: 400 });
   }
   /* 🆕 بطاقةُ سجلّ المشاهدة («ن٥ ب»): الأسبوعُ أو الشهر، وما أخفاه صاحبُها */
   if (q.get("kind") === "history") {
@@ -471,6 +478,47 @@ async function yearImage(locale: Locale, scope: "year" | "all" = "year") {
     stats: raw.filter((x) => x.n > 0).map((x) => countedUnit(x.n, x.w, locale)),
   });
   return new ImageResponse(el, {
+    ...YEAR_CARD,
+    headers: { "Cache-Control": "private, no-store" },
+  });
+}
+
+/**
+ * 🆕 **حصاد 2026 — صورُ صفحات القصّة** (`yearPages`): الأرقامُ من `buildPeriodStats("year")` نفسِه الذي ترسمه القصّةُ والصفحة، و«مسلسلُ
+ * سنتك» و«أكثرُ ما أحببت» من `storyTitles` (الاسمُ بقاعدة لوبز وتقييمُك) — فلا تقول الصورةُ غيرَ ما في القصّة. الحارسُ حارسُ البطاقة.
+ */
+async function yearPageImage(locale: Locale, kind: "time" | "top" | "taste" | "loved") {
+  const profile = await getProfile();
+  if (!hasFullStats(profile)) return new Response("plus required", { status: 403 });
+  const tz = asTimeZone(profile?.timezone);
+  const stats = await buildPeriodStats("year", 0, locale, tz);
+  if (stats.empty) return new Response("nothing to share", { status: 409 });
+  const frame = {
+    locale,
+    year: stats.range.from.getUTCFullYear(),
+    name: profile?.hide_name ? (profile?.username ?? "Loopz") : profile?.nickname?.trim() || profile?.username || "Loopz",
+    username: profile?.username ?? null,
+    avatar: await dataUrl(profile?.avatar_url ?? null),
+  };
+  let page: YearPage;
+  if (kind === "time") {
+    page = { kind, minutes: stats.minutes, months: stats.buckets.map((b) => ({ label: b.label, minutes: b.minutes })) };
+  } else if (kind === "taste") {
+    const persona = yearPersona({ genres: stats.taste.genres, animePct: stats.mix.find((m) => m.key === "anime")?.pct ?? 0, thin: stats.taste.thin }, locale);
+    page = { kind, persona, genres: stats.taste.genres.map((g) => ({ name: g.name, pct: g.pct })) };
+  } else {
+    const st = await storyTitles("year", locale, tz);
+    if (kind === "top") {
+      const t = st.top[0];
+      if (!t) return new Response("nothing to share", { status: 409 });
+      page = { kind, title: t.title, poster: await dataUrl(posterUrl(t.poster_path, "w500")), episodes: t.episodes, minutes: t.minutes, movie: t.kind === "movie" };
+    } else {
+      if (!st.loved.length) return new Response("nothing to share", { status: 409 });
+      const posters = await Promise.all(st.loved.map((x) => dataUrl(posterUrl(x.poster_path, "w185"))));
+      page = { kind, items: st.loved.map((x, i) => ({ title: x.title, poster: posters[i] ?? null, rating: x.rating ?? 0 })) };
+    }
+  }
+  return new ImageResponse(await yearPageElement(frame, page), {
     ...YEAR_CARD,
     headers: { "Cache-Control": "private, no-store" },
   });

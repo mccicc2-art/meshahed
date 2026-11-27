@@ -28,7 +28,12 @@ export async function GET(req: NextRequest) {
   const period = raw === "week" || raw === "year" || raw === "all" ? raw : "month";
   const target = new URL("/api/share", req.url);
   /* 🆕 «حصاد 2026» (أحمد ٢٦ نوفمبر «ق٧أ»): مشاركةُ «السنة» بطاقةُ القصّة ١٠٨٠×١٩٢٠ لا صورةُ التقرير العريضة */
-  if (period === "year") target.searchParams.set("kind", "year");
+  /* 🆕 حصاد 2026 — صورةُ صفحةٍ من القصّة (`&page=time|top|taste|loved`): كلُّ صفحةٍ تُشارَك («ن٦ · ق٧») */
+  const page = req.nextUrl.searchParams.get("page");
+  if (period === "year" && (page === "time" || page === "top" || page === "taste" || page === "loved")) {
+    target.searchParams.set("kind", "yearpage");
+    target.searchParams.set("page", page);
+  } else if (period === "year") target.searchParams.set("kind", "year");
   else if (period === "all") {
     /* 🆕 آخرُ صفحةٍ في قصّة «إحصائياتك» (ت٤ «ج»): بطاقةُ كلِّ الأوقات بالراسم نفسِه */
     target.searchParams.set("kind", "year");

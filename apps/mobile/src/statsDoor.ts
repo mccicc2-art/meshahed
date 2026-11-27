@@ -35,8 +35,12 @@ export function markStorySeen() {
   }
 }
 
-/** المدخلُ الواحد: القصّةُ أوّلَ مرّةٍ في الأسبوع، ثمّ الصفحة */
+/**
+ * المدخلُ الواحد: القصّةُ أوّلَ مرّةٍ في الأسبوع، ثمّ الصفحة.
+ * 🆕 **في ديسمبر قصّتُها حصادُ السنة** («ن٦ · ق٧ · ق١١»: البطاقةُ أوّلَ ديسمبر والقصّةُ كاملةً بعدها) — موسمُ الملخّصات السنويّة،
+ * والبابُ نفسُه لا بابٌ ثانٍ؛ و«شاهد قصّتك» في الصفحة على «السنة» يعيدها متى شئت.
+ */
 export function openStats(router: ReturnType<typeof useRouter>, from: string) {
   if (seenThisWeek()) router.push({ pathname: "/statistics", params: { from } });
-  else router.push({ pathname: "/stats-story", params: { from } });
+  else router.push({ pathname: "/stats-story", params: { from, scope: new Date().getMonth() === 11 ? "year" : "all" } });
 }

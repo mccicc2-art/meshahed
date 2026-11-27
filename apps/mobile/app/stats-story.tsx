@@ -4,12 +4,12 @@ import { StatsStory } from "../src/member/StatsStory";
 import { ErrorBoundary } from "../src/ErrorBoundary";
 import { originOf } from "../src/thread/route";
 
-/** 🆕 قصّةُ «إحصائياتك» (ت٤ «ج») — تُفتح من الباب الواحد (`statsDoor`) أوّلَ مرّةٍ في الأسبوع، ومن «شاهد قصّتك» */
+/** 🆕 قصّةُ «إحصائياتك» (ت٤ «ج») — تُفتح من الباب الواحد (`statsDoor`) أوّلَ مرّةٍ في الأسبوع، ومن «شاهد قصّتك»؛ و`scope=year` حصادُ السنة */
 export default function StatsStoryRoute() {
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { from, scope } = useLocalSearchParams<{ from?: string; scope?: string }>();
   return (
     <ErrorBoundary screen="profile">
-      <StatsStory from={originOf(from)} />
+      <StatsStory from={originOf(from)} scope={scope === "year" ? "year" : "all"} />
     </ErrorBoundary>
   );
 }

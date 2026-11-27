@@ -149,7 +149,7 @@ export function FullStatsScreen({ from }: { from: NativeRoot | "web"; initial?: 
                 <Text size={12} weight="600" numberOfLines={1} style={{ paddingHorizontal: 8 }}>{s?.range.label ?? periodLabel[period]}</Text>
               )}
               {/* 🆕 ت٤ «ج» — «شاهد قصّتك من جديد»: القصّةُ تُفتح وحدَها أوّلَ مرّةٍ في الأسبوع، وهذا بابُها متى شئت */}
-              <Pressable onPress={() => { haptic.pick(); router.push({ pathname: "/stats-story", params: { from } }); }} accessibilityRole="button" accessibilityLabel={en ? "Watch your story again" : "شاهد قصّتك من جديد"} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+              <Pressable onPress={() => { haptic.pick(); router.push({ pathname: "/stats-story", params: { from, scope: period === "year" ? "year" : "all" } }); }} accessibilityRole="button" accessibilityLabel={en ? "Watch your story again" : "شاهد قصّتك من جديد"} hitSlop={4} style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
                 <Icon name="play" size={20} color={tokens.fg} />
               </Pressable>
               {canShare ? (
