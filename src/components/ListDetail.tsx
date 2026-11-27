@@ -33,7 +33,6 @@ import { buttonClass } from "./ui/Button";
 import { HEADER_ICON } from "./ui/controls";
 import { QuickAdd } from "./QuickAdd";
 import { RailScroll } from "./RailScroll";
-import { ListSaveChip } from "./ListSaveChip";
 import { ListInviteBanner, ListMembersRow } from "./ListMembers";
 import type { ListMember } from "@/core/contracts/library";
 /* ⚖️ 🆕 **ورقةُ الترتيب خرجت إلى ملفِّها** (D-567): صفوفُ المفضّلة
@@ -95,6 +94,7 @@ export function ListDetail({
   likes,
   initialLiked,
   initialSavedPlaylist,
+  saves,
   members = [],
   myMembership = null,
   canInvite = false,
@@ -191,7 +191,7 @@ export function ListDetail({
   libState?: Record<string, TitleState>;
   /** 🆕 رايةُ قائمة التشغيل (D-505) — الغيابُ يعني هجرةً لم تُشغَّل فلا صفّ */
   initialPlaylist?: boolean | null;
-  /** عددُ من حفظها (D-677) — لم يعد يُعرض: خانةُ ♥ صارت للإعجاب (249) */
+  /** عددُ من حفظها (D-677) — 🆕 T599 يعود في الصفّ بجوار علامة الحفظ (أحمد ٢٦ نوفمبر: «يظهر عدد الي حفظوها») */
   saves?: number;
   /** 🆕 **رايةُ تشغيلي على المحفوظة** (D-674/١٤٩) — لغير المالك؛
       `null` = زائرٌ بلا حساب فلا مفتاح */
@@ -210,6 +210,7 @@ export function ListDetail({
   const [liked, setLiked] = useState(!!initialLiked);
   const canLike = canSave && initialLiked !== undefined && initialLiked !== null;
   const likeCount = Math.max(0, (likes ?? 0) + (liked ? 1 : 0) - (initialLiked ? 1 : 0));
+  const saveCount = Math.max(0, (saves ?? 0) + (saved ? 1 : 0) - (initialSaved ? 1 : 0));
   /* 🆕 249 — **نداءٌ واحدٌ في الطريق لكلِّ مفتاح**: ضغطاتٌ سريعةٌ متتالية كانت تُطلق
      «أعجب/ألغِ/أعجب» معاً، **وإن وصلت بغير ترتيبها خالف الخادمُ ما تراه** — فالضغطةُ
      أثناء الطلب تُهمَل حتى يعود. */
@@ -256,6 +257,13 @@ export function ListDetail({
     tap(next ? [12, 30] : 8);
     setSaved(next);
     saveList(listId, next)
+      /* 🆕 T599 — **الحفظُ يضعها في «تابِع المشاهدة» معاً** (أحمد «١ب»، ٢٦ نوفمبر — كالتطبيق ومسارِه `/api/v1/lists/save`):
+         لا خطوةَ ثانية بعد «احفظ»، والزرُّ تحت الوصف يصير «ابدأ/أكمل المشاهدة». وإلغاءُ الحفظ يحذف الصفَّ فتخرج معه */
+      .then(async () => {
+        if (!next) return;
+        await setSavedListPlaylist(listId, true).catch(() => {});
+        setPlaylist(true);
+      })
       /* رسالة الحفظ تحمل باب الوجهة (تدقيق 8 Aug م٣-١): «حفظت وما
          حصلتها» كان قابلية اكتشاف لا عطلاً — القسم يسكن أسفل /lists.
          الزر يأخذك إليه فلا تبحث (نمط زرّ «افتح» في D-074) */
@@ -357,6 +365,9 @@ export function ListDetail({
   /* 🆕 R266 — حصيلةُ «تقدّمك» من حالة المكتبة التي تحملها البلاطاتُ أصلاً — والتالي أوّلُ عملٍ لم تشاهده بترتيب القائمة */
   const watchedCount = libState ? visible.filter((it) => libState[keyOf(it)]?.watched).length : 0;
   const nextUp = libState ? (visible.find((it) => !libState[keyOf(it)]?.watched) ?? null) : null;
+  /* 🆕 T599 — وجهةُ «ابدأ/أكمل المشاهدة»: أوّلُ ما لم يُكمَل، و«أكمل» متى شوهد منها شيء */
+  const started = watchedCount > 0;
+  const startTarget = nextUp ? { href: nextUp.media_type === "movie" ? `/movie/${nextUp.tmdb_id}` : `/show/${nextUp.tmdb_id}` } : null;
   const w = webWords(locale);
   const [unseenOnly, setUnseenOnly] = useState(false);
 
@@ -468,6 +479,24 @@ export function ListDetail({
           {subtitle}
         </p>
       )}
+
+      {/* 🆕 T599 — **زرُّ الغلاف كالتطبيق** (أحمد «١ب»): «احفظ» لمن لم يحفظ، وبعد الحفظ «ابدأ المشاهدة» ثمّ «أكمل المشاهدة» —
+          أوّلُ عملٍ لم تُكمله بترتيب القائمة. وللزائر بلا حساب لا زرّ: الحفظُ يفتح ورقةَ الدخول من علامة الصفّ */}
+      {canSave && (!saved || startTarget) ? (
+        <div className="mt-4">
+          {!saved ? (
+            <button type="button" onClick={toggleSave} className={buttonClass({ variant: "primary", size: "md" })}>
+              <Icon name="bookmark" size={18} />
+              {t.listSave}
+            </button>
+          ) : startTarget ? (
+            <Link href={startTarget.href} className={buttonClass({ variant: "primary", size: "md" })}>
+              <Icon name="play" size={18} />
+              {started ? t.continueWatching : t.listStartWatching}
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* 🆕 **وسطرٌ يقول لماذا لا يوجد زرُّ إضافة** (D-823 · D-063:
           الغيابُ يُكتب غياباً): **قائمةٌ بلا «أضف» وبلا تفسيرٍ تُقرأ
@@ -775,7 +804,27 @@ export function ListDetail({
           )}
         </span>
         {/* 🆕 249 — **«احفظ» في طرف الصفّ مكانَ «انسخها لقوائمي»** بعد إزالة النسخ (صورةُ page-B المعتمدة) */}
-        {canSave && <ListSaveChip on={saved} onToggle={toggleSave} locale={locale} />}
+        {/* 🆕 T599 — **علامةُ الحفظ في سطر العلامات ومعها عددُ من حفظوها** (أحمد ٢٦ نوفمبر) — كالتطبيق: تحفظ وتُلغي في مكانها.
+            والصفرُ لا يُطبع (D-219) */}
+        {canSave ? (
+          <button
+            type="button"
+            onClick={toggleSave}
+            aria-pressed={saved}
+            aria-label={saved ? t.listUnsaveLabel : t.listSaveBtn}
+            title={saved ? t.listUnsaveLabel : t.listSaveBtn}
+            className="flex items-center gap-2 text-15 font-bold tabular-nums transition active:scale-95"
+            dir="ltr"
+          >
+            <Icon name="bookmark" size={18} className={`text-accent ${saved ? "fill-current" : ""}`} />
+            {saveCount > 0 && num(saveCount, locale)}
+          </button>
+        ) : (saves ?? 0) > 0 ? (
+          <span className="flex items-center gap-2 text-15 font-bold tabular-nums" dir="ltr">
+            <Icon name="bookmark" size={18} className="text-accent fill-current" />
+            {num(saves ?? 0, locale)}
+          </span>
+        ) : null}
         {(isOwner
           ? initialPlaylist !== null && initialPlaylist !== undefined
           : initialSavedPlaylist !== null && initialSavedPlaylist !== undefined && saved) &&
@@ -788,9 +837,8 @@ export function ListDetail({
               aria-pressed={playlist}
               aria-label={t.listPlaylist}
               title={t.listPlaylist}
-              /* 🆕 249 — **و«احفظ» قبله يأخذ الدفعةَ إلى الطرف** (`ms-auto` فيه): دفعتان في صفٍّ واحدٍ
-                 تقسمان الفراغَ بينهما فتجلس الرقاقةُ في الوسط — فالمفتاحُ يلاصقها حين تُرسم. */
-              className={`${canSave ? "" : "ms-auto "}shrink-0 flex items-center gap-2 ps-4 border-s border-[color:var(--divider)] transition active:scale-95`}
+              /* 🆕 T599 — المفتاحُ وحدَه في طرف الصفّ: «احفظ» صار علامةً بين أخواتها (♥💬★🔖) لا رقاقةً في الطرف */
+              className={`ms-auto shrink-0 flex items-center gap-2 ps-4 border-s border-[color:var(--divider)] transition active:scale-95`}
             >
               <span className={`text-14 font-bold ${playlist ? "" : "text-muted"}`}>
                 {playlist ? t.toWatchOn : t.toWatchOff}
