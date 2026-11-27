@@ -75,9 +75,9 @@ export interface CommandBoard {
   agents: CommandAgent[];
   items_open: CommandItem[];
   approvals_pending: { id: number; item: string; decision: string; by: string; at: string }[];
-  /** آخرُ لقطةٍ لنبض المنتج يكتبها المجلسُ أو الاستراتيجيّ في `runs.metrics.kpi` (اختياريّة حتى الهجرة الثانية) */
   /** موافقاتُ رفعٍ لم تستهلكها محادثةُ «ارفع» بعد (الهجرة ٠٢) */
   releases_pending?: { id: number; tasks: number[]; by: string; at: string }[];
+  /** آخرُ لقطةٍ لنبض المنتج يكتبها المجلسُ يوميّاً ومحلّلُ المنتج أسبوعيّاً في `runs.metrics.kpi` */
   kpi?: { measured_at: string; d1_return_pct: number; d1_target_pct: number; active_yesterday: number; active_7d: number } | null;
 }
 
@@ -89,6 +89,29 @@ export interface CommandRun {
   status: RunStatus;
   summary_ar: string;
   report_md: string | null;
+  metrics?: { product?: ProductMetrics; scorecard?: unknown; kpi?: unknown } | null;
+}
+
+/**
+ * 🆕 **ما يكتبه محلّلُ المنتج أسبوعيّاً في `runs.metrics.product`** (مهمّة ٥٩٧) — شكلٌ ثابتٌ
+ * مكتوبٌ في تعليماته حرفاً، لأنّ الصفحة ترسمه كما هو: **الوكيلُ يقيس، والصفحةُ لا تحسب شيئاً.**
+ * وكلُّ حقلٍ اختياريّ: تقريرٌ ناقصٌ يرسم ما فيه ويقول «لا قياس» لما ليس فيه.
+ */
+export interface ProductMetrics {
+  scorecard?: {
+    key: string;
+    label: string;
+    value: number | null;
+    unit?: "%" | "";
+    target: number | null;
+    status: "on_track" | "behind" | "stalled" | "no_target";
+  }[];
+  funnel?: {
+    cohort_n: number;
+    from_days: number;
+    to_days: number;
+    steps: { label: string; n: number; split?: { returned_pct: number; others_pct: number; n: number; returned_n: number } }[];
+  };
 }
 
 export interface QueuedTask {
@@ -113,6 +136,12 @@ export async function getCommandRuns(agent: string, limit = 20): Promise<Command
   const { data, error } = await db.rpc("cmd_runs", { p_agent: agent, p_limit: limit });
   if (error || !Array.isArray(data)) return [];
   return data as CommandRun[];
+}
+
+/** آخرُ تشغيلٍ لوكيلٍ بعينه — تقريرُ الأسبوع أو لقطةُ المؤشّرات؛ `null` إن لم يعمل بعد */
+export async function getLatestRun(agent: string): Promise<CommandRun | null> {
+  const runs = await getCommandRuns(agent, 5);
+  return runs.find((r) => r.status !== "skipped") ?? null;
 }
 
 /** طابورُ الرفع من سجلّ الحجز — بلا نصّ الرقعة. `null` = الغلافُ لم يُنشأ بعد (الهجرة الثانية). */
