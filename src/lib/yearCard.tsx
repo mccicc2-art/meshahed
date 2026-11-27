@@ -1,9 +1,8 @@
 /* eslint-disable @next/next/no-img-element, jsx-a11y/alt-text -- صورةٌ يرسمها satori على الخادم: لا `next/image` ولا قارئَ شاشة */
 import "server-only";
 
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { shapedText } from "@/lib/reviewCard";
+import { shareFooter } from "@/lib/shareFooter";
 import type { Locale } from "@/core/i18n";
 
 /**
@@ -28,11 +27,6 @@ const FG = "#F7F7F7";
 const MUTED = "#A0A0A0";
 const GAP = 16;
 
-let markP: Promise<string> | null = null;
-function loopzMark(): Promise<string> {
-  markP ??= readFile(join(process.cwd(), "public/loopz-mark.png")).then((b) => `data:image/png;base64,${b.toString("base64")}`);
-  return markP;
-}
 
 export type YearCardInput = {
   locale: Locale;
@@ -56,23 +50,20 @@ export async function yearFrame(c: YearFrameInput) {
   const dir = ar ? "rtl" : "ltr";
   const row = ar ? "row-reverse" : "row";
   const handle = c.username ? `@${c.username}` : "";
-  const link = c.username ? `loopztv.com/u/${c.username}` : "loopztv.com";
-  const [mark, nameT, handleT, tagT, linkT, loopzT] = await Promise.all([
-    loopzMark(),
+  const [footer, nameT, handleT, tagT] = await Promise.all([
+    /* 🆕 الذيلُ الواحد (أحمد ٢٧ نوفمبر): لا رابطَ شخصيّ، وكلمةُ الحدث مكانَ «Join now!» */
+    shareFooter({
+      width: INNER,
+      height: 96,
+      cta: c.year === null ? (ar ? "إحصائياتي" : "My stats") : ar ? `حصاد ${c.year}` : `${c.year} Wrapped`,
+      icon: c.year === null ? "chart" : "sparkles",
+      rtl: ar,
+    }),
     shapedText(c.name, { width: 560, size: 40, lineHeight: 1.2, maxLines: 1, color: FG, dir, face: "app" }),
     /* اتّجاهُ الصفحة لا اتّجاهُ الكلمة: في العربيّة يلتصق المعرّفُ اللاتينيُّ بالصورة من اليمين كالاسم فوقه */
     handle ? shapedText(handle, { width: 560, size: 28, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular" }) : null,
     shapedText(c.year === null ? (ar ? "كلّ الأوقات" : "All time") : ar ? `حصاد ${c.year}` : `${c.year} Wrapped`, { width: 230, size: 30, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular", align: "center" }),
-    /* الرابطُ يلتصق بالحافّة البعيدة عن علامة لوبز في اللغتين — في الإنجليزيّة يُصفّ يميناً */
-    shapedText(link, { width: 620, size: 28, lineHeight: 1.2, maxLines: 1, color: MUTED, dir: ar ? "ltr" : "rtl", face: "app-regular" }),
-    shapedText("Loopz", { width: 140, size: 34, lineHeight: 1.2, maxLines: 1, color: FG, dir: "ltr", face: "app" }),
   ]);
-  const brand = (
-    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <img src={mark} width={56} height={56} />
-      {img(loopzT)}
-    </div>
-  );
   return {
     /* ضوءٌ أصفرُ خافتٌ خلف الجملة — لونُ الهويّة يُقرأ في المصغَّرة */
     glow: (
@@ -103,22 +94,8 @@ export async function yearFrame(c: YearFrameInput) {
         {img(tagT)}
       </div>
     ),
-    /* الذيل: الرابطُ الشخصيّ وعلامةُ لوبز — فوق منطقة الردّ */
-    footer: (
-      <div style={{ position: "absolute", top: 1480, left: SIDE, width: INNER, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        {ar ? (
-          <>
-            {img(linkT)}
-            {brand}
-          </>
-        ) : (
-          <>
-            {brand}
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>{img(linkT)}</div>
-          </>
-        )}
-      </div>
-    ),
+    /* الذيل: أيقونةُ لوبز وشعارُه · loopztv.com · كلمةُ الحدث — فوق منطقة الردّ (`shareFooter`) */
+    footer: <div style={{ position: "absolute", top: 1470, left: SIDE, width: INNER, display: "flex" }}>{footer}</div>,
   };
 }
 

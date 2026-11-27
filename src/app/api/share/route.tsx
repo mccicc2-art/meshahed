@@ -40,6 +40,7 @@ import { hm, reportLead } from "@/core/statsFormat";
 import { asTimeZone } from "@/core/zone";
 import { yearCardElement, YEAR_CARD } from "@/lib/yearCard";
 import { yearPageElement, type YearPage } from "@/lib/yearPages";
+import { shareFooter } from "@/lib/shareFooter";
 import { countedUnit, yearPersona } from "@/core/yearPersona";
 import { historyCardElement, HISTORY_CARD, type HistoryCardWork } from "@/lib/historyCard";
 import { asHistoryPeriod, cardArt, historyTitles, myRatingsFor, parseHide, storyTitles, type HistoryPeriod } from "@/lib/historyShare";
@@ -271,9 +272,12 @@ export async function GET(request: Request) {
      يقارب قصَّ الصفحة ولا يدّعي مطابقتَه.** */
   const bio = (profile?.bio ?? "").trim();
 
+  /* 🆕 الذيلُ الواحد (أحمد ٢٧ نوفمبر): أيقونةُ لوبز وشعارُه · loopztv.com · «إحصائياتي» */
+  const statsFooter = await shareFooter({ width: 1080 - 96, height: 96, cta: rtl ? "إحصائياتي" : "My stats", icon: "chart", rtl });
   return new ImageResponse(
     (
       <ShareCard
+        footer={statsFooter}
         rtl={rtl}
         name={name}
         followers={
@@ -381,9 +385,12 @@ async function reportImage(rawPeriod: string | null, locale: Locale, rtl: boolea
 
   const lead = reportLead(stats, locale);
 
+  /* 🆕 الذيلُ الواحد: «تقريري» مكانَ «Join now!» */
+  const reportFooter = await shareFooter({ width: 1080 - 96, height: 96, cta: rtl ? "تقريري" : "My report", icon: "chart", rtl });
   return new ImageResponse(
     (
       <ReportShareCard
+        footer={reportFooter}
         rtl={rtl}
         title={rtl ? "تقريرك" : "Your Report"}
         range={statsRange(period, 0, locale, tz).label}
@@ -422,9 +429,10 @@ async function reportImage(rawPeriod: string | null, locale: Locale, rtl: boolea
     {
       /* 📏 **١٧٠٠ مقيسةٌ لا مخمَّنة**: **أطولُ الحالات الإنجليزيّة
          ١٥٠٧px محتوىً + ١١٢ حشوةً = ١٦١٩** — **والعربيّةُ أقصرُ فتتوسّط**
-         (`justify-content: center`)، **وذيلٌ أسودُ يُقرأ صورةً مقصوصة.** */
+         (`justify-content: center`)، **وذيلٌ أسودُ يُقرأ صورةً مقصوصة.**
+         🆕 ١٧٦٠: الذيلُ الواحد (`shareFooter`، ٩٦) أطولُ من سطر `loopztv.com` الذي حلّ محلّه بنحو ٦٠ — فأطولُ الحالات ~١٦٨٠ */
       width: 1080,
-      height: 1700,
+      height: 1760,
       fonts: [
         { name: "Cairo", data: arabic, weight: 700, style: "normal" },
         { name: "CairoLatin", data: latin, weight: 700, style: "normal" },
@@ -567,7 +575,10 @@ async function historyImage(locale: Locale, period: HistoryPeriod, hide: Set<str
   const rest = !after.length
     ? null
     : restNames.length
-      ? (en ? "And " : "و") + restNames.join(en ? " & " : " و")
+      ? en
+        ? `And ${restNames.join(" & ")}`
+        : /* «و» تلتصق بالاسم العربيّ وتنفصل عن اللاتينيّ — «وLost» كانت تُرسم «Lostو» (كلمةٌ بخطّين تُقلب أجزاؤها) */
+          restNames.map((n) => (/[\u0600-\u06FF]/.test(n) ? `و${n}` : `و ${n}`)).join(" ")
       : (() => {
           const u = countedUnit(after.length, UNITS.work, locale);
           return en ? `And ${after.length} ${u.unit}` : `و${u.value ?? ""} ${u.unit}`.replace("و ", "و");

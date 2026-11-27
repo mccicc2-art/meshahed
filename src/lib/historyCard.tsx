@@ -1,8 +1,7 @@
 /* eslint-disable @next/next/no-img-element, jsx-a11y/alt-text -- صورةٌ يرسمها satori على الخادم: لا `next/image` ولا قارئَ شاشة */
 import "server-only";
 
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { shareFooter } from "@/lib/shareFooter";
 import { shapedText } from "@/lib/reviewCard";
 import type { Locale } from "@/core/i18n";
 
@@ -26,11 +25,6 @@ const FG = "#F7F7F7";
 const MUTED = "#A0A0A0";
 const STAR = "M12 2.4l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.5 6.1 20.6l1.2-6.6L2.5 9.4l6.6-.9z";
 
-let markP: Promise<string> | null = null;
-function loopzMark(): Promise<string> {
-  markP ??= readFile(join(process.cwd(), "public/loopz-mark.png")).then((b) => `data:image/png;base64,${b.toString("base64")}`);
-  return markP;
-}
 
 export type HistoryCardWork = { title: string; poster: string | null; episodes: number; movie: boolean; rating: number | null };
 export type HistoryCardInput = {
@@ -63,14 +57,14 @@ export async function historyCardElement(c: HistoryCardInput) {
   const dir = ar ? "rtl" : "ltr";
   const row = ar ? "row-reverse" : "row";
   const handle = c.username ? `@${c.username}` : "";
-  const link = c.username ? `loopztv.com/u/${c.username}` : "loopztv.com";
   const titleDir = /[؀-ۿ]/.test(c.hero.title) ? "rtl" : "ltr";
   const PW = 200;
   const PH = 300;
   const shelfGap = Math.floor((INNER - PW * 4) / 3);
 
-  const [mark, nameT, handleT, rangeT, labelT, titleT, restT, linkT, loopzT, ...rest] = await Promise.all([
-    loopzMark(),
+  const [footer, nameT, handleT, rangeT, labelT, titleT, restT, ...rest] = await Promise.all([
+    /* 🆕 الذيلُ الواحد (أحمد ٢٧ نوفمبر): لا رابطَ شخصيّ، و«سجلّ المشاهدة» مكانَ «Join now!» */
+    shareFooter({ width: INNER, height: 96, cta: ar ? "سجلّ المشاهدة" : "Watch history", icon: "clock", rtl: ar }),
     shapedText(c.name, { width: 520, size: 42, lineHeight: 1.2, maxLines: 1, color: FG, dir, face: "app" }),
     handle ? shapedText(handle, { width: 520, size: 34, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular" }) : null,
     shapedText(c.range, { width: 330, size: 34, lineHeight: 1.2, maxLines: 1, color: MUTED, dir, face: "app-regular", align: "center" }),
@@ -78,8 +72,6 @@ export async function historyCardElement(c: HistoryCardInput) {
     /* اتّجاهُ الصفحة: العنوانُ يلتصق بالحافّة البادئة كالسطر فوقه (اللاتينيُّ في العربيّة يميناً) */
     shapedText(c.hero.title, { width: INNER - (c.hero.rating ? 120 : 0), size: 74, lineHeight: 1.1, maxLines: 2, color: FG, dir: titleDir === "rtl" || ar ? "rtl" : "ltr", face: "app" }),
     c.rest ? shapedText(c.rest, { width: INNER, size: 38, lineHeight: 1.3, maxLines: 2, color: MUTED, dir, face: "app-regular" }) : null,
-    shapedText(link, { width: 620, size: 34, lineHeight: 1.2, maxLines: 1, color: MUTED, dir: ar ? "ltr" : "rtl", face: "app-regular" }),
-    shapedText("Loopz", { width: 160, size: 40, lineHeight: 1.2, maxLines: 1, color: FG, dir: "ltr", face: "app" }),
     ...c.stats.flatMap((s) => [
       s.value ? shapedText(s.value, { width: 260, size: 86, lineHeight: 1.1, maxLines: 1, color: Y, dir, face: "app" }) : Promise.resolve(null),
       shapedText(s.unit, { width: 300, size: s.value ? 36 : 58, lineHeight: 1.2, maxLines: 1, color: s.value ? MUTED : Y, dir, face: s.value ? "app-regular" : "app" }),
@@ -183,15 +175,8 @@ export async function historyCardElement(c: HistoryCardInput) {
         {restT ? <div style={{ display: "flex", marginTop: 22 }}>{img(restT)}</div> : null}
       </div>
 
-      {/* الذيل — فوق منطقة الردّ */}
-      <div style={{ position: "absolute", top: 1500, left: SIDE, width: INNER, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        {ar ? img(linkT) : null}
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <img src={mark} width={64} height={64} />
-          {img(loopzT)}
-        </div>
-        {ar ? null : img(linkT)}
-      </div>
+      {/* الذيل — فوق منطقة الردّ (`shareFooter`) */}
+      <div style={{ position: "absolute", top: 1480, left: SIDE, width: INNER, display: "flex" }}>{footer}</div>
     </div>
   );
 }

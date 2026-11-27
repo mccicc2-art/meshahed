@@ -1,5 +1,6 @@
 import "server-only";
 
+import { shareFooter } from "@/lib/shareFooter";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import opentype from "opentype.js";
@@ -14,7 +15,7 @@ import { ogFonts } from "@/lib/og";
  * البطاقة هو ما في الخطّ حرفاً. واللاتينيُّ وحدَه نصٌّ عاديّ.
  *
  * **التصميمُ المعتمد** (١٢٠٠×٦٣٠):
- * - شريطٌ أسودُ أسفلَها (٩٦): أيقونةُ التطبيق و«Loopz» يساراً، و«Download now!» مع رمزَي Apple وAndroid يميناً.
+ * - شريطٌ أسودُ أسفلَها (٩٦): ذيلُ صور المشاركة الواحد (`shareFooter` — أحمد ٢٧ نوفمبر): الأيقونةُ والشعار · loopztv.com · «Review» مع Apple والويب.
  * - فوقه الملصقُ بارتفاعه كلِّه (٣٥٦) ولوحٌ داكن: اسمُ العمل كبيراً وتحته «Movie · 2026».
  * - **المراجعةُ كاملة**: صاحبُها فوق النصّ مباشرةً، والنصُّ ثلاثةُ أسطرٍ بجانبه خطٌّ أصفر، والتقييمُ تحتها في حبّةٍ بنجمة.
  * - **التقييمُ فقط**: «RATED BY» والاسمُ، ثمّ نجمةٌ كبيرةٌ على يسار الرقم («٦ النجمة يسار التقييم»).
@@ -196,25 +197,10 @@ export async function shapedText(
   return { src: `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`, width: o.width, height, used: Math.ceil(used) };
 }
 
-let iconP: Promise<string> | null = null;
-function appIcon(): Promise<string> {
-  iconP ??= readFile(join(process.cwd(), "public/icon-512.png")).then((b) => `data:image/png;base64,${b.toString("base64")}`);
-  return iconP;
-}
 
 const star = (s: number) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill={Y}>
     <path d={STAR} />
-  </svg>
-);
-const apple = (s: number) => (
-  <svg width={s} height={s} viewBox="0 0 24 24" fill="#FFFFFF">
-    <path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8s2 .8 3.4.8c1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9-.1 0-2.7-1-2.7-4.1zM13.9 5c.7-.9 1.2-2 1-3.2-1 .1-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.1 1.1.1 2.3-.6 3.1-1.5z" />
-  </svg>
-);
-const android = (s: number) => (
-  <svg width={s} height={s} viewBox="0 0 24 24" fill="#FFFFFF">
-    <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24a11.43 11.43 0 0 0-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z" />
   </svg>
 );
 
@@ -237,7 +223,8 @@ export type ReviewCardInput = {
 
 /** عنصرُ البطاقة جاهزاً لـ`ImageResponse` — والخطّان من `ogFonts` */
 export async function reviewCardElement(c: ReviewCardInput) {
-  const icon = await appIcon();
+  /* 🆕 الذيلُ الواحد (أحمد ٢٧ نوفمبر): أيقونةُ لوبز وشعارُه · loopztv.com · كلمةُ الحدث — ولغةُ البطاقة لغتُها («RATED BY») */
+  const footer = await shareFooter({ width: W - 112, height: BAR, cta: c.mode === "review" ? "Review" : "Rating", icon: "star", scale: 0.82 });
   const score = c.rating.toFixed(1);
   const kindWord = c.arabicWork ? (c.kind === "tv" ? "مسلسل" : "فيلم") : c.kind === "tv" ? "Series" : "Movie";
   const sub = c.year ? `${kindWord} · ${c.year}` : kindWord;
@@ -350,17 +337,8 @@ export async function reviewCardElement(c: ReviewCardInput) {
         {middle}
         {bottom}
       </div>
-      <div style={{ position: "absolute", left: 0, bottom: 0, width: W, height: BAR, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 56px", background: "#000000", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
-          <img src={icon} width={60} height={60} style={{ borderRadius: 15, border: "1px solid rgba(255,255,255,0.18)" }} />
-          <div style={{ display: "flex", fontSize: 36, color: "#FFFFFF", letterSpacing: -1 }}>Loopz</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ display: "flex", fontSize: 28, color: "#FFFFFF" }}>Download now!</div>
-          {apple(30)}
-          {android(32)}
-        </div>
+      <div style={{ position: "absolute", left: 0, bottom: 0, width: W, height: BAR, display: "flex", alignItems: "center", padding: "0 56px", background: "#000000", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        {footer}
       </div>
     </div>
   );

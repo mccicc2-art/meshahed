@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import type { ReactNode } from "react";
 import { join } from "node:path";
 
 /**
@@ -68,6 +69,7 @@ export function threadOgCard({
   poster,
   badge,
   rtl,
+  footer,
 }: {
   kicker: string;
   body: string;
@@ -75,6 +77,8 @@ export function threadOgCard({
   poster: string | null;
   badge?: string | null;
   rtl: boolean;
+  /** 🆕 ذيلُ صور المشاركة الواحد (`shareFooter` — أحمد ٢٧ نوفمبر) مكانَ سطر `loopztv.com` */
+  footer?: ReactNode;
 }) {
   return (
     <div
@@ -216,7 +220,7 @@ export function threadOgCard({
         </div>
       </div>
 
-      <div style={{ display: "flex", fontSize: 24, color: "#78716C" }}>loopztv.com</div>
+      {footer ?? <div style={{ display: "flex", fontSize: 24, color: "#78716C" }}>loopztv.com</div>}
     </div>
   );
 }

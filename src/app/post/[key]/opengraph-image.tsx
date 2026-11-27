@@ -5,6 +5,7 @@ import { posterUrl } from "@/core/media";
 import { dirOf } from "@/core/dir";
 import { getT } from "@/lib/locale";
 import { OG_SIZE, OG_CONTENT_TYPE, ogFonts, threadOgCard } from "@/lib/og";
+import { shareFooter } from "@/lib/shareFooter";
 
 /**
  * **بطاقةُ مشاركةِ نشرة Loopz** — ذيلُ D-221.
@@ -35,6 +36,8 @@ export default async function Image({ params }: { params: Promise<{ key: string 
       work: post.title ?? "",
       poster: posterUrl(post.poster_path, "w342"),
       rtl: dirOf(line) === "rtl",
+      /* 🆕 الذيلُ الواحد: «نقاش» مكانَ «Join now!» */
+      footer: await shareFooter({ width: 1200 - 128, height: 80, cta: locale === "en" ? "Discussion" : "نقاش", icon: "comment", rtl: locale !== "en", scale: 0.8 }),
     }),
     { ...size, fonts: await ogFonts() },
   );

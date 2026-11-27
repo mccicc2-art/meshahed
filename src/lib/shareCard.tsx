@@ -55,6 +55,8 @@ export interface ShareTasteCell {
 
 export interface ShareCardData {
   rtl: boolean;
+  /** 🆕 ذيلُ صور المشاركة الواحد (`shareFooter`) — يُرسم في المسار لأنّه غير متزامن */
+  footer?: React.ReactNode;
   /** اسمُ العرض */
   name: string;
   /** «٥ متابعين» — جاهزةً بلغة القارئ، و`null` حين لا رقم */
@@ -371,17 +373,7 @@ export function ShareCard(d: ShareCardData) {
           marginBottom: 28,
         }}
       >
-        <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 16 }}>
-          <div
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 13,
-              background: "linear-gradient(135deg, #FFD400, #FBBF24 55%, #F59E0B)",
-            }}
-          />
-          <div style={{ fontSize: 38, letterSpacing: -1 }}>Loopz</div>
-        </div>
+        {/* 🆕 اسمُ لوبز نزل إلى الذيل الواحد (`shareFooter` — أحمد ٢٧ نوفمبر) */}
         <TextLine rtl={rtl} text={d.headline} size={28} color={MUTED} shadow={false} />
       </div>
 
@@ -639,6 +631,9 @@ export function ShareCard(d: ShareCardData) {
           </div>
         </div>
       ) : null}
+
+      {/* 🆕 الذيلُ الواحد (أيقونةُ لوبز وشعارُه · loopztv.com · «إحصائياتي») */}
+      {d.footer ? <div style={{ display: "flex", marginTop: 36 }}>{d.footer}</div> : null}
     </div>
   );
 }
@@ -674,6 +669,8 @@ export interface ReportShareTitle {
 
 export interface ReportShareData {
   rtl: boolean;
+  /** 🆕 ذيلُ صور المشاركة الواحد (`shareFooter`) */
+  footer?: React.ReactNode;
   /** «تقريرك» */
   title: string;
   /** «أغسطس ٢٠٢٦» — نطاقُ المدّة كما تكتبه الصفحة */
@@ -825,17 +822,7 @@ export function ReportShareCard(d: ReportShareData) {
           marginBottom: 28,
         }}
       >
-        <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 16 }}>
-          <div
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 13,
-              background: "linear-gradient(135deg, #FFD400, #FBBF24 55%, #F59E0B)",
-            }}
-          />
-          <div style={{ fontSize: 38, letterSpacing: -1 }}>Loopz</div>
-        </div>
+        {/* 🆕 اسمُ لوبز نزل إلى الذيل الواحد (`shareFooter` — أحمد ٢٧ نوفمبر) */}
         {/* 🆕 **والمدّةُ في الترويسة كما في اسم الصفحة** (D-804):
             **«تقريرك · أغسطس ٢٠٢٦»** — **ونطاقٌ بلا اسمٍ يُقرأ تاريخَ
             التقاط.** ⚠️ **والنطاقُ عقدةٌ مستقلّةٌ عن الاسم**: قد يحمل
@@ -1050,20 +1037,8 @@ export function ReportShareCard(d: ReportShareData) {
         </div>
       ) : null}
 
-      {/* ===== ٤) الذيل — **اسمُ الموقع وحدَه** ===== */}
-      {/* ⚖️ **وجملةٌ عربيّةٌ تنتهي بعنوانٍ لاتينيٍّ سقطت** (D-810):
-          **اتّجاهان في سطرٍ واحدٍ من أجل كلمتين** — **والعنوانُ وحدَه
-          يقول ما تقوله الجملة**، **وأقلُّ ما يُكتب أقلُّ ما ينكسر.** */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginTop: 30,
-        }}
-      >
-        <div style={{ fontSize: 28, color: "rgba(247,247,247,0.5)" }}>loopztv.com</div>
-      </div>
+      {/* ===== ٤) الذيل — 🆕 الذيلُ الواحد (أيقونةُ لوبز وشعارُه · loopztv.com · «تقريري») ===== */}
+      {d.footer ? <div style={{ display: "flex", marginTop: 30 }}>{d.footer}</div> : null}
     </div>
   );
 }
