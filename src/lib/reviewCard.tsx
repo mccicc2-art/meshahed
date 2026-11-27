@@ -15,10 +15,10 @@ import { ogFonts } from "@/lib/og";
  * البطاقة هو ما في الخطّ حرفاً. واللاتينيُّ وحدَه نصٌّ عاديّ.
  *
  * **التصميمُ المعتمد** (١٢٠٠×٦٣٠):
- * - شريطٌ أسودُ أسفلَها (٩٦): ذيلُ صور المشاركة الواحد (`shareFooter` — أحمد ٢٧ نوفمبر): الأيقونةُ والشعار · loopztv.com · «Review» مع Apple والويب.
+ * - شريطٌ أسودُ أسفلَها (٩٦): ذيلُ صور المشاركة الواحد (`shareFooter` — أحمد ٢٧ نوفمبر): الأيقونةُ والشعار · loopztv.com · «Review» («مراجعة» للعمل العربيّ) ونجمة.
  * - فوقه الملصقُ بارتفاعه كلِّه (٣٥٦) ولوحٌ داكن: اسمُ العمل كبيراً وتحته «Movie · 2026».
  * - **المراجعةُ كاملة**: صاحبُها فوق النصّ مباشرةً، والنصُّ ثلاثةُ أسطرٍ بجانبه خطٌّ أصفر، والتقييمُ تحتها في حبّةٍ بنجمة.
- * - **التقييمُ فقط**: «RATED BY» والاسمُ، ثمّ نجمةٌ كبيرةٌ على يسار الرقم («٦ النجمة يسار التقييم»).
+ * - **التقييمُ فقط**: «RATED BY» («قيّمه» للعمل العربيّ) والاسمُ، ثمّ نجمةٌ كبيرةٌ على يسار الرقم («٦ النجمة يسار التقييم»).
  * - **الاتّجاه** («معلومة لك … ١ و٢»): اسمُ العمل إنجليزيٌّ دائماً إلّا العربيَّ الأصل فيبقى عربيّاً، **والعملُ العربيُّ يضع ملصقَه
  *   واسمَه يميناً** (وبطاقةُ التقييم وحده معه). **ومراجعةٌ بالإنجليزيّة** يكون خطُّها الأصفرُ وصاحبُها وبدايةُ سطرها يساراً.
  */
@@ -223,8 +223,27 @@ export type ReviewCardInput = {
 
 /** عنصرُ البطاقة جاهزاً لـ`ImageResponse` — والخطّان من `ogFonts` */
 export async function reviewCardElement(c: ReviewCardInput) {
-  /* 🆕 الذيلُ الواحد (أحمد ٢٧ نوفمبر): أيقونةُ لوبز وشعارُه · loopztv.com · كلمةُ الحدث — ولغةُ البطاقة لغتُها («RATED BY») */
-  const footer = await shareFooter({ width: W - 112, height: BAR, cta: c.mode === "review" ? "Review" : "Rating", icon: "star", scale: 0.82 });
+  /* 🆕 الذيلُ الواحد (أحمد ٢٧ نوفمبر): أيقونةُ لوبز وشعارُه · loopztv.com · كلمةُ الحدث.
+     🆕 لغةٌ واحدة (أحمد ٢٧ نوفمبر: «وحّد اللغة»): لغةُ البطاقة لغةُ العمل — عملٌ عربيٌّ يقول «مراجعة» و«قيّمه»، وغيرُه يبقى «Review»
+     و«RATED BY»؛ كان الذيلُ إنجليزيّاً تحت سطرٍ يقول «مسلسل · 2024» */
+  const ar = c.arabicWork;
+  const footer = await shareFooter({
+    width: W - 112,
+    height: BAR,
+    cta: ar ? (c.mode === "review" ? "مراجعة" : "تقييم") : c.mode === "review" ? "Review" : "Rating",
+    icon: "star",
+    scale: 0.82,
+    rtl: ar,
+  });
+  const ratedBy = ar
+    ? await shapedText("قيّمه", { width: 200, size: 22, lineHeight: 1.2, maxLines: 1, color: "#8A8A8A", dir: "rtl" }).then((t) => (
+        // الكلمةُ مقصوصةٌ إلى عرضها فتلتصق بحافّة العمود اليمنى كالاسم تحتها
+        <div style={{ display: "flex", width: t.used, overflow: "hidden" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
+          <img src={t.src} width={t.width} height={t.height} style={{ marginLeft: t.used - t.width }} />
+        </div>
+      ))
+    : <div style={{ display: "flex", fontSize: 20, color: "#8A8A8A", letterSpacing: 2 }}>RATED BY</div>;
   const score = c.rating.toFixed(1);
   const kindWord = c.arabicWork ? (c.kind === "tv" ? "مسلسل" : "فيلم") : c.kind === "tv" ? "Series" : "Movie";
   const sub = c.year ? `${kindWord} · ${c.year}` : kindWord;
@@ -306,7 +325,7 @@ export async function reviewCardElement(c: ReviewCardInput) {
       <div style={{ display: "flex", width: INNER, justifyContent: "flex-start", alignItems: "center", gap: 14, flexDirection: right ? "row-reverse" : "row" }}>
         {avatar(56)}
         <div style={{ display: "flex", flexDirection: "column", alignItems: right ? "flex-end" : "flex-start" }}>
-          <div style={{ display: "flex", fontSize: 20, color: "#8A8A8A", letterSpacing: 2 }}>RATED BY</div>
+          {ratedBy}
           {await nameEl(32, "#FFFFFF", INNER - 90, right)}
         </div>
       </div>
