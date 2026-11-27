@@ -9,6 +9,7 @@ import {
   type DataKind,
 } from "@/lib/admin";
 import { settingsCard, settingsCardRows } from "@/components/settings/SettingsGroup";
+import { pillClass, type PillTone } from "@/components/admin/style";
 
 /**
  * 🆕 **الأداء والحماية** (D-924، طلبُ أحمد: «أحتاج أعرف فيها حالة الأداء
@@ -34,17 +35,16 @@ const mb = (n: number) => `${(n / 1048576).toFixed(1)} م.ب`;
 const riyadh = (iso: string) =>
   new Date(iso).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh", dateStyle: "short", timeStyle: "short" });
 
-const KIND_TONE: Record<DataKind, string> = {
-  identity: "bg-accent/15 text-accent",
-  financial: "bg-[color:var(--error)]/15 text-[color:var(--error)]",
-  behaviour: "bg-surface-2 text-muted",
-  technical: "bg-surface-2 text-muted",
+/* ٦٠١ — شارةُ الإدارة الواحدة (`pillClass`) بدل ألوانٍ مرسومةٍ باليد */
+const KIND_TONE: Record<DataKind, PillTone> = {
+  identity: "warn",
+  financial: "bad",
+  credential: "bad",
+  private: "warn",
+  behaviour: "mute",
+  technical: "mute",
 };
-const SEV_TONE = {
-  high: "bg-[color:var(--error)]/15 text-[color:var(--error)]",
-  med: "bg-accent/15 text-accent",
-  low: "bg-surface-2 text-muted",
-} as const;
+const SEV_TONE: Record<"high" | "med" | "low", PillTone> = { high: "bad", med: "warn", low: "mute" };
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -69,7 +69,9 @@ export default async function AdminHealthPage() {
   }
 
   const findings = findingsOf(h);
-  const worst = findings.some((x) => x.sev === "high") ? "high" : findings.length ? "med" : "low";
+  /* ٦٠١ — العدُّ لما يستحقّ عملاً الآن: المنخفضُ مؤجَّلٌ بقرارٍ مكتوب (الفهارسُ حتى ألفِ مستخدم) فيُعرض ولا يُعدّ */
+  const due = findings.filter((x) => x.sev !== "low");
+  const worst = due.some((x) => x.sev === "high") ? "high" : due.length ? "med" : "low";
 
   return (
     <div className="space-y-5">
@@ -80,19 +82,50 @@ export default async function AdminHealthPage() {
             كلُّ رقمٍ مقروءٌ الآن من القاعدة · {riyadh(h.at)}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-12 font-bold ${SEV_TONE[worst]}`}>
-          {findings.length === 0 ? "لا ثغرات مفتوحة" : `${findings.length} بندٌ يستحقّ عملاً`}
+        <span className={pillClass(due.length === 0 ? "ok" : SEV_TONE[worst])}>
+          {due.length === 0 ? "لا ثغرات مفتوحة" : due.length === 1 ? "بندٌ واحدٌ يستحقّ عملاً" : `${due.length} بنود تستحقّ عملاً`}
         </span>
       </header>
 
-      {/* ——— ١) السرعة والتأخير ——— */}
-      <section className={`${settingsCard} p-4 space-y-3`}>
+      {/* ——— ٤) الثغرات والتوصيات ——— */}
+      <section className={`${settingsCard} p-4 space-y-2`}>
         <h2 className="text-15 font-bold">
+          الثغرات والتوصيات{" "}
+          <span className="text-12 font-normal text-muted">— مشتقّةٌ من الأرقام، تختفي متى عولجت</span>
+        </h2>
+        {findings.length === 0 ? (
+          <p className="text-14 text-[color:var(--success)]">لا بندَ مفتوحاً.</p>
+        ) : (
+          <div className={settingsCardRows}>
+            {findings.map((x) => (
+              <div key={x.id} className="px-3 py-3 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={pillClass(SEV_TONE[x.sev])}>
+                    {SEV_AR[x.sev]}
+                  </span>
+                  <p className="text-14 font-bold">{x.title}</p>
+                </div>
+                <p className="text-13 text-muted leading-relaxed">{x.why}</p>
+                <p className="text-13"><b className="text-accent">العلاج: </b>{x.fix}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+      {/* ٦٠١ — **الثغراتُ أوّلاً والمرجعُ مطويّاً** (مراجعةُ ٢٧ نوفمبر): الصفحةُ كانت ~٣٥٠٠ نقطةٍ من أرقام القاعدة على
+          الجوال، وما يستحقّ فعلاً هو قائمةُ الثغرات وحدها — والباقي مرجعٌ هندسيٌّ يُفتح عند الحاجة لا فحصٌ يوميّ */}
+      {/* ——— ١) السرعة والتأخير ——— */}
+      <details className={`${settingsCard} p-4 [&[open]>summary]:mb-3`}>
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <h2 className="inline text-15 font-bold">
           السرعة والتأخير{" "}
           <span className="text-12 font-normal text-muted">
             — زمنُ القاعدة وحدَه، مقيسٌ منذ {h.perf.since?.slice(0, 10)}
           </span>
         </h2>
+          <span className="ms-1 text-12 text-accent">· التفاصيل</span>
+        </summary>
+        <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Stat label="متوسّط الاستعلام" value={`${h.perf.avg_ms} م.ث`} sub="كلُّ استعلامٍ في القاعدة" />
           <Stat label="عدد الاستعلامات" value={fmt(h.perf.calls)} sub={`${fmt(h.perf.total_s)} ثانيةً إجمالاً`} />
@@ -117,17 +150,21 @@ export default async function AdminHealthPage() {
           ))}
         </div>
         <p className="text-12 text-muted leading-relaxed">
-          ⚠️ <b>هذا زمنُ القاعدة لا زمنُ الصفحة</b>: زمنُ التصيير والشبكة عند Vercel،
-          وأدواتُه ترفض هذا المشروع (403) — <b>فلا يُعرض هنا رقمٌ لا نقيسه</b>. المتصفّحُ
-          يقيسه لك في Vercel Speed Insights.
+          ⚠️ <b>هذا زمنُ القاعدة لا زمنُ الصفحة</b>: زمنُ التصيير والشبكة عند Vercel ولا
+          تقرؤه هذه الصفحة — <b>فلا يُعرض هنا رقمٌ لا نقيسه</b>. يُقرأ في Vercel Speed Insights.
         </p>
-      </section>
+        </div>
+      </details>
 
       {/* ——— ٢) مستوى الحماية ——— */}
-      <section className={`${settingsCard} p-4 space-y-3`}>
-        <h2 className="text-15 font-bold">
+      <details className={`${settingsCard} p-4 [&[open]>summary]:mb-3`}>
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <h2 className="inline text-15 font-bold">
           مستوى الحماية <span className="text-12 font-normal text-muted">— الحكمُ في القاعدة لا في الصفحة (D-011)</span>
         </h2>
+          <span className="ms-1 text-12 text-accent">· التفاصيل</span>
+        </summary>
+        <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Stat
             label="جداولُ بحمايةِ صفوف"
@@ -136,20 +173,14 @@ export default async function AdminHealthPage() {
           />
           <Stat label="سياساتٌ مفتوحة" value={`${h.sec.open_policies} / ${h.sec.policies}`} sub="عامّةٌ بقصد" />
           <Stat label="دوالُّ definer" value={`${h.sec.definer_anon} / ${h.sec.definer}`} sub="ينفّذها الزائر" />
-          <Stat label="سياساتٌ تُعاد لكلِّ صفّ" value={fmt(h.sec.initplan)} sub="auth.uid() بلا select" />
+          <Stat label="سياساتٌ تُعاد لكلِّ صفّ" value={fmt(h.sec.initplan)} sub="دون تغليفٍ بـselect" />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <p className="mb-1.5 text-12 text-muted">أبوابُ الدخول</p>
             <div className="flex flex-wrap gap-1.5">
               {(h.sec.providers ?? []).map((p) => (
-                <span
-                  key={p.provider}
-                  className={`rounded-full px-2.5 py-1 text-12 font-bold ${
-                    p.provider === "google" ? "bg-surface-2 text-muted" : "bg-accent/15 text-accent"
-                  }`}
-                  dir="ltr"
-                >
+                <span key={p.provider} className={pillClass("mute")} dir="ltr">
                   {p.provider} · {p.n}
                 </span>
               ))}
@@ -159,27 +190,26 @@ export default async function AdminHealthPage() {
             <p className="mb-1.5 text-12 text-muted">دِلاءُ الملفّات</p>
             <div className="flex flex-wrap gap-1.5">
               {(h.sec.buckets ?? []).map((b) => (
-                <span
-                  key={b.id}
-                  className={`rounded-full px-2.5 py-1 text-12 font-bold ${
-                    b.public ? "bg-surface-2 text-muted" : "bg-[color:var(--success)]/15 text-[color:var(--success)]"
-                  }`}
-                  dir="ltr"
-                >
+                <span key={b.id} className={pillClass(b.public ? "mute" : "ok")} dir="ltr">
                   {b.id} · {b.public ? "عامّ" : "خاصّ"} · {b.objects}
                 </span>
               ))}
             </div>
           </div>
         </div>
-      </section>
+        </div>
+      </details>
 
       {/* ——— ٣) ما نجمعه وكم نحفظه ——— */}
-      <section className={`${settingsCard} p-4 space-y-2`}>
-        <h2 className="text-15 font-bold">
+      <details className={`${settingsCard} p-4 [&[open]>summary]:mb-3`}>
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <h2 className="inline text-15 font-bold">
           ما نجمعه وكم نحفظه{" "}
           <span className="text-12 font-normal text-muted">— القاعدةُ تقول كم، والشيفرةُ تقول ما هو</span>
         </h2>
+          <span className="ms-1 text-12 text-accent">· التفاصيل</span>
+        </summary>
+        <div className="space-y-2">
         <div className={settingsCardRows}>
           {DATA_MAP.map((d) => {
             const g = h.data?.[d.table];
@@ -187,11 +217,12 @@ export default async function AdminHealthPage() {
               <div key={d.table} className="px-3 py-2.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <code className="text-12" dir="ltr">{d.table}</code>
-                  <span className={`rounded-full px-2 py-0.5 text-12 font-bold ${KIND_TONE[d.kind]}`}>
+                  <span className={pillClass(KIND_TONE[d.kind])}>
                     {KIND_AR[d.kind]}
                   </span>
                   <span className="ms-auto shrink-0 tabular-nums text-12 text-muted" dir="ltr">
-                    {fmt(g?.rows)} صفّ{g?.oldest ? ` · منذ ${g.oldest}` : ""}
+                    {/* ٦٠١ — جدولٌ لا تقيسه القاعدةُ بعد (قبل الهجرة ٢٧٤) يقول ذلك ولا يرسم صفراً كاذباً */}
+                    {g ? `${fmt(g.rows)} صفّ${g.oldest ? ` · منذ ${g.oldest}` : ""}` : "يُقاس بعد الهجرة ٢٧٤"}
                   </span>
                 </div>
                 <p className="mt-0.5 text-13">{d.what}</p>
@@ -211,33 +242,9 @@ export default async function AdminHealthPage() {
           <b>وهو ما تعلنه صفحةُ /account/delete</b>. <b>ولا يُخزَّن وكيلُ متصفّحٍ كامل ولا IP
           ولا موقعٌ جغرافيّ</b> (D-666).
         </p>
-      </section>
+        </div>
+      </details>
 
-      {/* ——— ٤) الثغرات والتوصيات ——— */}
-      <section className={`${settingsCard} p-4 space-y-2`}>
-        <h2 className="text-15 font-bold">
-          الثغرات والتوصيات{" "}
-          <span className="text-12 font-normal text-muted">— مشتقّةٌ من الأرقام، تختفي متى عولجت</span>
-        </h2>
-        {findings.length === 0 ? (
-          <p className="text-14 text-[color:var(--success)]">لا بندَ مفتوحاً.</p>
-        ) : (
-          <div className={settingsCardRows}>
-            {findings.map((x) => (
-              <div key={x.id} className="px-3 py-3 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-12 font-bold ${SEV_TONE[x.sev]}`}>
-                    {SEV_AR[x.sev]}
-                  </span>
-                  <p className="text-14 font-bold">{x.title}</p>
-                </div>
-                <p className="text-13 text-muted leading-relaxed">{x.why}</p>
-                <p className="text-13"><b className="text-accent">العلاج: </b>{x.fix}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }

@@ -7,6 +7,7 @@
  *
  * والحدودُ والخططُ **مصدرُها الوحيد هذا الملفّ** — تغيّرت خطّةٌ؟ يُعدَّل هنا.
  */
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type AdminOverview = {
@@ -269,8 +270,9 @@ export const PROVIDERS: Provider[] = [
   },
   {
     name: "Google OAuth", plan: "مجاني — In production", paid: false,
-    what: "طريقةُ الدخول الوحيدة.",
-    risk: "أخطرُ نقطةٍ مفردة: لو تعطّلت لا أحدَ يدخل. لا شعارَ مرفوعاً عمداً — رفعُه يفرض تحقّقَ علامة.",
+    /* ٢٧٤ — لم تعد الوحيدة: Apple على الآيفون (D-1350) وX لتوثيق الملفّ لا للدخول (D-839) */
+    what: "الدخولُ على أندرويد والويب — ومعها Apple على الآيفون، وX لتوثيق الملفّ.",
+    risk: "أخطرُ نقطةٍ مفردة: لو تعطّلت لا أحدَ يدخل خارج الآيفون. لا شعارَ مرفوعاً عمداً — رفعُه يفرض تحقّقَ علامة.",
     dashboard: "https://console.cloud.google.com/apis/credentials?project=utility-league-504219-j4",
   },
   {
@@ -364,6 +366,11 @@ export const AUDIT_AR: Record<string, string> = {
   set_provider_link: "تعديل رابط منصّة",
   /* 🆕 المهمّة ٤٠١ — «امنح Loopz+» (الهجرة ٢٤٨) */
   grant_plus: "منح Loopz+",
+  /* 🆕 الهجرة ٢٧٤ — أفعالٌ كانت تقع بلا أثر */
+  feedback_done: "إغلاق ملاحظة",
+  persona_pause: "إيقاف أو تشغيل نشر الشخصيات",
+  persona_review: "تعديل تقييم شخصيّة",
+  title_genres: "تصنيف أنواع عمل",
 };
 
 /**
@@ -506,9 +513,12 @@ export type AdminNavCounts = {
   reports: number;
   /** من له حسابٌ ولم يدخل اليومَ (يومُ الرياض) — **الرقمُ الذي يُراسَل صاحبُه** */
   testers_missing: number;
+  /** 🆕 الهجرة ٢٧٤ — ملاحظاتٌ لم تُغلق (قاعدةٌ أقدمُ لا ترسله ⇒ بلا شارة) */
+  feedback?: number;
 };
 
-export async function getAdminNavCounts(): Promise<AdminNavCounts | null> {
+/* ٦٠١ — `cache()`: الغلافُ يقرؤها للشريط، وشريطُ «الشركاء والتوثيق» يقرؤها لعدّاداته — طلبٌ واحدٌ ورحلةٌ واحدة */
+export const getAdminNavCounts = cache(async function getAdminNavCounts(): Promise<AdminNavCounts | null> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("admin_nav_counts");
@@ -517,7 +527,7 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts | null> {
   } catch {
     return null;
   }
-}
+});
 
 /**
  * 🆕 **الأداءُ والحمايةُ تُقاس لا تُوصف** (D-924، الهجرة ١٨٤، طلبُ أحمد:
@@ -573,7 +583,7 @@ export async function getAdminHealth(): Promise<AdminHealth | null> {
  * القاعدة. **والعمودُ الأهمّ «يُحذف؟»**: جدولٌ بلا سياسةِ حذفٍ ينمو إلى الأبد،
  * **وبياناتٌ لا تنتهي صلاحيّتُها هي بياناتٌ تُسرَّب يوماً ما.**
  */
-export type DataKind = "identity" | "financial" | "behaviour" | "technical";
+export type DataKind = "identity" | "financial" | "credential" | "private" | "behaviour" | "technical";
 
 export const DATA_MAP: {
   table: string;
@@ -582,13 +592,16 @@ export const DATA_MAP: {
   keep: string;
   /** `false` = ينمو بلا حدّ: لا وظيفةَ حذفٍ دوريّ تمسّه اليوم */
   pruned: boolean;
+  /** 🆕 ٢٧٤ — الاحتفاظُ مقرَّرٌ لا منسيّ (سجلٌّ، دفترٌ ماليّ، بياناتٌ يقرّر صاحبُها محوَها): لا يُعدّ في بند «ينمو بلا حدّ» */
+  decided?: boolean;
 }[] = [
   { table: "partner_details", what: "IBAN وهاتفُ الشريك", kind: "financial",
-    keep: "ما دام الشريك", pruned: false },
+    keep: "ما دام الشريك", pruned: false, decided: true },
   { table: "payout_requests", what: "لقطةُ IBAN مع كلِّ طلبِ تحويل", kind: "financial",
-    keep: "بلا حدّ", pruned: false },
+    keep: "بلا حدّ (دفترُ صرف)", pruned: false, decided: true },
+  /* ٢٧٤ — أحمد ٢٧ نوفمبر: «بيانات المختبرين تبقى حتى ينزل تطبيق أندرويد» */
   { table: "play_testers", what: "بريدُ المختبِر (مُدخَلُ أحمد لا قراءةُ القاعدة)", kind: "identity",
-    keep: "حتى يُحذف يدويّاً", pruned: false },
+    keep: "حتى يُنشر تطبيقُ أندرويد (قرارُ أحمد)", pruned: false, decided: true },
   { table: "user_devices", what: "صنفُ المنصّة فقط — لا وكيلَ متصفّحٍ كاملاً (D-666)", kind: "technical",
     keep: "بلا حدّ", pruned: false },
   { table: "user_active_days", what: "يومُ نشاطٍ وعدّادُ نبضات", kind: "behaviour",
@@ -596,15 +609,47 @@ export const DATA_MAP: {
   { table: "profile_views", what: "من زار ملفَّ من", kind: "behaviour",
     keep: "بلا حدّ", pruned: false },
   { table: "admin_audit", what: "فعلُ مديرٍ وهدفُه", kind: "technical",
-    keep: "بلا حدّ (مقصود: سجلٌّ يُحذف ليس سجلّاً)", pruned: false },
+    keep: "بلا حدّ (مقصود: سجلٌّ يُحذف ليس سجلّاً)", pruned: false, decided: true },
   /* A-11 — الهجرة ٢٢٣: وظيفةٌ ليليّةٌ تحذف ما فوق تسعين يوماً (أحمد ٢٣ أكتوبر) */
   { table: "runtime_errors", what: "خطأُ خادمٍ ومسارُه — بلا هويّةٍ ولا IP", kind: "technical",
     keep: "٩٠ يوماً", pruned: true },
+  /* 🆕 الهجرة ٢٧٤ — ما كان يُجمع ولا يُعرض هنا (مراجعةُ ٢٧ نوفمبر): الدفعُ والاعتماداتُ والخاصُّ والاستيراد.
+     «decided» لما احتفاظُه مقصود؛ وما سواه يدخل بندَ «ينمو بلا حدّ» حتى يُقرَّر له حذف. */
+  { table: "subscriptions", what: "اشتراكُ المتجر أو المنحة: الخطّة والمتجر والفترة", kind: "financial",
+    keep: "بلا حدّ (دفترُ فوترة)", pruned: false, decided: true },
+  { table: "billing_events", what: "معرّفُ حدثِ RevenueCat ونوعُه — لا مبلغَ ولا بطاقة", kind: "financial",
+    keep: "بلا حدّ (يمنع معالجةَ الحدث مرّتين)", pruned: false, decided: true },
+  { table: "partner_commissions", what: "عمولةُ الشريك عن كلِّ دفعة، وما استُرجع", kind: "financial",
+    keep: "بلا حدّ (دفترٌ لا يُعدَّل)", pruned: false, decided: true },
+  { table: "apple_tokens", what: "رمزُ تجديد Apple لكلِّ من دخل بها", kind: "credential",
+    keep: "بلا حدّ", pruned: false },
+  { table: "device_tokens", what: "رمزُ الإشعارات لكلِّ جهاز ولغتُه", kind: "credential",
+    keep: "بلا حدّ — رمزٌ ميّتٌ يبقى حتى يُرفض", pruned: false },
+  { table: "widget_tokens", what: "بصمةُ رمز الويدجت (لا الرمزُ نفسُه)", kind: "credential",
+    keep: "بلا حدّ", pruned: false },
+  { table: "device_links", what: "بصماتُ روابط Kodi وStremio وNuvio والخوادم المنزليّة", kind: "credential",
+    keep: "بلا حدّ — الموقوفُ يبقى", pruned: false },
+  { table: "platform_links", what: "ربطُ نتفليكس وOSN+ وشاهد: اسمُ الملفّ وتواريخُ المزامنة", kind: "private",
+    keep: "بلا حدّ — الموقوفُ يبقى", pruned: false },
+  { table: "import_runs", what: "عدّادُ كلِّ استيرادِ سجلّ مشاهدة", kind: "behaviour",
+    keep: "بلا حدّ", pruned: false },
+  { table: "direct_messages", what: "الرسائلُ الخاصّة والجماعيّة (وصورُها في الدلو الخاصّ dm-media)", kind: "private",
+    keep: "بلا حدّ — المحذوفُ يُعلَّم ولا يُمحى", pruned: false },
+  { table: "verification_requests", what: "روابطُ طالب التوثيق وسببُه وقرارُ المدير", kind: "identity",
+    keep: "بلا حدّ", pruned: false },
+  { table: "feedback", what: "نصُّ الملاحظة والجهازُ والإصدار", kind: "behaviour",
+    keep: "بلا حدّ", pruned: false },
+  { table: "referral_events", what: "من دعا من ومتى", kind: "behaviour",
+    keep: "بلا حدّ", pruned: false },
+  { table: "session_mints", what: "متى سُلّمت جلسةُ التطبيق للويب ومن أيِّ باب", kind: "technical",
+    keep: "بلا حدّ", pruned: false },
 ];
 
 export const KIND_AR: Record<DataKind, string> = {
   identity: "هويّة",
   financial: "ماليّ",
+  credential: "اعتماد",
+  private: "خاصّ",
   behaviour: "سلوك",
   technical: "تقنيّ",
 };
@@ -621,6 +666,8 @@ export type Finding = {
   fix: string;
 };
 
+const DECIDED_PROVIDERS = ["google", "apple", "x"];
+
 export function findingsOf(h: AdminHealth): Finding[] {
   const f: Finding[] = [];
   const hot = h.perf.top?.[0];
@@ -636,22 +683,25 @@ export function findingsOf(h: AdminHealth): Finding[] {
       id: "initplan", sev: "high",
       title: `${h.sec.initplan} سياسةً تُعيد تقييم auth.uid() لكلِّ صفّ`,
       why: "الدالّةُ تُنادى مرّةً لكلِّ صفٍّ بدل مرّةٍ للاستعلام — الأثرُ يكبر مع كلِّ صفٍّ يُقرأ، وهو أوسعُ مكسبٍ منهجيٍّ متاح.",
-      fix: "(select auth.uid()) بدل auth.uid() داخل كلِّ سياسة — تغييرٌ آليٌّ في security*.sql وحدَها، بلا مساسِ منطق.",
+      /* ٢٧٤ — بلا قوسين في طرفي السطر: كان RTL يقلب «(select auth.uid())» فيُقرأ مبعثراً */
+      fix: "تغليفُ auth.uid() بـselect داخل كلِّ سياسة — تغييرٌ آليٌّ في security*.sql وحدَها، بلا مساسِ منطق.",
     });
-  const noPrune = DATA_MAP.filter((d) => !d.pruned && (h.data?.[d.table]?.rows ?? 0) > 0);
+  /* ٢٧٤ — المحفوظُ بقرارٍ مكتوبٍ ليس «ينمو بلا حدّ»: كان السجلُّ والدفترُ الماليُّ يُعدّان ثغرة */
+  const noPrune = DATA_MAP.filter((d) => !d.pruned && !d.decided && (h.data?.[d.table]?.rows ?? 0) > 0);
   if (noPrune.length > 0)
     f.push({
       id: "retention", sev: "med",
       title: `لا وظيفةَ حذفٍ دوريّ — ${noPrune.length} جداولَ تنمو بلا حدّ`,
       why: "runtime_errors وحدَها تُحذف دوريّاً (الهجرة ٢٢٣، فوق ٩٠ يوماً)؛ والباقي ينمو بلا حدّ، والاحتفاظُ بلا سببٍ التزامٌ لا أصل.",
-      fix: "وظيفةٌ ليليّةٌ كوظيفة ٢٢٣: حذفُ profile_views فوق ١٨٠ يوماً. والماليُّ والسجلُّ يبقيان بقرارٍ مكتوب.",
+      fix: `وظيفةٌ ليليّةٌ كوظيفة ٢٢٣ (أوّلُها profile_views فوق ١٨٠ يوماً) — والجداول: ${noPrune.map((d) => d.table).join(" · ")}.`,
     });
-  const extra = (h.sec.providers ?? []).filter((p) => p.provider !== "google");
+  /* ٢٧٤ — الأبوابُ المقرّرة: Google، وApple على الآيفون (D-1350)، وX لتوثيق الملفّ (D-839). البندُ يبقى لبابٍ رابعٍ لم يُقرَّر */
+  const extra = (h.sec.providers ?? []).filter((p) => !DECIDED_PROVIDERS.includes(p.provider));
   if (extra.length > 0)
     f.push({
       id: "providers", sev: "med",
       title: `بابُ دخولٍ ثانٍ مفعَّل: ${extra.map((p) => `${p.provider} (${p.n})`).join(" · ")}`,
-      why: "قواعدُ المشروع وصفحةُ الخصوصيّة وإقرارُ «أمان البيانات» في Play تقول Google وحدَها — وبابٌ لا تذكره الوثيقةُ بابٌ لا يراجعه أحد.",
+      why: "الأبوابُ المقرّرة Google وApple وX وحدها — وبابٌ لا تذكره الوثيقةُ بابٌ لا يراجعه أحد.",
       fix: "إمّا يُعطَّل، أو يُوثَّق في 18/07 و/privacy وإقرارِ Play — والقرارُ لأحمد.",
     });
   if (h.sec.definer_anon > 0)
@@ -779,5 +829,47 @@ export async function getAdminUserContent(userId: string, limit = 40): Promise<A
     }));
   } catch {
     return [];
+  }
+}
+
+/**
+ * 🆕 **ملخّصُ الفوترة** (الهجرة ٢٧٤ · أحمد ٢٧ نوفمبر: «ملخّص الاشتراكات مستقلّ»).
+ *
+ * 🔴 **الخطأ الذي يمنعه**: في مراجعة ٢٧ نوفمبر قُرئت ثمانيةُ صفوفٍ في `subscriptions` «ثمانيةَ مشتركين» —
+ * **وكلُّها منحٌ يدويّةٌ أو تجربةُ sandbox، وليس بينها شراءٌ واحد.** فالأصنافُ الثلاثةُ تُفصل في القاعدة
+ * (حقيقيٌّ · يدويٌّ · تجريبيّ) ولا تُجمع في الواجهة.
+ *
+ * 🔑 **و`real.first_at` بابُ تذكيرٍ لا رقمٌ للزينة**: أحمد «ذكرني بالرخصة مع اول اشتراك حقيقي» — مفتاحُ TMDB
+ * غيرُ تجاريّ، وأوّلُ دخلٍ يجعل الرخصةَ التجاريّةَ شرطاً (`PROVIDERS`). فيظهر التنبيهُ وحدَه يومَ يصل.
+ *
+ * ⚖️ **وقبل تشغيل الهجرة**: الدالّةُ غائبةٌ ⇒ `null` ⇒ الصفحةُ تقول ذلك ولا ترسم أصفاراً كاذبة (D-063).
+ */
+export type AdminBilling = {
+  at: string;
+  real: {
+    active: number;
+    renewing: number;
+    cancel_pending: number;
+    new_30d: number;
+    ended_30d: number;
+    ever: number;
+    first_at: string | null;
+    by_product: { store: string | null; plan: string | null; product: string | null; n: number }[];
+  };
+  members: { plus: number; gold: number; plus_ending_7d: number; manual_active: number };
+  sandbox: { subs: number; events: number };
+  events: { received_30d: number; stuck: number; last_at: string | null };
+  commissions: { earned: number; reversed: number; on_hold: number; partners: number };
+  payouts: { pending: number; pending_amount: number; paid_amount: number };
+};
+
+export async function getAdminBilling(): Promise<AdminBilling | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_billing_summary");
+    if (error || !data) return null;
+    return data as AdminBilling;
+  } catch {
+    return null;
   }
 }

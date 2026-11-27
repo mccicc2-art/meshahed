@@ -4,6 +4,7 @@ import { getAmAdmin } from "@/lib/data";
 import {
   AUDIT_AR,
   getAdminAudit,
+  getAdminBilling,
   getAdminKeyholders,
   getAdminOverview,
   getAdminTestersSummary,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/admin";
 import { settingsCard, settingsCardRows } from "@/components/settings/SettingsGroup";
 import { PLATFORM_AR, type Platform } from "@/core/platform";
+import { pillClass } from "@/components/admin/style";
 
 /**
  * 🆕 **نظرةُ الإدارة العامّة** (D-901، حكمُ أحمد: «تحتاج تطويراً أكثر» بعد
@@ -47,7 +49,7 @@ const AUDIT_N = 12;
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl bg-surface-2 px-3 py-2.5">
+    <div className="rounded-control bg-surface-2 px-3 py-2.5">
       <p className="text-12 text-muted">{label}</p>
       <p className="mt-0.5 text-20 font-bold tabular-nums" dir="ltr">{value}</p>
       {sub && <p className="text-12 text-muted">{sub}</p>}
@@ -91,12 +93,13 @@ export default async function AdminIndexPage() {
   const admin = await getAmAdmin();
   if (!admin) notFound();
 
-  const [o, ts, head, audit, keys] = await Promise.all([
+  const [o, ts, head, audit, keys, bill] = await Promise.all([
     getAdminOverview(),
     getAdminTestersSummary(),
     getGitHubHead(),
     getAdminAudit(AUDIT_N),
     getAdminKeyholders(),
+    getAdminBilling(),
   ]);
   if (!o) notFound();
 
@@ -116,8 +119,16 @@ export default async function AdminIndexPage() {
   const activeCron = o.health.cron.filter((c) => c.active).length;
   if (activeCron !== LIMITS.expectedActiveCron)
     alerts.push({ tone: "warn", text: `وظائف cron الفعّالة = ${activeCron} والمتوقّع ${LIMITS.expectedActiveCron}.` });
+  /* ٢٧٤ — العددُ أعطالٌ حقيقيّةٌ فقط (التشخيصُ والإشاراتُ تُستثنى في القاعدة)، وأكثرُها من التطبيق لا الخادم */
   if (o.errors.count_24h > 0)
-    alerts.push({ tone: o.errors.count_24h >= 50 ? "bad" : "warn", text: `${fmt(o.errors.count_24h)} خطأً في الخادم خلال ٢٤ ساعة (${fmt(o.errors.count_7d)} في ٧ أيام) — التفصيل أدناه.` });
+    alerts.push({ tone: o.errors.count_24h >= 50 ? "bad" : "warn", text: `${fmt(o.errors.count_24h)} عطلاً في التطبيق والخادم خلال ٢٤ ساعة (${fmt(o.errors.count_7d)} في ٧ أيام) — التفصيل أدناه.` });
+  /* 🆕 ٦٠١ — أحمد ٢٧ نوفمبر: «ذكرني بالرخصة مع اول اشتراك حقيقي». مفتاحُ TMDB غيرُ تجاريّ (`PROVIDERS`)، وأوّلُ شراءٍ
+     حقيقيٍّ من المتجر يجعل الرخصةَ التجاريّةَ شرطاً — فيظهر التنبيهُ وحدَه يومَ يصل، ويبقى حتى يُحدَّث سطرُ TMDB هنا */
+  const tmdb = PROVIDERS.find((p) => p.name === "TMDB");
+  if (bill?.real.first_at && tmdb?.paid === false)
+    alerts.push({ tone: "bad", text: `وصل أوّلُ اشتراكٍ حقيقيّ (${riyadh(bill.real.first_at)}) — راجع رخصة TMDB التجاريّة: المفتاحُ الحاليّ غيرُ تجاريّ.`, href: "/admin/subscriptions" });
+  if (bill && bill.events.stuck > 0)
+    alerts.push({ tone: "bad", text: `${bill.events.stuck} حدثَ دفعٍ عالقٌ بلا معالجة — مشتركٌ قد لا يصله ما دفع له.`, href: "/admin/subscriptions" });
   if (o.queues.verification_pending > 0)
     alerts.push({ tone: "warn", text: `${o.queues.verification_pending} طلبُ توثيقٍ ينتظر قرارك.`, href: "/admin/verify" });
   if (o.queues.partners_pending > 0)
@@ -146,7 +157,7 @@ export default async function AdminIndexPage() {
           <h1 className="text-22 font-bold">لوحة الإدارة</h1>
           <p className="text-12 text-muted">كلُّ رقمٍ مقروءٌ الآن من مصدره · {riyadh(o.generated_at)}</p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-12 font-bold ${worst === "bad" ? "bg-[color:var(--error)]/15 text-[color:var(--error)]" : worst === "warn" ? "bg-accent/15 text-accent" : "bg-[color:var(--success)]/15 text-[color:var(--success)]"}`}>
+        <span className={pillClass(worst === "bad" ? "bad" : worst === "warn" ? "warn" : "ok")}>
           {worst === "ok" ? "كل شيء مستقرّ" : `${alerts.length} تنبيه`}
         </span>
       </header>
@@ -220,13 +231,15 @@ export default async function AdminIndexPage() {
         <h2 className="text-15 font-bold">المستخدمون</h2>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Stat label="الإجمالي" value={fmt(u.total)} />
-          <Stat label="نشِط ٢٤ ساعة" value={fmt(u.active_24h)} />
-          <Stat label="نشِط ٧ أيام" value={fmt(u.active_7d)} />
-          <Stat label="نشِط ٣٠ يوماً" value={fmt(u.active_30d)} />
+          {/* ٢٧٤ — النشاطُ استعمالٌ (نبضاتُ يوم الرياض) لا «آخرُ تسجيل دخول»: جلسةُ التطبيق تتجدّد بلا تسجيل */}
+          <Stat label="استعملوه اليوم" value={fmt(u.active_24h)} />
+          <Stat label="استعملوه ٧ أيام" value={fmt(u.active_7d)} />
+          <Stat label="استعملوه ٣٠ يوماً" value={fmt(u.active_30d)} />
           <Stat label="جديد ٢٤ ساعة" value={fmt(u.new_24h)} />
           <Stat label="جديد ٧ أيام" value={fmt(u.new_7d)} />
           <Stat label="جديد ٣٠ يوماً" value={fmt(u.new_30d)} />
-          <Stat label="عادوا بعد أوّل دخول" value={`${retention}%`} sub={`${fmt(u.never_returned)} لم يعودوا`} />
+          {/* ٢٧٤ — «عادوا في يومٍ آخر» لا «عودةُ اليوم الأوّل»: هذه عبر العمر كلِّه، وتلك نسبةُ دفعةٍ في المؤشّرات — اسمان لسؤالين */}
+          <Stat label="عادوا في يومٍ آخر" value={`${retention}%`} sub={`${fmt(u.never_returned)} لم يعودوا في يومٍ آخر`} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -262,7 +275,7 @@ export default async function AdminIndexPage() {
       {/* ——— ٤) الأخطاء الحيّة ——— */}
       <section className={`${settingsCard} p-4 space-y-2`}>
         <h2 className="text-15 font-bold">
-          أخطاء الخادم <span className="text-12 font-normal text-muted">— من `runtime_errors` (١٤٨)، بلا هويّةٍ ولا IP</span>
+          أعطال التطبيق والخادم <span className="text-12 font-normal text-muted">— بلا هويّةٍ ولا IP، والتشخيصُ لا يُعدّ</span>
         </h2>
         <div className="grid grid-cols-2 gap-2">
           <Stat label="آخر ٢٤ ساعة" value={fmt(o.errors.count_24h)} />
@@ -276,7 +289,7 @@ export default async function AdminIndexPage() {
               <div key={i} className="px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <code className="truncate text-12" dir="ltr">{e.route}</code>
-                  <span className="shrink-0 rounded-full bg-[color:var(--error)]/15 px-2 py-0.5 text-12 font-bold tabular-nums text-[color:var(--error)]" dir="ltr">×{fmt(e.n)}</span>
+                  <span className={pillClass("bad", "tabular-nums")} dir="ltr">×{fmt(e.n)}</span>
                 </div>
                 <p className="mt-0.5 truncate text-12 text-muted" dir="auto">{e.kind} · {e.sample}</p>
                 <p className="text-12 text-muted">آخر مرّة: {riyadh(e.last_at)}</p>
@@ -307,13 +320,7 @@ export default async function AdminIndexPage() {
             {keys.map((k) => (
               <div key={k.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-3 py-2.5 text-13">
                 <b className="text-14">{k.nickname || k.username || k.id.slice(0, 8)}</b>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-12 font-bold ${
-                    k.isSystem
-                      ? "bg-[color:var(--error)]/15 text-[color:var(--error)]"
-                      : "bg-accent/15 text-accent"
-                  }`}
-                >
+                <span className={pillClass(k.isSystem ? "bad" : "warn")}>
                   {k.isSystem ? (k.isAdmin ? "نظام · مدير" : "حساب نظام") : "مدير"}
                 </span>
                 {/* 🔑 **والسؤالُ «هل يدخل؟» لا «هل له صفّ؟»**: القيدُ يفرض صفَّ
@@ -389,7 +396,7 @@ export default async function AdminIndexPage() {
         <Meter label={`المخزن (${fmt(o.db.storage_objects)} ملفّاً)`} used={o.db.storage_bytes} total={LIMITS.supabaseStorageBytes} />
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 text-center">
           {([["متابَعات", o.content.follows], ["تقييمات", o.content.ratings], ["قوائم", o.content.lists], ["منشورات", o.content.posts], ["رسائل", o.content.messages], ["مجتمعات", o.content.communities]] as const).map(([l, n]) => (
-            <div key={l} className="rounded-xl bg-surface-2 py-2">
+            <div key={l} className="rounded-control bg-surface-2 py-2">
               <p className="text-16 font-bold tabular-nums" dir="ltr">{fmt(n)}</p>
               <p className="text-12 text-muted">{l}</p>
             </div>
@@ -426,7 +433,7 @@ export default async function AdminIndexPage() {
             <div key={p.name} className={`${settingsCard} p-3.5`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-14 font-bold">{p.name}</span>
-                <span className={`rounded-full px-2 py-0.5 text-12 font-bold ${p.paid ? "bg-[color:var(--success)]/15 text-[color:var(--success)]" : "bg-surface-2 text-muted"}`}>{p.plan}</span>
+                <span className={pillClass(p.paid ? "ok" : "mute")}>{p.plan}</span>
               </div>
               <p className="mt-1 text-12 text-muted">{p.what}</p>
               <p className="mt-1.5 text-12"><b className="text-accent">الخطر: </b><span className="text-muted">{p.risk}</span></p>

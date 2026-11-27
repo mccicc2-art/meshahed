@@ -7,6 +7,7 @@ import {
 } from "@/lib/command";
 import { getUser } from "@/lib/data";
 import { decideItemAction } from "@/lib/commandActions";
+import { pillClass } from "@/components/admin/style";
 
 /**
  * ====== أجزاءُ غرفة القيادة المشتركة (التصميم «ب — خريطة الأقسام»، اختيارُ أحمد ٢٧ نوفمبر) ======
@@ -89,19 +90,7 @@ export function ageAr(d: number): string {
 export function SevBadge({ s }: { s: CommandItem["severity"] }) {
   const hot = s === "critical" || s === "high";
   const mid = s === "medium";
-  return (
-    <span
-      className={`rounded-md px-2 py-0.5 text-12 font-bold ${
-        hot
-          ? "bg-error/15 text-error"
-          : mid
-            ? "bg-accent/15 text-accent"
-            : "bg-surface-2 text-muted"
-      }`}
-    >
-      {SEV_AR[s]}
-    </span>
-  );
+  return <span className={pillClass(hot ? "bad" : mid ? "warn" : "mute")}>{SEV_AR[s]}</span>;
 }
 
 /**

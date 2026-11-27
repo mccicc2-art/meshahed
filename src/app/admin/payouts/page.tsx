@@ -3,6 +3,9 @@ import { getAmAdmin, getAdminPayouts } from "@/lib/data";
 import { adminDecidePayout } from "@/lib/actions";
 import { buttonClass } from "@/components/ui/Button";
 import { AdminNotice } from "@/components/admin/AdminNotice";
+import { PartnerTabs } from "@/components/admin/PartnerTabs";
+import { fieldClass, pillClass } from "@/components/admin/style";
+import { getAdminBilling } from "@/lib/admin";
 
 /**
  * 🆕 **طابورُ طلبات التحويل** (D-901) — نمطُ `/admin/partners` حرفاً.
@@ -46,20 +49,28 @@ export default async function AdminPayoutsPage({
   if (!admin) notFound();
 
   const sp = await searchParams;
-  const rows = await getAdminPayouts();
+  const [rows, bill] = await Promise.all([getAdminPayouts(), getAdminBilling()]);
 
   return (
     <div className="space-y-5">
       <h1 className="text-22 font-bold">طلبات التحويل</h1>
+      <PartnerTabs active="/admin/payouts" />
 
       <AdminNotice err={sp.err} ok={sp.ok} />
 
       {rows.length === 0 && (
         <div className="rounded-card border border-border bg-surface p-4 space-y-1.5">
           <p className="text-14 font-bold">لا طلبات — وهذا صحيح.</p>
+          {/* ٦٠١ — **الفراغُ يُقرأ من القاعدة لا يُكتب ثابتاً**: «المدفوعات لم تُفتح بعد» بقي بعد أن فُتح المتجرُ والعمولةُ
+              (الهجرة ٢٣٨). السببُ الآن من ملخّص الفوترة: لا اشتراكَ حقيقيّ · عمولةٌ معلّقة · لا رصيدَ متاح */}
           <p className="text-13 text-muted leading-relaxed">
-            المدفوعات لم تُفتح بعد، فلا عمولة تُستحقّ ولا طلب يُقدَّم. الجدول
-            والبوّابات جاهزة، ويبقى مصدر الرصيد وحده — يُوصل يوم تُفتح القناة.
+            {!bill
+              ? "لا طلبات تحويل. ملخّصُ العمولات يظهر بعد تشغيل الهجرة ٢٧٤."
+              : bill.real.ever === 0
+                ? "لم يصل أيُّ اشتراكٍ حقيقيٍّ من المتجر بعد، فلا عمولةَ تُستحقّ ولا طلبَ يُقدَّم."
+                : bill.commissions.earned === 0
+                  ? "لا عمولةَ مستحقّةً بعد: الاشتراكاتُ الحقيقيّةُ لم تأتِ عن طريق شريك."
+                  : `العمولاتُ حتى الآن ${bill.commissions.earned.toFixed(2)} ر.س، منها ${bill.commissions.on_hold.toFixed(2)} معلّقةٌ ثلاثين يوماً — ولم يطلب شريكٌ تحويلاً.`}
           </p>
         </div>
       )}
@@ -79,15 +90,7 @@ export default async function AdminPayoutsPage({
               <span className="shrink-0 text-16 font-bold tabular-nums" dir="ltr">
                 {r.amount.toFixed(2)} {r.currency}
               </span>
-              <span
-                className={`shrink-0 rounded-full px-2.5 py-1 text-12 font-bold ${
-                  r.status === "pending"
-                    ? "bg-accent/15 text-accent"
-                    : r.status === "paid"
-                      ? "bg-[color:var(--success)]/15 text-[color:var(--success)]"
-                      : "bg-surface-2 text-muted"
-                }`}
-              >
+              <span className={pillClass(r.status === "pending" ? "warn" : r.status === "paid" ? "ok" : "mute")}>
                 {STATUS_AR[r.status] ?? r.status}
               </span>
             </div>
@@ -127,7 +130,7 @@ export default async function AdminPayoutsPage({
                   maxLength={300}
                   placeholder="ملاحظة (اختياري)"
                   aria-label={`ملاحظة على طلب ${name}`}
-                  className="flex-1 min-w-[10rem] rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
+                  className={`${fieldClass} flex-1 min-w-[10rem]`}
                 />
                 {r.status === "pending" ? (
                   <>

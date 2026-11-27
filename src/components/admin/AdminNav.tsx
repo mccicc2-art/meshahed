@@ -29,7 +29,10 @@ type Section = {
   key: string;
   href: string;
   label: string;
-  of?: keyof AdminNavCounts;
+  /** عدّادٌ أو أكثر — قسمٌ جامعٌ يحمل مجموعَ عدّادات صفحاته */
+  of?: keyof AdminNavCounts | (keyof AdminNavCounts)[];
+  /** 🆕 ٦٠١ — مساراتٌ أخرى تُضيء هذا القسم (صفحاتُ القسم الجامع) */
+  also?: string[];
 };
 
 const GROUPS: { key: string; label: string; sections: Section[] }[] = [
@@ -49,6 +52,8 @@ const GROUPS: { key: string; label: string; sections: Section[] }[] = [
     label: "المنتج والنمو",
     sections: [
       { key: "metrics", href: "/admin/metrics", label: "المؤشّرات" },
+      /* 🆕 ٦٠١ — أحمد ٢٧ نوفمبر: «ملخّص الاشتراكات مستقلّ» — المالُ لم يكن له مكانٌ في الإدارة كلِّها */
+      { key: "subscriptions", href: "/admin/subscriptions", label: "الاشتراكات" },
       { key: "strategy", href: "/admin/strategy", label: "الاستراتيجية" },
     ],
   },
@@ -85,20 +90,16 @@ const GROUPS: { key: string; label: string; sections: Section[] }[] = [
         label: "البلاغات",
         of: "reports",
       },
-      /* D-1499 — بلا شارةِ عدٍّ (لا عدّادَ له في `admin_nav_counts` بعد) */
-      { key: "feedback", href: "/admin/feedback", label: "الملاحظات" },
-      { key: "verify", href: "/admin/verify", label: "التوثيق", of: "verify" },
+      /* D-1499 — صار له عدّادٌ في الهجرة ٢٧٤ (ما لم يُغلق) */
+      { key: "feedback", href: "/admin/feedback", label: "الملاحظات", of: "feedback" },
+      /* 🆕 ٦٠١ — **ثلاثُ صفحاتٍ شبهُ فارغةٍ في قسمٍ واحد** (مراجعةُ ٢٧ نوفمبر): ستّةُ أقسامٍ في صفٍّ على ٣٩٠ تدفع
+         «الشركاء» و«التحويلات» خارج الشاشة. الصفحاتُ باقيةٌ بأفعالها وروابطها، وشريطٌ داخليٌّ (`PartnerTabs`) يصل بينها */
       {
         key: "partners",
         href: "/admin/partners",
         label: "الشركاء",
-        of: "partners",
-      },
-      {
-        key: "payouts",
-        href: "/admin/payouts",
-        label: "التحويلات",
-        of: "payouts",
+        of: ["partners", "payouts", "verify"],
+        also: ["/admin/payouts", "/admin/verify"],
       },
     ],
   },
@@ -106,12 +107,13 @@ const GROUPS: { key: string; label: string; sections: Section[] }[] = [
 
 export function AdminNav({ counts }: { counts: AdminNavCounts | null }) {
   const path = usePathname();
-  const n = (s: Section) => (s.of ? (counts?.[s.of] ?? 0) : 0);
+  const n = (s: Section) =>
+    (Array.isArray(s.of) ? s.of : s.of ? [s.of] : []).reduce((a, k) => a + (counts?.[k] ?? 0), 0);
 
   /* المطابقةُ بالبادئة لا بالتساوي، و`/admin` وحدَها تساوٍ تامّ وإلا لأضاءت مع كلِّ قسم. */
   const all = GROUPS.flatMap((g) => g.sections.map((s) => ({ g, s })));
   const hit =
-    all.find(({ s }) => s.href !== "/admin" && path.startsWith(s.href)) ??
+    all.find(({ s }) => s.href !== "/admin" && [s.href, ...(s.also ?? [])].some((h) => path.startsWith(h))) ??
     all.find(({ s }) => s.key === "overview")!;
   const group = hit.g;
 
@@ -137,7 +139,8 @@ export function AdminNav({ counts }: { counts: AdminNavCounts | null }) {
             key={s.key}
             href={s.href}
             aria-current={on ? "page" : undefined}
-            className={segmentedItem(on, "px-3 pt-1.5 pb-2 text-14", false)}
+            /* ٦٠١ — `px-2.5`: أطولُ صفٍّ (المجتمع بشارتين) يتّسع لعرض ٣٩٠ كاملاً بلا تمرير */
+            className={segmentedItem(on, "px-2.5 pt-1.5 pb-2 text-14", false)}
           >
             {s.label}
             {c > 0 && (

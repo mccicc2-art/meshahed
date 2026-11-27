@@ -8,6 +8,7 @@ import { Avatar } from "@/components/Avatar";
 import { buttonClass } from "@/components/ui/Button";
 import { AdminNotice } from "@/components/admin/AdminNotice";
 import { settingsCardRows } from "@/components/settings/SettingsGroup";
+import { fieldClass, pillClass } from "@/components/admin/style";
 
 /**
  * 🆕 **إدارةُ المستخدمين** (D-901) — نمطُ `/admin/partners` حرفاً:
@@ -18,10 +19,20 @@ import { settingsCardRows } from "@/components/settings/SettingsGroup";
  * لأنه يُكتب في `admin_audit` **ويُعرض للموقوف حين يحاول الدخول**.
  * **«أوقفتُ حسابك» بلا سببٍ بلاغٌ لا قرار.**
  */
+/**
+ * ٦٠١ — **العودةُ إلى الحساب المفتوح نفسِه**: الأفعالُ صارت داخل الصفِّ المفتوح (`u`)، وعودةٌ بالبحث وحده تطوي الصفَّ
+ * بعد كلِّ فعلٍ أو خطأ — فيُعاد فتحُه ويُكتب السببُ من جديد.
+ */
+function backOf(formData: FormData): string {
+  const q = String(formData.get("q") ?? "");
+  const u = String(formData.get("u") ?? "");
+  const qs = new URLSearchParams({ ...(q ? { q } : {}), ...(u ? { u } : {}) }).toString();
+  return `/admin/users${qs ? `?${qs}` : ""}`;
+}
+
 async function suspend(formData: FormData) {
   "use server";
-  const q = String(formData.get("q") ?? "");
-  const back = `/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+  const back = backOf(formData);
   try {
     await adminSuspendUser(
       String(formData.get("user") ?? ""),
@@ -35,8 +46,7 @@ async function suspend(formData: FormData) {
 
 async function unsuspend(formData: FormData) {
   "use server";
-  const q = String(formData.get("q") ?? "");
-  const back = `/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+  const back = backOf(formData);
   try {
     await adminUnsuspendUser(String(formData.get("user") ?? ""));
   } catch (e) {
@@ -57,8 +67,7 @@ async function unsuspend(formData: FormData) {
  */
 async function setAdmin(formData: FormData) {
   "use server";
-  const q = String(formData.get("q") ?? "");
-  const back = `/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+  const back = backOf(formData);
   try {
     await adminSetAdmin(
       String(formData.get("user") ?? ""),
@@ -78,8 +87,7 @@ async function setAdmin(formData: FormData) {
  */
 async function grantPlus(formData: FormData) {
   "use server";
-  const q = String(formData.get("q") ?? "");
-  const back = `/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+  const back = backOf(formData);
   const sep = back.includes("?") ? "&" : "?";
   let res: { plusUntil: string | null; devices: number };
   try {
@@ -94,11 +102,14 @@ async function grantPlus(formData: FormData) {
   redirect(`${back}${sep}ok=plus&day=${encodeURIComponent(String(formData.get("day") ?? ""))}&dev=${res.devices}`);
 }
 
-/** آخرُ يومٍ في الشهر الجاري بتوقيت الرياض (`YYYY-MM-DD`) — القيمةُ الأولى لخانة «حتى» */
-function monthEndRiyadh(): string {
-  const now = new Date(Date.now() + 3 * 3_600_000);
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+/** بعد ثلاثين يوماً بتوقيت الرياض (`YYYY-MM-DD`) — القيمةُ الأولى لخانة «حتى».
+    ٦٠١ — كانت «آخرَ يومٍ في الشهر»: منحةٌ تُعطى يومَ ٢٩ تنتهي بعد يوم، والمديرُ لا ينتبه للتاريخ المملوء سلفاً */
+function grantDefaultDay(): string {
+  return new Date(Date.now() + 3 * 3_600_000 + 30 * 86_400_000).toISOString().slice(0, 10);
 }
+
+/* ٦٠١ — الخطّةُ بالعربيّة: «free» بالإنجليزيّة وسط سطرٍ عربيّ كان يُقرأ قيمةً خامّاً من القاعدة */
+const PLAN_AR: Record<string, string> = { free: "مجاني", plus: "Plus", gold: "Gold", partner: "شريك" };
 
 export default async function AdminUsersPage({
   searchParams,
@@ -127,9 +138,9 @@ export default async function AdminUsersPage({
           defaultValue={q}
           placeholder="اسم المستخدم أو الاسم أو المعرّف"
           aria-label="بحث عن مستخدم"
-          className="flex-1 rounded-input border border-border bg-surface px-3 py-2 text-14"
+          className={`${fieldClass} flex-1`}
         />
-        <button type="submit" className={buttonClass({ size: "sm" })}>بحث</button>
+        <button type="submit" className={buttonClass({ size: "sm", className: "shrink-0" })}>بحث</button>
       </form>
 
       <AdminNotice
@@ -143,6 +154,10 @@ export default async function AdminUsersPage({
       />
 
       {rows.length === 0 && <p className="text-14 text-muted">لا نتائج.</p>}
+
+      {/* ٦٠١ — **صفٌّ مختصرٌ لكلِّ حساب، والأفعالُ لمن فُتح وحدَه** (مراجعةُ ٢٧ نوفمبر): كانت ثلاثةُ نماذجَ حسّاسة
+          (اجعله مديراً · امنح Plus · إيقاف) مفتوحةً تحت كلِّ صفٍّ من الخمسةِ والعشرين — نحو ٧٥ نموذجاً وعشرُ شاشات،
+          والخطأُ باللمس على بُعد إصبع. «إدارة» تفتح الحسابَ الواحد (بابُ «اعرض ما كتبه» نفسُه في الرابط `u`). */}
 
       {rows.map((u) => {
         const name = u.nickname || u.username || "مستخدم";
@@ -164,32 +179,24 @@ export default async function AdminUsersPage({
                 </p>
               </div>
               {suspended ? (
-                <span className="shrink-0 rounded-full bg-[color:var(--error)]/15 px-2.5 py-1 text-12 font-bold text-[color:var(--error)]">
-                  موقوف
-                </span>
+                <span className={pillClass("bad")}>موقوف</span>
               ) : u.isAdmin || u.isSystem ? (
                 /* 🆕 D-963 — **والشارةُ تقرأ الحارسَ لا نصفَه**: `am_admin()`
                    = `is_admin` **أو** `is_system`، **وحسابُ النظام كان يُقرأ
                    مستخدماً عاديّاً وهو يملك اللوحةَ كاملة** — وهو أوّلُ صفٍّ
                    في هذه الصفحة (`created_at` فارغةٌ تتصدّر التنازليَّ). */
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-12 font-bold ${
-                    u.isSystem ? "bg-[color:var(--error)]/15 text-[color:var(--error)]" : "bg-accent/15 text-accent"
-                  }`}
-                >
+                <span className={pillClass(u.isSystem ? "bad" : "warn")}>
                   {u.isSystem ? (u.isAdmin ? "نظام · مدير" : "حساب نظام") : "مدير"}
                 </span>
               ) : null}
             </div>
 
             <dl className="text-13 text-muted space-y-1">
-              <div className="flex gap-2">
-                <dt className="shrink-0">انضمّ:</dt>
-                <dd dir="ltr">{u.createdAt?.slice(0, 10) ?? "—"}</dd>
-                <dt className="shrink-0 ms-3">آخر دخول:</dt>
-                <dd dir="ltr">{u.lastSignInAt?.slice(0, 10) ?? "—"}</dd>
-                <dt className="shrink-0 ms-3">الخطة:</dt>
-                <dd>{u.plan ?? "free"}</dd>
+              {/* ٦٠١ — التاريخُ لا ينكسر عند الشرطة («٢٠٢٦-» في سطر و«١١-٢٧» في آخر) */}
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                <span className="whitespace-nowrap">انضمّ: <span dir="ltr">{u.createdAt?.slice(0, 10) ?? "—"}</span></span>
+                <span className="whitespace-nowrap">آخر دخول: <span dir="ltr">{u.lastSignInAt?.slice(0, 10) ?? "—"}</span></span>
+                <span className="whitespace-nowrap">الخطة: {PLAN_AR[u.plan ?? "free"] ?? u.plan}</span>
               </div>
               {suspended && (
                 <div className="flex gap-2">
@@ -206,9 +213,12 @@ export default async function AdminUsersPage({
                 href={`/admin/users?${new URLSearchParams({ ...(q ? { q } : {}), ...(open === u.id ? {} : { u: u.id }) }).toString()}`}
                 className={buttonClass({ variant: "surface", size: "sm" })}
               >
-                {open === u.id ? "أغلق المحتوى" : "اعرض ما كتبه"}
+                {open === u.id ? "أغلق" : "إدارة"}
               </Link>
             </div>
+
+            {open === u.id ? (
+            <div className="space-y-2.5 border-t border-border pt-2.5">
 
             {/* 🆕 D-963 — **ولا زرَّ منحٍ على حسابِ نظام**: صلاحيتُه من
                 `is_system` لا من `is_admin`، **فالزرُّ يبدّل عموداً لا يغيّر
@@ -223,6 +233,7 @@ export default async function AdminUsersPage({
             <form action={setAdmin} className="flex items-center gap-2">
               <input type="hidden" name="user" value={u.id} />
               <input type="hidden" name="q" value={q} />
+                <input type="hidden" name="u" value={u.id} />
               <input type="hidden" name="on" value={u.isAdmin ? "0" : "1"} />
               <input
                 type="text"
@@ -232,7 +243,7 @@ export default async function AdminUsersPage({
                 maxLength={300}
                 placeholder={u.isAdmin ? "سبب سحب الإدارة (إلزامي)" : "سبب منح الإدارة (إلزامي)"}
                 aria-label={`${u.isAdmin ? "سبب سحب صلاحية الإدارة عن" : "سبب منح صلاحية الإدارة لـ"} ${name}`}
-                className="min-w-0 flex-1 rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
+                className={`${fieldClass} flex-1`}
               />
               <button type="submit" className={`shrink-0 ${buttonClass({ variant: "surface", size: "sm" })}`}>
                 {u.isAdmin ? "اسحب صلاحية الإدارة" : "اجعله مديراً"}
@@ -245,15 +256,16 @@ export default async function AdminUsersPage({
               <form action={grantPlus} className="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="user" value={u.id} />
                 <input type="hidden" name="q" value={q} />
+                <input type="hidden" name="u" value={u.id} />
                 <label className="flex shrink-0 items-center gap-1.5 text-13 text-muted">
                   حتى نهاية
                   <input
                     type="date"
                     name="day"
                     required
-                    defaultValue={monthEndRiyadh()}
+                    defaultValue={grantDefaultDay()}
                     aria-label={`آخر يوم في منحة Loopz+ لـ ${name}`}
-                    className="rounded-input border border-border bg-surface-2 px-2 py-1.5 text-14"
+                    className={`${fieldClass} px-2 py-1.5`}
                     dir="ltr"
                   />
                 </label>
@@ -265,7 +277,7 @@ export default async function AdminUsersPage({
                   maxLength={300}
                   placeholder="سبب المنحة (إلزامي)"
                   aria-label={`سبب منح Loopz+ لـ ${name}`}
-                  className="min-w-0 flex-1 rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
+                  className={`${fieldClass} flex-1`}
                 />
                 <button type="submit" className={`shrink-0 ${buttonClass({ variant: "surface", size: "sm" })}`}>
                   امنح Loopz+
@@ -282,14 +294,10 @@ export default async function AdminUsersPage({
                     {items.map((it, i) => (
                       <div key={`${it.kind}-${i}`} className="px-3 py-2.5">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-12 font-bold text-muted">
-                            {USER_ITEM_AR[it.kind]}
-                          </span>
+                          <span className={pillClass("mute")}>{USER_ITEM_AR[it.kind]}</span>
                           <p className="min-w-0 flex-1 truncate text-13 font-bold">{it.title}</p>
                           {it.hidden && (
-                            <span className="shrink-0 rounded-full bg-[color:var(--error)]/15 px-2 py-0.5 text-12 font-bold text-[color:var(--error)]">
-                              مخفيّ
-                            </span>
+                            <span className={pillClass("bad")}>مخفيّ</span>
                           )}
                           <span className="shrink-0 text-12 text-muted" dir="ltr">
                             {it.at?.slice(0, 10) ?? "—"}
@@ -313,6 +321,7 @@ export default async function AdminUsersPage({
               <form action={unsuspend} className="pt-1">
                 <input type="hidden" name="user" value={u.id} />
                 <input type="hidden" name="q" value={q} />
+                <input type="hidden" name="u" value={u.id} />
                 <button type="submit" className={buttonClass({ variant: "surface", size: "sm" })}>
                   فكّ الإيقاف
                 </button>
@@ -321,6 +330,7 @@ export default async function AdminUsersPage({
               <form action={suspend} className="flex items-center gap-2 pt-1">
                 <input type="hidden" name="user" value={u.id} />
                 <input type="hidden" name="q" value={q} />
+                <input type="hidden" name="u" value={u.id} />
                 <input
                   type="text"
                   name="reason"
@@ -328,13 +338,16 @@ export default async function AdminUsersPage({
                   maxLength={300}
                   placeholder="سبب الإيقاف (إلزامي)"
                   aria-label={`سبب إيقاف ${name}`}
-                  className="min-w-0 flex-1 rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
+                  className={`${fieldClass} flex-1`}
                 />
-                <button type="submit" className={`shrink-0 ${buttonClass({ size: "sm" })}`}>
+                {/* ٦٠١ — لونُ الخطر كرفض التوثيق: كان الإيقافُ بالأصفر الأساسيّ، أبرزَ زرٍّ في الصفحة */}
+                <button type="submit" className={`shrink-0 ${buttonClass({ variant: "danger", size: "sm" })}`}>
                   إيقاف
                 </button>
               </form>
             )}
+            </div>
+            ) : null}
           </section>
         );
       })}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CommandBoard, CommandRun, ProductMetrics } from "@/lib/command";
 import { riyadhDay, riyadhTime } from "../command/parts";
+import { pillClass, type PillTone } from "@/components/admin/style";
 
 /**
  * ====== 🆕 المؤشّرات (مهمّة ٥٩٧، التصميم «أ — بطاقة الأداء أوّلاً»، اختيارُ أحمد ٢٧ نوفمبر) ======
@@ -17,11 +18,12 @@ import { riyadhDay, riyadhTime } from "../command/parts";
  */
 type Row = NonNullable<ProductMetrics["scorecard"]>[number];
 
-const STATUS: Record<Row["status"], { label: string; badge: string; bar: string }> = {
-  stalled: { label: "متعثّر", badge: "bg-error/15 text-error", bar: "bg-error" },
-  behind: { label: "متأخّر", badge: "bg-accent/15 text-accent", bar: "bg-accent" },
-  on_track: { label: "على المسار", badge: "bg-success/15 text-success", bar: "bg-success" },
-  no_target: { label: "لا هدف بعد", badge: "bg-surface-2 text-muted", bar: "bg-muted" },
+/* ٦٠١ — الشارةُ من `pillClass` الواحدة (كانت ألوانَها نفسَها مكتوبةً هنا باليد) */
+const STATUS: Record<Row["status"], { label: string; tone: PillTone; bar: string }> = {
+  stalled: { label: "متعثّر", tone: "bad", bar: "bg-error" },
+  behind: { label: "متأخّر", tone: "warn", bar: "bg-accent" },
+  on_track: { label: "على المسار", tone: "ok", bar: "bg-success" },
+  no_target: { label: "لا هدف بعد", tone: "mute", bar: "bg-muted" },
 };
 
 /** حكمُ الاحتياط حين لا تقرير بعد — النسبةُ من الهدف بالعتبات نفسها التي في تعليمات المحلّل */
@@ -97,7 +99,7 @@ export function MetricsView({
                 <li key={r.key} className="py-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-14 font-medium">{r.label}</span>
-                    <span className={`shrink-0 rounded-md px-2 py-0.5 text-12 font-bold ${s.badge}`}>{s.label}</span>
+                    <span className={pillClass(s.tone)}>{s.label}</span>
                   </div>
                   <div className="mt-1.5 flex items-center gap-3">
                     <b dir="ltr" className="w-14 shrink-0 text-end text-20 tabular-nums">

@@ -3,6 +3,8 @@ import { getAmAdmin } from "@/lib/data";
 import { adminVerificationQueue, adminDecideVerification } from "@/lib/actions";
 import { buttonClass } from "@/components/ui/Button";
 import { AdminNotice } from "@/components/admin/AdminNotice";
+import { PartnerTabs } from "@/components/admin/PartnerTabs";
+import { fieldClass } from "@/components/admin/style";
 
 /**
  * 🆕 **طابورُ مراجعة التوثيق** (D-775) — نمطُ `/admin/partners` حرفاً
@@ -50,13 +52,14 @@ export default async function AdminVerifyPage({
   return (
     <div className="space-y-6">
       <h1 className="text-22 font-bold">طلبات التوثيق</h1>
+      <PartnerTabs active="/admin/verify" />
 
       <AdminNotice err={sp.err} ok={sp.ok} />
 
       {rows.length === 0 && <p className="text-14 text-muted">لا طلبات معلّقة.</p>}
 
       {rows.map((r) => (
-        <article key={r.id} className="rounded-2xl border border-border bg-surface-2 p-4 space-y-3">
+        <article key={r.id} className="rounded-card border border-border bg-surface-2 p-4 space-y-3">
           <header className="flex items-center justify-between gap-3">
             <span className="text-14 font-bold">{KIND_AR[r.kind] ?? r.kind}</span>
             <span className="text-12 text-muted">
@@ -115,7 +118,7 @@ export default async function AdminVerifyPage({
             <input
               name="note"
               placeholder="سبب الرفض أو ما ينقص — يظهر للمتقدّم"
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-14 outline-none focus:border-accent"
+              className={`${fieldClass} w-full outline-none focus:border-accent`}
             />
             <div className="flex flex-wrap gap-2">
               <button name="decision" value="approved" className={buttonClass({ size: "sm" })}>

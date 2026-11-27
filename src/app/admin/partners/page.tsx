@@ -7,6 +7,8 @@ import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";
 import { buttonClass } from "@/components/ui/Button";
 import { AdminNotice } from "@/components/admin/AdminNotice";
+import { PartnerTabs } from "@/components/admin/PartnerTabs";
+import { pillClass } from "@/components/admin/style";
 
 /**
  * 🆕 **لوحةُ طلبات الشركاء** (D-770) — نمطُ `/admin/links` حرفاً (D-608):
@@ -54,6 +56,7 @@ export default async function AdminPartnersPage({
   return (
     <div className="space-y-6">
       <h1 className="text-22 font-bold">طلبات Loopz Partners</h1>
+      <PartnerTabs active="/admin/partners" />
 
       <AdminNotice err={sp.err} ok={sp.ok} />
 
@@ -86,15 +89,7 @@ export default async function AdminPartnersPage({
                   {a.createdAt.slice(0, 10)}
                 </p>
               </div>
-              <span
-                className={`shrink-0 rounded-full px-2.5 py-1 text-12 font-bold ${
-                  a.status === "pending"
-                    ? "bg-accent/15 text-accent"
-                    : a.status === "approved"
-                      ? "bg-[color:var(--success)]/15 text-[color:var(--success)]"
-                      : "bg-surface-2 text-muted"
-                }`}
-              >
+              <span className={pillClass(a.status === "pending" ? "warn" : a.status === "approved" ? "ok" : "mute")}>
                 {STATUS_AR[a.status] ?? a.status}
               </span>
             </div>

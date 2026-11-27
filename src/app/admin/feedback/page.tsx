@@ -5,6 +5,7 @@ import { getAdminFeedback, adminFeedbackDone, type AdminFeedbackRow } from "@/li
 import { buttonClass } from "@/components/ui/Button";
 import { chipClass, chipRow } from "@/components/ui/controls";
 import { AdminNotice } from "@/components/admin/AdminNotice";
+import { pillClass } from "@/components/admin/style";
 
 /**
  * 🆕 **الملاحظات** (D-1499، أحمد ٢١ أكتوبر: «نبي مكان يقدر الشخص يكتب مشكلة او اقتراح ويرفعها بشكل سريع»).
@@ -50,11 +51,7 @@ function Row({ r, state }: { r: AdminFeedbackRow; state: State }) {
     <section className={`rounded-card border border-border bg-surface p-4 flex gap-4${r.doneAt ? " opacity-70" : ""}`}>
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-center gap-2 text-12 text-muted">
-          <span
-            className={`rounded-full px-2.5 py-0.5 font-bold ${
-              r.kind === "bug" ? "bg-[color:var(--error)]/15 text-[color:var(--error)]" : "bg-accent/15 text-accent"
-            }`}
-          >
+          <span className={pillClass(r.kind === "bug" ? "bad" : "warn")}>
             {r.kind === "bug" ? "مشكلة" : "اقتراح"}
           </span>
           {r.author ? (

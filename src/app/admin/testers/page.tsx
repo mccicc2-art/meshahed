@@ -11,6 +11,7 @@ import { adminTesterAdd, adminTesterRemove, adminTesterInvited } from "@/lib/adm
 import { Avatar } from "@/components/Avatar";
 import { buttonClass } from "@/components/ui/Button";
 import { settingsCard } from "@/components/settings/SettingsGroup";
+import { fieldClass, pillClass, type PillTone } from "@/components/admin/style";
 
 /**
  * 🆕 **متابعةُ الاختبار المغلق** (D-909، طلبُ أحمد: «أتابع لوبز ١٠٠٪ —
@@ -136,11 +137,13 @@ function attentionRank(t: AdminTesterRow): number {
 const NEEDED = 12;
 
 const TONE: Record<string, string> = {
-  bad: "bg-[color:var(--error)]/15 text-[color:var(--error)]",
+  bad: "bg-error/15 text-error",
   warn: "bg-accent/15 text-accent",
   ok: "bg-surface-2 text-muted",
-  best: "bg-[color:var(--success)]/15 text-[color:var(--success)]",
+  best: "bg-success/15 text-success",
 };
+/* ٦٠١ — الشاراتُ بشارة الإدارة الواحدة (`pillClass`)؛ و`TONE` يبقى لخلفيّة لافتة العدّاد وحدها */
+const PILL: Record<string, PillTone> = { bad: "bad", warn: "warn", ok: "mute", best: "ok" };
 
 export default async function AdminTestersPage({
   searchParams,
@@ -183,9 +186,9 @@ export default async function AdminTestersPage({
           </p>
         </div>
         <span
-          className={`rounded-full px-3 py-1 text-12 font-bold ${
-            activeToday >= NEEDED ? TONE.best : activeToday === signedIn && signedIn > 0 ? TONE.ok : TONE.warn
-          }`}
+          className={pillClass(
+            activeToday >= NEEDED ? "ok" : activeToday === signedIn && signedIn > 0 ? "mute" : "warn",
+          )}
         >
           اليوم {activeToday} / {NEEDED}
         </span>
@@ -199,7 +202,7 @@ export default async function AdminTestersPage({
       {/* ——— ١) العدّادُ اليوميّ — يُقرأ في ثلاث ثوانٍ ——— */}
       <section className={`${settingsCard} p-4`}>
         <div
-          className={`rounded-xl px-4 py-3 ${
+          className={`rounded-control px-4 py-3 ${
             complete && (daily?.all_today ?? false) ? TONE.best : complete ? TONE.ok : TONE.warn
           }`}
         >
@@ -219,7 +222,7 @@ export default async function AdminTestersPage({
             { k: "يحتاجون رسالة", v: `${needMessage.length}` },
             { k: "نشطون ٧ أيّام", v: `${active7}` },
           ].map((s) => (
-            <div key={s.k} className="rounded-xl bg-surface-2 px-3 py-2.5">
+            <div key={s.k} className="rounded-control bg-surface-2 px-3 py-2.5">
               <p className="text-12 text-muted">{s.k}</p>
               <p className="mt-0.5 text-20 font-bold tabular-nums" dir="ltr">{s.v}</p>
             </div>
@@ -251,8 +254,9 @@ export default async function AdminTestersPage({
               <li key={t.email} className="flex flex-wrap items-center gap-2">
                 <a href={`mailto:${t.email}`} className="underline" dir="ltr">{t.email}</a>
                 <span className="text-muted">
-                  {t.nickname || t.username ? `(${t.nickname || t.username})` : ""}
-                  {" · "}
+                  {/* ٦٠١ — الاسمُ معزولٌ اتّجاهيّاً بلا قوسين: قوسان حول اسمٍ لاتينيٍّ في سطرٍ عربيّ ينقلبان */}
+                  {t.nickname || t.username ? <bdi>{t.nickname || t.username}</bdi> : null}
+                  {t.nickname || t.username ? " · " : ""}
                   {t.streak > 0 ? `كان على ${t.streak} يوماً متّصلاً` : `آخر ظهور ${since(t.lastSeenAt)}`}
                 </span>
               </li>
@@ -270,7 +274,7 @@ export default async function AdminTestersPage({
           dir="ltr"
           placeholder="tester@gmail.com"
           aria-label="بريد المختبِر"
-          className="min-w-[220px] flex-1 rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
+          className={`${fieldClass} min-w-[220px] flex-1`}
         />
         <input
           type="text"
@@ -278,7 +282,7 @@ export default async function AdminTestersPage({
           maxLength={120}
           placeholder="ملاحظة (اختياري)"
           aria-label="ملاحظة"
-          className="min-w-[140px] flex-1 rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
+          className={`${fieldClass} min-w-[140px] flex-1`}
         />
         <button type="submit" className={buttonClass({ size: "sm" })}>أضِف</button>
       </form>
@@ -305,23 +309,23 @@ export default async function AdminTestersPage({
                   {t.note ? ` · ${t.note}` : ""}
                 </p>
               </div>
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-12 font-bold ${TONE[st.tone]}`}>
+              <span className={pillClass(PILL[st.tone] ?? "mute")}>
                 {st.label}
               </span>
             </div>
 
             {t.userId && (
               <div className="flex flex-wrap gap-1.5 text-12">
-                <span className={`rounded-full px-2 py-0.5 font-bold ${t.activeToday ? TONE.best : TONE.bad}`}>
+                <span className={pillClass(t.activeToday ? "ok" : "bad")}>
                   {t.activeToday ? `اليوم ✓ ≈ ${t.minutesToday} د` : "اليوم ✗"}
                 </span>
-                <span className={`rounded-full px-2 py-0.5 font-bold ${t.streak >= 3 ? TONE.best : t.streak > 0 ? TONE.ok : TONE.bad}`}>
+                <span className={pillClass(t.streak >= 3 ? "ok" : t.streak > 0 ? "mute" : "bad")}>
                   متّصل {t.streak} يوم
                 </span>
-                <span className={`rounded-full px-2 py-0.5 ${TONE.ok}`}>
+                <span className={pillClass("mute")}>
                   ١٤ يوماً: {t.days14} (من التطبيق {t.appDays14})
                 </span>
-                <span className={`rounded-full px-2 py-0.5 ${TONE.ok}`}>
+                <span className={pillClass("mute")}>
                   ٧ أيّام ≈ {t.minutes7d} د
                 </span>
               </div>
@@ -398,7 +402,7 @@ export default async function AdminTestersPage({
                       {shown ?? c.emailMasked ?? c.userId.slice(0, 8)}
                     </p>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-12 font-bold ${TONE.warn}`}>
+                  <span className={pillClass("warn")}>
                     {since(c.seenAt)}
                   </span>
                 </div>

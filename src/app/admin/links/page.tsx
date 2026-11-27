@@ -1,4 +1,6 @@
 import { notFound, redirect } from "next/navigation";
+import { chipClass } from "@/components/ui/controls";
+import { fieldBase, fieldClass } from "@/components/admin/style";
 import { getAmAdmin } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { getTv, getMovie, getWatchProviders, searchMulti, type Provider } from "@/lib/tmdb";
@@ -119,13 +121,13 @@ export default async function AdminLinksPage({
           name="q"
           defaultValue={q}
           placeholder="اسم العمل أو TMDB ID"
-          className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-14"
+          className={`${fieldClass} flex-1`}
         />
-        <select name="type" defaultValue={media} className="rounded-xl border border-border bg-surface px-2 text-14">
+        <select name="type" defaultValue={media} className={`${fieldBase} shrink-0 px-2 py-2`}>
           <option value="tv">مسلسل</option>
           <option value="movie">فيلم</option>
         </select>
-        <button type="submit" className={buttonClass({ size: "sm" })}>بحث</button>
+        <button type="submit" className={buttonClass({ size: "sm", className: "shrink-0" })}>بحث</button>
       </form>
 
       {q && /^\d+$/.test(q) && (
@@ -170,9 +172,7 @@ export default async function AdminLinksPage({
                 <a
                   key={r.code}
                   href={`/admin/links?id=${id}&type=${media}&country=${r.code}`}
-                  className={`text-12 px-2 py-1 rounded-lg border ${
-                    r.code === country ? "border-accent text-accent" : "border-border text-muted"
-                  }`}
+                  className={chipClass(r.code === country, "sm")}
                   dir="ltr"
                 >
                   {r.code}
@@ -218,13 +218,13 @@ export default async function AdminLinksPage({
                   defaultValue={row?.destination_url ?? ""}
                   placeholder={`https://… رابط العمل على ${p.provider_name}`}
                   dir="ltr"
-                  className="w-full rounded-xl border border-border bg-surface-2 px-3 py-2 text-14"
+                  className={`${fieldClass} w-full`}
                 />
                 <div className="flex items-center gap-2">
                   <select
                     name="status"
                     defaultValue={row?.status ?? "verified"}
-                    className="rounded-xl border border-border bg-surface-2 px-2 py-1.5 text-14"
+                    className={`${fieldBase} px-2 py-1.5`}
                     dir="ltr"
                   >
                     {STATUSES.map((s) => (

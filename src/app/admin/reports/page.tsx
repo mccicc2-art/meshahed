@@ -6,6 +6,7 @@ import { adminReportDecide } from "@/lib/adminReports";
 import { buttonClass } from "@/components/ui/Button";
 import { settingsCard } from "@/components/settings/SettingsGroup";
 import { AdminNotice } from "@/components/admin/AdminNotice";
+import { pillClass, type PillTone } from "@/components/admin/style";
 
 /**
  * 🆕 **البلاغات** (D-927، تقييمُ ٥ سبتمبر: «الإخفاءُ الوحيدُ في المنتج
@@ -74,20 +75,14 @@ async function decide(formData: FormData) {
 }
 
 function Row({ r }: { r: AdminReportRow }) {
-  const tone = r.hidden
-    ? "bg-[color:var(--error)]/15 text-[color:var(--error)]"
-    : r.reports >= AUTO_HIDE
-      ? "bg-accent/15 text-accent"
-      : "bg-surface-2 text-muted";
+  const tone: PillTone = r.hidden ? "bad" : r.reports >= AUTO_HIDE ? "warn" : "mute";
   const refJson = JSON.stringify(r.ref);
   return (
     <section className="rounded-card border border-border bg-surface p-4 space-y-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-surface-2 px-2.5 py-1 text-12 font-bold text-muted">
-          {REPORT_KIND_AR[r.kind] ?? r.kind}
-        </span>
+        <span className={pillClass("mute")}>{REPORT_KIND_AR[r.kind] ?? r.kind}</span>
         <p className="min-w-0 flex-1 truncate text-14 font-bold">{r.subject || "—"}</p>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-12 font-bold ${tone}`}>
+        <span className={pillClass(tone)}>
           {r.hidden ? "مخفيّ" : `${r.reports} بلاغ`}
         </span>
       </div>
@@ -185,21 +180,19 @@ export default async function AdminReportsPage({
           <h1 className="text-22 font-bold">البلاغات</h1>
           <p className="text-12 text-muted">سبعةُ مجارٍ في صفٍّ واحد · والمخفيُّ معها</p>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-12 font-bold ${
-            rows.length === 0
-              ? "bg-[color:var(--success)]/15 text-[color:var(--success)]"
-              : "bg-accent/15 text-accent"
-          }`}
-        >
+        <span className={pillClass(rows.length === 0 ? "ok" : "warn")}>
           {rows.length === 0 ? "لا شيء ينتظر" : `${pending.length} بلاغ · ${hidden.length} مخفيّ`}
         </span>
       </header>
 
       <AdminNotice err={sp.err} ok={sp.ok} />
 
-      <section className={`${settingsCard} p-4 text-12 text-muted leading-relaxed`}>
-        <p>
+      {/* ٦٠١ — **السياسةُ مطويّة**: سبعةُ أسطرٍ ثابتةٌ فوق طابورٍ فارغٍ في أغلب الأيّام، تُقرأ مرّةً وتُفتح عند الحاجة */}
+      <details className={`${settingsCard} p-4 text-12 text-muted leading-relaxed`}>
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden font-bold text-foreground">
+          كيف يقع الإخفاءُ وماذا يفعل القرار <span className="font-normal text-accent">· التفاصيل</span>
+        </summary>
+        <p className="mt-2">
           <b className="text-foreground">
             الإخفاءُ يقع تلقائيّاً عند {AUTO_HIDE} بلاغات في {AUTO_HIDE_KINDS.length} مجارٍ
           </b>{" "}
@@ -216,7 +209,7 @@ export default async function AdminReportsPage({
           وبلاغُ الحساب لا زرَّ حكمٍ له هنا — عقوبتُه الإيقافُ وبابُه{" "}
           <Link href="/admin/users" className="text-accent hover:underline">المستخدمون</Link>.
         </p>
-      </section>
+      </details>
 
       {rows.length === 0 ? (
         <p className="text-14 text-muted">
