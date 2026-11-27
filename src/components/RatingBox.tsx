@@ -9,6 +9,7 @@ import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { Icon } from "./Icon";
 import { dirOf } from "@/core/dir";
+import { hasAuthCookie, openLoginGate } from "@/lib/loginGate";
 
 export function RatingBox({
   tmdbId,
@@ -76,6 +77,8 @@ export function RatingBox({
   // الحفظ تفاؤلي كبقية الأفعال: «تم» يظهر فوراً ويتراجع إن فشلت الكتابة —
   // كان التقييم الفعل الرئيسي الوحيد الذي ينتظر الخادم ثم يجدّد الصفحة كلها
   function save() {
+    /* 🆕 T598 — زائرٌ بلا جلسة يُدعى إلى الدخول بدل «تم» ثمّ خطأٍ تحت النجوم */
+    if (!hasAuthCookie()) return void openLoginGate();
     if (rating < 1) {
       setError(t.ratePickFirst);
       return;
@@ -104,6 +107,7 @@ export function RatingBox({
   }
 
   function remove() {
+    if (!hasAuthCookie()) return void openLoginGate();
     tap(10);
     setError(null);
     const prev = { rating, review, saved };

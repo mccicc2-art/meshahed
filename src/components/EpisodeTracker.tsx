@@ -27,6 +27,7 @@ const EpisodeRateSheet = dynamic(() => import("./EpisodeRateSheet").then((m) => 
    بعد تأشير موسمٍ كامل، **فشحنُها مع الصفحة ثمنٌ بلا قارئ.** */
 const SeasonDateSheet = dynamic(() => import("./SeasonDateSheet").then((m) => m.SeasonDateSheet), { ssr: false });
 import type { EpisodeRatingRow } from "@/lib/data";
+import { hasAuthCookie, openLoginGate } from "@/lib/loginGate";
 
 export interface TrackerEpisode {
   episode_number: number;
@@ -462,6 +463,8 @@ export function EpisodeTracker({
   const [shownAll, setShownAll] = useState<Set<number>>(new Set());
 
   function toggleOne(season: number, ep: TrackerEpisode) {
+    /* 🆕 T598 — زائرٌ بلا جلسة يُدعى إلى الدخول قبل أن يتحرّك شيء: كان الفعلُ يُرسَم ثمّ يتراجع بخطأٍ قد يُقنَّع في الإنتاج */
+    if (!hasAuthCookie()) return void openLoginGate();
     const key = episodeKey(season, ep.episode_number);
     const next = !watched.has(key);
     tap(10);
@@ -571,6 +574,7 @@ export function EpisodeTracker({
   }
 
   function toggleSeason(s: SeasonSummary, mark: boolean) {
+    if (!hasAuthCookie()) return void openLoginGate();
     setErr(null);
     start(async () => {
       const eps = await loadSeason(s.season_number);
@@ -667,6 +671,7 @@ export function EpisodeTracker({
    * فضغطةٌ على الجزء ١٣ من كونان تؤشّر ١٣٠٠ حلقة. «حتى هنا» على الحلقة يبقى بابَ «شاهدتُ كلَّ ما قبل».
    */
   function togglePart(s: SeasonSummary, part: SeasonPart, mark: boolean) {
+    if (!hasAuthCookie()) return void openLoginGate();
     setErr(null);
     start(async () => {
       const eps = await loadSeason(s.season_number);
