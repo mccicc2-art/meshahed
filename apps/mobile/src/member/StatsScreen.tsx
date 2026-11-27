@@ -4,7 +4,8 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError } from "../api";
+import { api, ApiError, downloadTo } from "../api";
+import { File, Paths } from "expo-file-system";
 import { useApp } from "../state";
 import { Button, Text, TopBar } from "../ui";
 import { Icon, type IconName } from "../icons";
@@ -483,6 +484,29 @@ function MatchSheet({
   const m = d.match!;
   const ar = locale !== "en";
   const name = displayNameOf(d.person, t.anonymousUser);
+  /* 🆕 T596 — «شارك التطابق» (ن٧ «ص٨»): صورةُ قصّةٍ ١٠٨٠×١٩٢٠ بالحكم والنسبة وما شاهدتماه معاً. اسمُ صاحب الملفّ وصورتُه فيها
+     بإذنه فقط (إعدادٌ في خصوصيّته)، وإلّا «صديق». متاحةٌ للجميع: النسبةُ على وجه الباب أصلاً، والتفصيلُ وحده للبلس */
+  const [sharing, setSharing] = useState(false);
+  const [shareErr, setShareErr] = useState(false);
+  async function shareMatch() {
+    if (sharing || !d.person.username) return;
+    setSharing(true);
+    setShareErr(false);
+    try {
+      for (const f of Paths.cache.list()) {
+        if (f instanceof File && f.name.startsWith("loopz-match-")) f.delete();
+      }
+      const file = new File(Paths.cache, `loopz-match-${Date.now()}.png`);
+      await downloadTo(`/api/v1/me/match-card/image?u=${encodeURIComponent(d.person.username)}`, file);
+      const Sharing = await import("expo-sharing");
+      if (!(await Sharing.isAvailableAsync())) throw new Error("sharing unavailable");
+      await Sharing.shareAsync(file.uri, { mimeType: "image/png", UTI: "public.png", dialogTitle: ar ? "شارك التطابق" : "Share the match" });
+    } catch {
+      setShareErr(true);
+    } finally {
+      setSharing(false);
+    }
+  }
   const locked = (
     <View>
       {m.shared.length ? (
@@ -559,6 +583,12 @@ function MatchSheet({
         <Text size={12} muted style={{ marginTop: 8, lineHeight: 18 }}>
           {ar ? "محسوبٌ من حصص الأنواع في مكتبتيكما — لا من الأعمال نفسها." : "Measured from the genre mix of both libraries — not the titles themselves."}
         </Text>
+        {d.person.username ? (
+          <View style={{ marginTop: 14, gap: 6 }}>
+            <Button size="sm" variant="ghost" label={ar ? "شارك التطابق" : "Share the match"} busy={sharing} onPress={() => void shareMatch()} />
+            {shareErr ? <Text size={12} muted>{t.shareFailed}</Text> : null}
+          </View>
+        ) : null}
         {m.plus ? (
           locked
         ) : (

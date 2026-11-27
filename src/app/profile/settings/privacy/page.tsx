@@ -7,6 +7,7 @@ import { AccountSettings } from "@/components/AccountSettings";
 import { LibraryAccessList } from "@/components/LibraryAccessList";
 import { BlockedList } from "@/components/BlockedList";
 import { DmPolicySection } from "@/components/settings/DmPolicySection";
+import { MatchCardConsent } from "@/components/settings/MatchCardConsent";
 
 /**
  * الخصوصيةُ والأمان — **من يراك وماذا يرى** (D-462).
@@ -44,6 +45,8 @@ export default async function Page() {
         }
         only={["hideName", "privateAccount", "followLists"]}
       />
+      {/* 🆕 T596 — اسمي في بطاقات تطابق الذوق (س٩ «أ»): مطفأٌ افتراضيّاً، ويغيب قبل الهجرة ٢٧٣ */}
+      <MatchCardConsent locale={locale} />
 
       <SettingsGroup label={t.setGroupPeople}>
         {/* 🆕 D-1380 — «من يقدر يراسلني» أوّلَ مجموعة الناس: سؤالٌ عن الناس لا عن الملفّ */}
@@ -53,6 +56,8 @@ export default async function Page() {
       </SettingsGroup>
       </div>
       <div className="hidden desk:grid grid-cols-2 items-start gap-4">
+      {/* المفاتيحُ والمفتاحُ الرابع في خانةٍ واحدة: الشبكةُ تبقى زوجين زوجين */}
+      <div className="space-y-4">
       <AccountSettings
         locale={locale}
         initialNickname={p?.nickname ?? ""}
@@ -65,6 +70,9 @@ export default async function Page() {
         }
         only={["hideName", "privateAccount", "followLists"]}
       />
+      {/* 🆕 T596 — اسمي في بطاقات تطابق الذوق (س٩ «أ»): مطفأٌ افتراضيّاً، ويغيب قبل الهجرة ٢٧٣ */}
+      <MatchCardConsent locale={locale} />
+      </div>
 
       <SettingsGroup label={t.setGroupPeople}>
         <DmPolicySection locale={locale} initial={dmPolicy} />

@@ -27,7 +27,7 @@ import { avatarSource } from "../avatarSource";
  * الحظر) — ورقتان من `Sheet` الواحدة كما في الويب (`SettingsBottomSheet`).
  */
 export function PrivacyScreen() {
-  const { t } = useApp();
+  const { t, locale } = useApp();
   const q = useSettings();
   const s = q.data;
   const toast = useRef<ToastHostRef>(null);
@@ -52,6 +52,25 @@ export function PrivacyScreen() {
     setBusy(false);
     if (!out) toast.current?.say(t.errSaveShort);
   }
+  /* 🆕 T596 — «اسمي في بطاقات التطابق» (أحمد ٢٧ نوفمبر «س٩ أ»): مطفأٌ افتراضيّاً، ويغيب قبل الهجرة ٢٧٣ (`ready: false`).
+     قراءةٌ وكتابةٌ مستقلّتان عن المفاتيح الثلاثة — عمودٌ آخر، ومفتاحٌ يُحفظ وحدَه والفشلُ يعيده */
+  const en = locale === "en";
+  const mc = useQuery({ queryKey: ["me:settings:match-card"], queryFn: () => api<{ allow: boolean; ready: boolean }>("/api/v1/me/settings/match-card").then((r) => r.data) });
+  async function flipMatch() {
+    const cur = mc.data;
+    if (!cur || busy) return;
+    haptic.pick();
+    setBusy(true);
+    queryClient.setQueryData(["me:settings:match-card"], { ...cur, allow: !cur.allow });
+    try {
+      await write("/api/v1/me/settings/match-card", { allow: !cur.allow });
+    } catch {
+      queryClient.setQueryData(["me:settings:match-card"], cur);
+      toast.current?.say(t.errSaveShort);
+    } finally {
+      setBusy(false);
+    }
+  }
   const dmLabel: Record<DmPolicy, string> = { everyone: t.dmPolicyEveryone, mutual: t.dmPolicyMutual, none: t.dmPolicyNone };
   const pv = s?.privacy;
   return (
@@ -64,6 +83,16 @@ export function PrivacyScreen() {
             <Toggle icon="eye-off" label={t.hideNameSection} hint={t.hideNameHint} checked={pv.hide_name} disabled={busy} onChange={() => void commit({ hide_name: !pv.hide_name, is_private: pv.is_private, hide_follow_lists: pv.hide_follow_lists })} />
             <Toggle icon="shield" label={t.privateSection} hint={t.privateHint} checked={pv.is_private} disabled={busy} onChange={() => void commit({ hide_name: pv.hide_name, is_private: !pv.is_private, hide_follow_lists: pv.hide_follow_lists })} />
             <Toggle icon="people" label={t.followListsSection} hint={t.followListsHint} checked={pv.hide_follow_lists} disabled={busy} onChange={() => void commit({ hide_name: pv.hide_name, is_private: pv.is_private, hide_follow_lists: !pv.hide_follow_lists })} />
+            {mc.data?.ready ? (
+              <Toggle
+                icon="sparkles"
+                label={en ? "Show my name on taste-match cards" : "اسمح بظهور اسمي في بطاقات التطابق"}
+                hint={en ? "When someone shares how close your tastes are, your name and photo appear. Off: you show as «a friend»." : "حين يشارك أحدٌ نسبةَ تطابق ذوقه معك يظهر اسمُك وصورتُك. مطفأ: تظهر «صديقاً» بلا اسم."}
+                checked={mc.data.allow}
+                disabled={busy}
+                onChange={() => void flipMatch()}
+              />
+            ) : null}
           </Group>
           <Group label={t.setGroupPeople}>
             <ExpandRow icon="chat" title={t.dmPolicyLabel} value={dmLabel[pv.dm_policy ?? "everyone"]} open={dmOpen} onToggle={() => setDmOpen((v) => !v)}>

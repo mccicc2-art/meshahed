@@ -29,7 +29,7 @@ const URL_INK = "#8A8A8A";
  * والويب يقولان «حمّل»، والكلمةُ هنا حدثٌ لا دعوة — فرمزٌ واحدٌ بلون التمييز يقول الحدثَ نفسَه بجوار كلمته. خطوطٌ مرسومةٌ هنا
  * (لا ملفّاتُ أيقونات التطبيق): الصورةُ تُرسم على الخادم بلونها هي.
  */
-export type ShareFooterIcon = "sparkles" | "chart" | "clock" | "star" | "comment" | "film" | "user" | "list" | "invite";
+export type ShareFooterIcon = "sparkles" | "chart" | "clock" | "star" | "comment" | "film" | "user" | "list" | "invite" | "match";
 const Y = "#FFD400";
 const ICON: Record<ShareFooterIcon, React.ReactNode> = {
   /* الحصاد: نجماتٌ ثلاث — احتفالُ السنة */
@@ -82,6 +82,13 @@ const ICON: Record<ShareFooterIcon, React.ReactNode> = {
       <rect x="8.6" y="5.1" width="12.4" height="2.2" rx="1.1" fill={Y} />
       <rect x="8.6" y="10.9" width="12.4" height="2.2" rx="1.1" fill={Y} />
       <rect x="8.6" y="16.7" width="12.4" height="2.2" rx="1.1" fill={Y} />
+    </g>
+  ),
+  /* 🆕 تطابقُ الذوق: دائرتان متداخلتان — ذوقان يلتقيان */
+  match: (
+    <g>
+      <circle cx="9" cy="12" r="6.4" fill="none" stroke={Y} strokeWidth={2.2} />
+      <circle cx="15" cy="12" r="6.4" fill="none" stroke={Y} strokeWidth={2.2} />
     </g>
   ),
   /* 🆕 معاينةُ الدعوة: ظرف */
