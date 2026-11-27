@@ -11,7 +11,7 @@ import { join } from "node:path";
  *
  * تُبنى بالكود لا كملفٍ ثابت: اللون والتدرّج يتبعان نفس متغيّرات الهوية،
  * فلو تغيّرت لم تبقَ صورةٌ قديمة تكذّبها. ونصّها لاتينيّ عمداً — الخطّ
- * المُحمَّل هنا نسخة Cairo اللاتينية (`woff`)، والعربية تحتاج نسختها
+ * المُحمَّل هنا Poppins اللاتينيّ (خطُّ التطبيق)، والعربية تحتاج نسختها
  * وحجمَها، ولا داعي لتحميل الاثنين لصورةٍ فيها كلمتان.
  */
 export const alt = "Loopz — Track. Watch. Remember.";
@@ -19,7 +19,8 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function Image() {
-  const font = await readFile(join(process.cwd(), "public/fonts/cairo-700-latin.woff"));
+  /* 🆕 خطُّ التطبيق (أحمد «س١٠ أ»): Poppins لا Cairo — الصورةُ من التطبيق نفسِه */
+  const font = await readFile(join(process.cwd(), "public/fonts/Poppins-700.ttf"));
 
   return new ImageResponse(
     (
@@ -32,7 +33,7 @@ export default async function Image() {
           alignItems: "center",
           justifyContent: "center",
           background: "#0D0D0D",
-          fontFamily: "Cairo",
+          fontFamily: "Poppins",
           position: "relative",
         }}
       >
@@ -81,7 +82,7 @@ export default async function Image() {
     ),
     {
       ...size,
-      fonts: [{ name: "Cairo", data: font, style: "normal", weight: 700 }],
+      fonts: [{ name: "Poppins", data: font, style: "normal", weight: 700 }],
     },
   );
 }

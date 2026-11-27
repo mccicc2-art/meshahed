@@ -22,16 +22,23 @@ test("الاسمُ والسنة، والسطرُ: النوعُ والتصنيف�
   assert.ok(description.length < 220);
 });
 
-test("البوسترُ من ممرّنا بمقاس w500، وبطاقةُ X صغيرة", () => {
+test("🆕 ن٨ — الصورةُ العريضةُ بلغة المعاينة، وبطاقةُ X كبيرة", () => {
   const m = titleMetadata(lost);
-  const og = m.openGraph as { images?: { url: string }[]; url?: string };
-  assert.equal(og.images?.[0].url, "/i/w500/og.jpg");
+  const og = m.openGraph as { images?: { url: string; width: number; height: number }[]; url?: string };
+  assert.equal(og.images?.[0].url, "/api/og/tv/4607?l=ar");
+  assert.equal(og.images?.[0].width, 1200);
   assert.equal(og.url, "/show/4607");
+  assert.equal((m.twitter as { card?: string }).card, "summary_large_image");
+});
+
+test("بلا رقمٍ في المسار يبقى البوسترُ من ممرّنا (w500) وبطاقةٌ صغيرة", () => {
+  const m = titleMetadata({ ...lost, path: "/show/lost" });
+  assert.equal((m.openGraph as { images?: { url: string }[] }).images?.[0].url, "/i/w500/og.jpg");
   assert.equal((m.twitter as { card?: string }).card, "summary");
 });
 
 test("مسارُ صورةٍ غريبٌ لا يُبنى منه رابط، وفيلمٌ بالإنجليزيّة بمدّته", () => {
-  const m = titleMetadata({ ...lost, kind: "movie", name: "Heat", date: "1995-12-15", extent: 170, genres: ["Crime"], posterPath: "/../x.jpg", locale: "en", overview: "" });
+  const m = titleMetadata({ ...lost, kind: "movie", name: "Heat", date: "1995-12-15", extent: 170, genres: ["Crime"], posterPath: "/../x.jpg", locale: "en", overview: "", path: "/movie/heat" });
   assert.equal((m.openGraph as { images?: unknown }).images, undefined);
   assert.equal(titleCardText({ ...lost, kind: "movie", name: "Heat", date: "1995-12-15", extent: 170, genres: ["Crime"], locale: "en", overview: "" }).description, "Movie · Crime · 170 min");
 });

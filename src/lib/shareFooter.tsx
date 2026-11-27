@@ -29,7 +29,7 @@ const URL_INK = "#8A8A8A";
  * والويب يقولان «حمّل»، والكلمةُ هنا حدثٌ لا دعوة — فرمزٌ واحدٌ بلون التمييز يقول الحدثَ نفسَه بجوار كلمته. خطوطٌ مرسومةٌ هنا
  * (لا ملفّاتُ أيقونات التطبيق): الصورةُ تُرسم على الخادم بلونها هي.
  */
-export type ShareFooterIcon = "sparkles" | "chart" | "clock" | "star" | "comment";
+export type ShareFooterIcon = "sparkles" | "chart" | "clock" | "star" | "comment" | "film" | "user" | "list" | "invite";
 const Y = "#FFD400";
 const ICON: Record<ShareFooterIcon, React.ReactNode> = {
   /* الحصاد: نجماتٌ ثلاث — احتفالُ السنة */
@@ -59,6 +59,38 @@ const ICON: Record<ShareFooterIcon, React.ReactNode> = {
   star: <path d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.6L12 17.6l-5.9 3.1 1.2-6.6L2.5 9.5l6.6-.9z" fill={Y} />,
   /* النقاش: فقاعة */
   comment: <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.6 3.8c-.5.4-1.4.1-1.4-.6V5.5z" fill={Y} />,
+  /* 🆕 معاينةُ العمل: لوحُ تصوير — العملُ نفسُه لا «شاهد» (لوبز ليس منصّةَ بثّ) */
+  film: (
+    <g>
+      <path d="M3.5 9.5h17v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" fill={Y} />
+      <path d="M3.2 7.6l16.4-3.4.5 2.6L3.7 10.2z" fill={Y} />
+    </g>
+  ),
+  /* 🆕 معاينةُ الملفّ: شخص */
+  user: (
+    <g>
+      <circle cx="12" cy="8" r="4.2" fill={Y} />
+      <path d="M3.8 20.2c.8-4 4.1-6.4 8.2-6.4s7.4 2.4 8.2 6.4c.1.5-.3.8-.8.8H4.6c-.5 0-.9-.3-.8-.8z" fill={Y} />
+    </g>
+  ),
+  /* 🆕 معاينةُ القائمة: أسطرٌ مرقّمة */
+  list: (
+    <g>
+      <rect x="3" y="4.5" width="3.4" height="3.4" rx="1" fill={Y} />
+      <rect x="3" y="10.3" width="3.4" height="3.4" rx="1" fill={Y} />
+      <rect x="3" y="16.1" width="3.4" height="3.4" rx="1" fill={Y} />
+      <rect x="8.6" y="5.1" width="12.4" height="2.2" rx="1.1" fill={Y} />
+      <rect x="8.6" y="10.9" width="12.4" height="2.2" rx="1.1" fill={Y} />
+      <rect x="8.6" y="16.7" width="12.4" height="2.2" rx="1.1" fill={Y} />
+    </g>
+  ),
+  /* 🆕 معاينةُ الدعوة: ظرف */
+  invite: (
+    <g>
+      <rect x="2.8" y="5" width="18.4" height="14" rx="2.4" fill={Y} />
+      <path d="M4 7l8 6 8-6" fill="none" stroke="#050505" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  ),
 };
 
 /**

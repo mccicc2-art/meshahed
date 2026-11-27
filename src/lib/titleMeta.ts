@@ -51,8 +51,13 @@ export function titleCardText(c: TitleCard): { title: string; description: strin
 
 export function titleMetadata(c: TitleCard): Metadata {
   const { title, description } = titleCardText(c);
-  const image = c.posterPath && POSTER_FILE.test(c.posterPath) ? `/i/w500/${c.posterPath.slice(1)}` : null;
-  const images = image ? [{ url: image, width: 500, height: 750, alt: c.name }] : undefined;
+  /* 🆕 ن٨ (أحمد ٢٧ نوفمبر): صورةٌ عريضةٌ ١٢٠٠×٦٣٠ بدل البوستر الطوليّ — الاسمُ والسنةُ وتقييمُ أعضاء لوبز على فنّ العمل، فيعرف
+     المستلمُ العملَ قبل أن يفتح. والبوسترُ يبقى حين لا يُعرف رقمُ العمل من المسار */
+  const id = /\/(\d+)$/.exec(c.path)?.[1];
+  const wide = id ? `/api/og/${c.kind}/${id}?l=${c.locale}` : null;
+  const poster = c.posterPath && POSTER_FILE.test(c.posterPath) ? `/i/w500/${c.posterPath.slice(1)}` : null;
+  const image = wide ?? poster;
+  const images = wide ? [{ url: wide, width: 1200, height: 630, alt: c.name }] : poster ? [{ url: poster, width: 500, height: 750, alt: c.name }] : undefined;
   return {
     openGraph: {
       type: c.kind === "tv" ? "video.tv_show" : "video.movie",
@@ -61,7 +66,7 @@ export function titleMetadata(c: TitleCard): Metadata {
       url: c.path,
       ...(images ? { images } : {}),
     },
-    /* `summary` لا `summary_large_image`: البوسترُ طوليٌّ، والبطاقةُ الكبيرة تقصّه عريضاً */
-    twitter: { card: "summary", title, description, ...(image ? { images: [image] } : {}) },
+    /* الصورةُ العريضة بطاقةٌ كبيرة؛ والبوسترُ الطوليُّ وحده `summary` — البطاقةُ الكبيرة تقصّه عريضاً */
+    twitter: { card: wide ? "summary_large_image" : "summary", title, description, ...(image ? { images: [image] } : {}) },
   };
 }

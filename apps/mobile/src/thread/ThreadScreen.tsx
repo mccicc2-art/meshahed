@@ -7,7 +7,7 @@ import { useNavigationContainerRef, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, isGuest, softGet, useGuestUpgrade, write } from "../api";
 import { CONFIG } from "../config";
-import { ReviewShareSheet, ratingOnlyPath } from "../community/ReviewShareSheet";
+import { ReviewShareSheet, ratingOnlyPath, shareReviewStory } from "../community/ReviewShareSheet";
 import { useApp } from "../state";
 import { shell, type NativeRoot } from "../shell";
 import { Button, Text, TopBar, type ToastTone } from "../ui";
@@ -277,8 +277,9 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
   );
   const share = useCallback(() => {
     if (!d) return;
-    /* حيث يُغيّر الاختيارُ شيئاً: نصٌّ بلا حرق، ودرجةٌ (شخصيّةُ AI بلا درجةٍ لا صورةَ لها) */
-    if (d.head.kind === "review" && d.head.review?.trim() && d.head.rating != null && !d.head.has_spoiler) setSharePick(true);
+    /* حيث يُغيّر الاختيارُ شيئاً: نصٌّ بلا حرق، ودرجةٌ (شخصيّةُ AI بلا درجةٍ لا صورةَ لها) — 🆕 ن٧ وكلُّ رأيٍ له درجةٌ يُسأل أيضاً:
+       الرابطُ أم «صورة للقصص» */
+    if (d.head.kind === "review" && d.head.rating != null) setSharePick(true);
     else shareNow(false);
   }, [d, shareNow]);
 
@@ -989,6 +990,15 @@ export function ThreadScreen({ route, from, compose = false, focus = null }: { r
       {sharePick ? (
         <ReviewShareSheet
           onClose={() => setSharePick(false)}
+          choose={d?.head.kind === "review" && !!d.head.review?.trim() && !d.head.has_spoiler}
+          onStory={
+            d
+              ? () =>
+                  shareReviewStory(d.share_path, d.work.title)
+                    .then(() => setSharePick(false))
+                    .catch(() => say(t.shareFailed, "error"))
+              : undefined
+          }
           onPick={(ratingOnly) => {
             setSharePick(false);
             shareNow(ratingOnly);

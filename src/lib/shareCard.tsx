@@ -1,4 +1,5 @@
 import type React from "react";
+import { OG_FAMILY } from "@/lib/og";
 
 /**
  * **وجهُ بطاقة المشاركة — رسمٌ خالصٌ بلا قراءةٍ واحدة** (D-715).
@@ -360,7 +361,7 @@ export function ShareCard(d: ShareCardData) {
         padding: "56px 48px",
         background: "#050505",
         color: FG,
-        fontFamily: "Cairo, CairoLatin",
+        fontFamily: OG_FAMILY,
       }}
     >
       {/* ===== الترويسةُ الصغيرة ===== */}
@@ -809,7 +810,7 @@ export function ReportShareCard(d: ReportShareData) {
         padding: "56px 48px",
         background: "#050505",
         color: FG,
-        fontFamily: "Cairo, CairoLatin",
+        fontFamily: OG_FAMILY,
       }}
     >
       {/* ===== الترويسةُ الصغيرة ===== */}

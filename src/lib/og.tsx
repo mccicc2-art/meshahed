@@ -29,14 +29,20 @@ export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_CONTENT_TYPE = "image/png";
 
 /** الخطّان معاً — العربيُّ أوّلاً كي يفوز على اللاتينيّ عند التداخل */
+/**
+ * 🆕 **خطّا التطبيق في كلّ صور المشاركة** (أحمد ٢٦ نوفمبر «س١٠ أ»): Tajawal للعربيّ وPoppins للّاتينيّ كما يكتب التطبيق —
+ * كانت الصورُ بخطّ Cairo فتبدو من تطبيقٍ آخر. اسمان لا واحد: المحرّكُ يختار خطّاً واحداً لكلِّ اسم عائلة، فاسمٌ واحدٌ
+ * يُضيّع الحروفَ اللاتينيّة مربّعات. وTajawal أصلاً هو ما نجا من عطل satori مع Cairo («أكشن» — D-720).
+ */
+export const OG_FAMILY = "App, AppLatin";
 export async function ogFonts() {
   const [arabic, latin] = await Promise.all([
-    readFile(join(process.cwd(), "public/fonts/cairo-700-arabic.woff")),
-    readFile(join(process.cwd(), "public/fonts/cairo-700-latin.woff")),
+    readFile(join(process.cwd(), "public/fonts/Tajawal-800.ttf")),
+    readFile(join(process.cwd(), "public/fonts/Poppins-700.ttf")),
   ]);
   return [
-    { name: "Cairo", data: arabic, style: "normal" as const, weight: 700 as const },
-    { name: "CairoLatin", data: latin, style: "normal" as const, weight: 700 as const },
+    { name: "App", data: arabic, style: "normal" as const, weight: 700 as const },
+    { name: "AppLatin", data: latin, style: "normal" as const, weight: 700 as const },
   ];
 }
 
@@ -91,7 +97,7 @@ export function threadOgCard({
         padding: 64,
         background: "#0D0D0D",
         color: "#FFFFFF",
-        fontFamily: "Cairo, CairoLatin",
+        fontFamily: OG_FAMILY,
         /* ⚠️ **`direction` لا `textAlign` وحدها**: المحرّكُ هنا satori لا
            متصفّح، **وبلا `direction` يقلب ترتيبَ كلماتِ السطر الثاني**
            حين تلتفّ الجملةُ العربية — فُحص حيّاً على رأيٍ من سطرين. */

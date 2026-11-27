@@ -80,7 +80,8 @@ export async function generateMetadata({
       title,
       description,
       type: "article",
-      images: [{ url: `/api/list-og/${id}`, width: 1200, height: 630 }],
+      /* 🆕 ن٨ — صورةُ المعاينة الواحدة (`/api/og`): الاسمُ كبيرٌ وأوّلُ أربعة أعمالٍ بترتيبها، والذيلُ الواحد */
+      images: [{ url: `/api/og/list/${id}?l=${locale === "en" ? "en" : "ar"}`, width: 1200, height: 630 }],
     },
     twitter: { card: "summary_large_image", title, description },
   };

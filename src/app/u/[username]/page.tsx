@@ -1,5 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { displayNameOf } from "@/lib/data";
+import { displayNameOf, getProfileByUsername } from "@/lib/data";
 import { DownloadLoopzBar } from "@/components/DownloadLoopzBar";
 import { getT } from "@/lib/locale";
 import { num } from "@/core/i18n";
@@ -82,6 +83,25 @@ const AVATAR_BOX =
  * هي ما يخرج — لا صفوف الحلقات ولا أوقات المشاهدة.
  */
 const STAT_ORDER = ["order-1", "order-2", "order-3", "order-4"] as const;
+
+/**
+ * 🆕 ن٨ — **معاينةُ الملفّ في واتساب وX**: كان رابطُ الملفّ يظهر بصورة لوبز العامّة. الآن الصورةُ وجهُه واسمُه وشخصيّتُه وأرقامُه
+ * (`/api/og/u`) — والحسابُ الخاصُّ اسمُه وصورتُه فقط. العنوانُ لا يتغيّر في تبويب المتصفّح: البطاقةُ وحدَها (كصفحة العمل).
+ */
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  const handle = decodeURIComponent((await params).username);
+  const [{ locale }, p] = await Promise.all([getT(), getProfileByUsername(handle).catch(() => null)]);
+  if (!p) return {};
+  const l = locale === "en" ? "en" : "ar";
+  const name = displayNameOf(p, "Loopz");
+  const title = l === "ar" ? `${name} على Loopz` : `${name} on Loopz`;
+  const description = l === "ar" ? "المسلسلات والأفلام والذوق على Loopz" : "Shows, movies and taste on Loopz";
+  const image = `/api/og/u/${encodeURIComponent(p.username ?? p.id)}?l=${l}`;
+  return {
+    openGraph: { title, description, type: "profile", images: [{ url: image, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
+  };
+}
 
 export default async function PublicProfilePage({
   params,

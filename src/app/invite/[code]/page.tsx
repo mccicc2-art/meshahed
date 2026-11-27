@@ -39,9 +39,22 @@ import { InviteCta, type InviteStep } from "./InviteCta";
  *   **وتدرّجُ «Loopz» من ألوان الهويّة** (`--gradient-brand-x`) لا من تدرّج نصّ الثيم: ذهبيُّ `daylight` المعتَّم يُكتب
  *   على الأبيض، وهنا الخلفيّةُ داكنةٌ أبداً.
  */
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
+  const robots = { index: false, follow: false };
+  const code = cleanInviteCode((await params).code);
+  if (!code) return { robots };
+  /* 🆕 ن٨ — صورةُ الدعوة في واتساب وX: «AHMED يريد أن يقارن ذوقه بذوقك» وأعمالُه (`/api/og/invite`). العنوانُ عامٌّ بلا اسم: الاسمُ
+     في الصورة التي تمرّ بحدّ المعاينة نفسِه، فلا قراءةَ ثانيةً لصاحب الرمز هنا */
+  const { locale } = await getT();
+  const l = locale === "en" ? "en" : "ar";
+  const title = l === "ar" ? "دعوة إلى Loopz — قارن ذوقك" : "An invite to Loopz — compare tastes";
+  const image = `/api/og/invite/${code}?l=${l}`;
+  return {
+    robots,
+    openGraph: { title, images: [{ url: image, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title, images: [image] },
+  };
+}
 
 type Device = "ios" | "android" | "desktop";
 

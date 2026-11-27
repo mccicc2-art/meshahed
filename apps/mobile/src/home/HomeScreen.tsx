@@ -45,6 +45,8 @@ import { HOME_TOP_H, HomeTopBar, HomeStats, HomeViewSwitch } from "./HomeHeader"
 import { WeekStrip } from "./WeekStrip";
 import { RateQueueCard } from "./RateQueueCard";
 import { RATE_QUEUE_KEY } from "../member/rateQueue";
+import { HistoryShareSheet } from "../member/HistoryShareSheet";
+import { Icon } from "../icons";
 import { opening } from "../opening/opening";
 import { ContinueCard, MediaRow, mixedRowSubtitle } from "./Cards";
 import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
@@ -489,6 +491,8 @@ export function HomeScreen() {
   const [queueRow, setQueueRow] = useState<QueueOrderBody["row"] | null>(null);
   /* 🆕 D-1353 — «الكلّ» والعنوانُ في كلِّ قسمٍ يفتحان ورقةَ القسم نفسِه (`HomeAllSheet`)؛ و`who`: أسماءُ أصدقاء عملٍ من الصفّ */
   const [allSheet, setAllSheet] = useState<AllSection | null>(null);
+  /* 🆕 (أحمد ٢٧ نوفمبر «اكمل المتبقي») — ملخّصُ الأسبوع يُشارَك من مكانه: ورقةُ «سجلّ المشاهدة» نفسُها التي في «النشاط» */
+  const [historyShare, setHistoryShare] = useState(false);
   const [who, setWho] = useState<HomeFriendCard | null>(null);
   /* D-1094 — «تمّ» يرتّب الصفَّ **فوراً** ثمّ يكتب (تسجيلُ أحمد على 1.11.9: رتّب «للمشاهدة» وضغط «تمّ»
      فبقي الصفُّ كما كان — الترتيبُ حُفظ فعلاً في `home_prefs` لكنّ الصفَّ ينتظر إعادةَ جلب الرئيسيّة كاملةً).
@@ -685,7 +689,17 @@ export function HomeScreen() {
         ) : null,
       recap: s.recap ? (
         <View key="recap">
-          <SectionHeader title={t.recapTitle} icon="book" seeAll={t.seeAll} onSeeAll={() => openWeb("/activity")} />
+          <SectionHeader
+            title={t.recapTitle}
+            icon="book"
+            action={
+              <Pressable onPress={() => setHistoryShare(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.historyShareTitle} style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>
+                <Icon name="share" size={20} color={tokens.fg} />
+              </Pressable>
+            }
+            seeAll={t.seeAll}
+            onSeeAll={() => openWeb("/activity")}
+          />
           <Pressable onPress={() => openWeb("/activity")} accessibilityRole="link" style={({ pressed }) => [{ marginHorizontal: PAGE_PAD, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface, padding: 16, opacity: pressed ? 0.85 : 1 }]}>
             <Text size={15} weight="700" style={{ flexShrink: 1, lineHeight: 20 }}>{s.recap.line}</Text>
             <View style={{ flexDirection: "row" }}>
@@ -873,6 +887,7 @@ export function HomeScreen() {
           onDone={(keys) => saveQueue(queueRow, keys)}
         />
       ) : null}
+      {historyShare ? <HistoryShareSheet onClose={() => setHistoryShare(false)} /> : null}
       {allSheet && d ? (
         <HomeAllSheet
           key={allSheet}

@@ -5,7 +5,8 @@ import { displayNameOf } from "@/core/people";
 import { getMovieIn, getTvIn, posterUrl } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
 import { ogFonts } from "@/lib/og";
-import { REVIEW_CARD_SIZE, reviewCardElement } from "@/lib/reviewCard";
+import { REVIEW_CARD_SIZE, reviewCardElement, type ReviewCardInput } from "@/lib/reviewCard";
+import { REVIEW_STORY, reviewStoryElement } from "@/lib/reviewStory";
 import { SITE_URL } from "@/lib/site";
 import { dataUrl } from "@/lib/fetchableImage";
 
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ type
   const avatar =
     r.hide_name || !r.avatar_url ? null : r.avatar_url.startsWith("/") ? `${SITE_URL}${r.avatar_url}` : await dataUrl(r.avatar_url);
 
-  const el = await reviewCardElement({
+  const input: ReviewCardInput = {
     mode,
     work: work || "Loopz",
     arabicWork,
@@ -59,9 +60,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ type
     avatar,
     rating: r.rating,
     review: mode === "review" ? said : null,
-  });
+  };
+  /* 🆕 ن٧ — `?format=story`: الصورةُ نفسُها للقصص ١٠٨٠×١٩٢٠ (يشاركها التطبيقُ صورةً لا رابطاً) — الحارسُ أعلاه واحدٌ للمقاسين */
+  const story = req.nextUrl.searchParams.get("format") === "story";
+  const el = story
+    ? await reviewStoryElement({ ...input, poster: posterUrl((ar?.poster_path || d?.poster_path) ?? null, "w780"), username: r.hide_name ? null : (r.username ?? null) })
+    : await reviewCardElement(input);
   return new ImageResponse(el, {
-    ...REVIEW_CARD_SIZE,
+    ...(story ? REVIEW_STORY : REVIEW_CARD_SIZE),
     fonts: await ogFonts(),
     /* 🔴 مراجعةُ الوكيل (٢، البند ١): المفتاحُ بحروفٍ صغيرة — `ImageResponse` يكتب `cache-control` (سنةً كاملة)، ومفتاحٌ بحروفٍ
        كبيرةٍ يُضاف إليه ولا يحلّ محلّه، فتبقى بطاقةٌ حُذفت مراجعتُها أو وُسمت بالحرق في كاش X سنة. والرابطُ يحمل `v` (تاريخ

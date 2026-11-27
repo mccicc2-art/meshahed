@@ -10,7 +10,7 @@ import { write } from "../api";
 import { displayNameOf, profileHref } from "@/core/people";
 import type { CommunityPostRow, TrackResult, UnrateBody } from "../contracts";
 import type { CardDoors } from "./CommunityCards";
-import { ReviewShareSheet, ratingOnlyPath } from "./ReviewShareSheet";
+import { ReviewShareSheet, ratingOnlyPath, shareReviewStory } from "./ReviewShareSheet";
 
 /**
  * ====== 🆕 D-1448 — ورقةُ ⋯ في بطاقة «المجتمع» ======
@@ -92,8 +92,10 @@ export function FeedMenu({
   /* والسؤالُ حيث يُغيّر شيئاً: ما فيه حرقٌ صورتُه التقييمُ وحده أصلاً (مراجعةُ الوكيل ٢، البند ٨) */
   const asks =
     row.kind === "comment" && !row.item.listId && row.item.kind !== "ep_rate" && !!row.item.review?.trim() && row.item.rating != null && !row.item.hasSpoiler;
+  /* 🆕 ن٧ — وكلُّ رأيٍ له درجةٌ يُشارَك صورةً للقصص أيضاً (ولو بلا نصّ): المشاركةُ تفتح الورقةَ ليُختار الرابطُ أو الصورة */
+  const storyable = row.kind === "comment" && !row.item.listId && row.item.kind !== "ep_rate" && row.item.rating != null;
   items.push({ icon: "link", label: t.shareCopyLink, keep: asks, run: () => (asks ? setPick("copy") : copy(link)) });
-  items.push({ icon: "share", label: t.shareLinkLabel, keep: asks, run: () => (asks ? setPick("share") : onShare(link, shareTitle)) });
+  items.push({ icon: "share", label: t.shareLinkLabel, keep: asks || storyable, run: () => (asks || storyable ? setPick("share") : onShare(link, shareTitle)) });
 
   const remove = async () => {
     if (row.kind !== "comment") return;
@@ -120,6 +122,15 @@ export function FeedMenu({
     return (
       <ReviewShareSheet
         onClose={onClose}
+        choose={asks}
+        onStory={
+          pick === "share" && storyable
+            ? () =>
+                shareReviewStory(link, shareTitle)
+                  .then(onClose)
+                  .catch(onError)
+            : undefined
+        }
         onPick={(ratingOnly) => {
           const path = ratingOnly ? ratingOnlyPath(link) : link;
           onClose();

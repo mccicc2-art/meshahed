@@ -135,9 +135,10 @@ export async function GET(request: Request) {
        Cairo تسقط · Noto Sans Arabic تسقط في كلِّ كلمة · **IBM Plex
        Sans Arabic وTajawal تنجحان** — واختير Tajawal لأنه هندسيٌّ
        يقارب Cairo. ⚠️ **والتطبيقُ نفسُه يبقى على Cairo**: العطلُ في
-       مولّد الصور وحدَه، **ولا يُغيَّر خطُّ منتجٍ كامل لعلّةِ سطحٍ واحد.** */
-    readFile(join(process.cwd(), "public/fonts/tajawal-700-arabic.woff")),
-    readFile(join(process.cwd(), "public/fonts/cairo-700-latin.woff")),
+       مولّد الصور وحدَه، **ولا يُغيَّر خطُّ منتجٍ كامل لعلّةِ سطحٍ واحد.**
+       🆕 (أحمد ٢٦ نوفمبر «س١٠ أ») والتطبيقُ صار Tajawal وPoppins، فالصورةُ بخطّيه هو: Tajawal الثقيل وPoppins للّاتينيّ (`ogFonts`). */
+    readFile(join(process.cwd(), "public/fonts/Tajawal-800.ttf")),
+    readFile(join(process.cwd(), "public/fonts/Poppins-700.ttf")),
   ]);
 
   const name = profile?.nickname?.trim() || profile?.username || "Loopz";
@@ -316,8 +317,8 @@ export async function GET(request: Request) {
       fonts: [
         // عائلتان لا واحدة: المحرّك يختار خطاً واحداً لكل اسم عائلة، فلو
         // سمّيناهما باسم واحد ضاعت الأرقام والحروف اللاتينية مربّعاتٍ فارغة
-        { name: "Cairo", data: arabic, weight: 700, style: "normal" }, // Tajawal تحت الاسم نفسِه — القارئُ في `shareCard` واحد
-        { name: "CairoLatin", data: latin, weight: 700, style: "normal" },
+        { name: "App", data: arabic, weight: 700, style: "normal" },
+        { name: "AppLatin", data: latin, weight: 700, style: "normal" },
       ],
       headers: {
         // الصورة تتغيّر مع كل حلقة يؤشّرها صاحبها، فلا تُخزَّن على الحافة
@@ -365,8 +366,8 @@ async function reportImage(rawPeriod: string | null, locale: Locale, rtl: boolea
   if (stats.empty) return new Response("nothing to share", { status: 409 });
 
   const [arabic, latin] = await Promise.all([
-    readFile(join(process.cwd(), "public/fonts/tajawal-700-arabic.woff")),
-    readFile(join(process.cwd(), "public/fonts/cairo-700-latin.woff")),
+    readFile(join(process.cwd(), "public/fonts/Tajawal-800.ttf")),
+    readFile(join(process.cwd(), "public/fonts/Poppins-700.ttf")),
   ]);
 
   const top = stats.topTitles.slice(0, 3);
@@ -434,8 +435,8 @@ async function reportImage(rawPeriod: string | null, locale: Locale, rtl: boolea
       width: 1080,
       height: 1760,
       fonts: [
-        { name: "Cairo", data: arabic, weight: 700, style: "normal" },
-        { name: "CairoLatin", data: latin, weight: 700, style: "normal" },
+        { name: "App", data: arabic, weight: 700, style: "normal" },
+        { name: "AppLatin", data: latin, weight: 700, style: "normal" },
       ],
       headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
     },

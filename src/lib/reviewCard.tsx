@@ -4,7 +4,7 @@ import { shareFooter } from "@/lib/shareFooter";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import opentype from "opentype.js";
-import { ogFonts } from "@/lib/og";
+import { OG_FAMILY } from "@/lib/og";
 
 /**
  * ====== 🆕 T530 — بطاقةُ مشاركة المراجعة في X (أحمد ٢٣ نوفمبر: «١أ» الصورتان والسيناريوهاتُ الستّة) ======
@@ -41,23 +41,13 @@ export const hasArabic = (s: string): boolean => ARABIC.test(s);
 
 type Font = opentype.Font;
 type Fonts = { ar: Font; la: Font };
-let fontsP: Promise<Fonts> | null = null;
-function shapingFonts(): Promise<Fonts> {
-  fontsP ??= ogFonts().then(([ar, la]) => {
-    const buf = (b: Buffer) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
-    return { ar: opentype.parse(buf(ar.data)), la: opentype.parse(buf(la.data)) };
-  });
-  return fontsP;
-}
-
 /**
  * 🆕 **خطّا التطبيق** (أحمد ٢٦ نوفمبر «ق١٠أ»: صورُ المشاركة بـTajawal وPoppins كالتطبيق لا Cairo): نسختا الخطّين من
  * `apps/mobile/assets/fonts` في `public/fonts` — ثقيلٌ للعناوين والأرقام، ومتوسّطٌ للسطور الصغيرة. أوّلُ قارئٍ بطاقةُ «حصاد 2026».
  */
-export type ShapeFace = "cairo" | "app" | "app-regular";
+export type ShapeFace = "app" | "app-regular";
 const faceP = new Map<ShapeFace, Promise<Fonts>>();
 function facesOf(face: ShapeFace): Promise<Fonts> {
-  if (face === "cairo") return shapingFonts();
   let p = faceP.get(face);
   if (!p) {
     const [ar, la] = face === "app" ? ["Tajawal-800.ttf", "Poppins-700.ttf"] : ["Tajawal-500.ttf", "Poppins-500.ttf"];
@@ -104,7 +94,7 @@ export async function shapedText(
   text: string,
   o: { width: number; size: number; lineHeight: number; maxLines: number; color: string; dir?: "rtl" | "ltr"; face?: ShapeFace; align?: "start" | "center" },
 ): Promise<{ src: string; width: number; height: number; used: number }> {
-  const F = await facesOf(o.face ?? "cairo");
+  const F = await facesOf(o.face ?? "app");
   const dir = o.dir ?? "rtl";
   /* 🔴 البند ٤: ما لا يحمله الخطّان (الإيموجي ومحدِّداتُه) يسقط — وإلّا رُسم مربّعاً فارغاً في الصورة */
   const drawable = Array.from(text)
@@ -344,7 +334,7 @@ export async function reviewCardElement(c: ReviewCardInput) {
   }
 
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: right ? "row-reverse" : "row", background: "#000", fontFamily: "Cairo, CairoLatin", position: "relative" }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: right ? "row-reverse" : "row", background: "#000", fontFamily: OG_FAMILY, position: "relative" }}>
       {c.poster ? (
         // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
         <img src={c.poster} width={POSTER_W} height={TOP} style={{ objectFit: "cover" }} />
