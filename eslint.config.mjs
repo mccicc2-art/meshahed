@@ -2,6 +2,17 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+const SERVICE_KEY_FENCE = {
+  selector:
+    "MemberExpression[object.object.name='process'][object.property.name='env'][property.name='SUPABASE_SERVICE_ROLE_KEY']",
+  message: "service-role fence (D-898): read SUPABASE_SERVICE_ROLE_KEY only in src/lib/supabase/service.ts.",
+};
+const PREVIEW_KEY_FENCE = {
+  selector:
+    "MemberExpression[object.object.name='process'][object.property.name='env'][property.name='LOOPZ_PREVIEW_SERVICE_ROLE_KEY']",
+  message: "preview-key fence (task 593): read LOOPZ_PREVIEW_SERVICE_ROLE_KEY only in src/lib/command.ts.",
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -66,19 +77,25 @@ const eslintConfig = defineConfig([
   },
   // والمفتاحُ نفسُه يُقرأ في ملفّين لا غير: service.ts وinstrumentation.ts
   // (fetch خامّ قد يجري في Edge). قراءتُه في أيّ موضعٍ آخر خطأُ بناء.
+  // 🆕 (مهمّة ٥٩٣) **ومفتاحُ المعاينة سياجٌ ثانٍ بالشكل نفسِه**: `LOOPZ_PREVIEW_SERVICE_ROLE_KEY`
+  // يُقرأ في `src/lib/command.ts` وحده — سجلُّ الوكلاء لا قاعدةُ المستخدمين،
+  // لكنّه مفتاحُ خدمةٍ كاملُ الصلاحية على مشروعٍ آخر. **والقواعدُ في كتلٍ ثلاث لا
+  // اثنتين** لأنّ `no-restricted-syntax` في الإعداد المسطّح يُستبدل ولا يُدمج:
+  // كتلةٌ لاحقةٌ بمحدّدٍ واحد كانت ستمحو السياجَ الأوّل عن كلِّ ملفّ.
   {
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/lib/supabase/service.ts", "src/instrumentation.ts"],
+    ignores: ["src/lib/supabase/service.ts", "src/instrumentation.ts", "src/lib/command.ts"],
     rules: {
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector:
-            "MemberExpression[object.object.name='process'][object.property.name='env'][property.name='SUPABASE_SERVICE_ROLE_KEY']",
-          message: "service-role fence (D-898): read SUPABASE_SERVICE_ROLE_KEY only in src/lib/supabase/service.ts.",
-        },
-      ],
+      "no-restricted-syntax": ["error", SERVICE_KEY_FENCE, PREVIEW_KEY_FENCE],
     },
+  },
+  {
+    files: ["src/lib/command.ts"],
+    rules: { "no-restricted-syntax": ["error", SERVICE_KEY_FENCE] },
+  },
+  {
+    files: ["src/lib/supabase/service.ts", "src/instrumentation.ts"],
+    rules: { "no-restricted-syntax": ["error", PREVIEW_KEY_FENCE] },
   },
   // ====== حدُّ النواة المشتركة (Phase 9 §5.2 — الخطوة ١ من ترتيب البناء) ======
   // `src/core/` هو ما سيشاركه تطبيقُ Expo مع الويب كما هو، **بلا نسخةٍ ثانية**.
