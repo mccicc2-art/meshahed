@@ -1,0 +1,27 @@
+D-897 — Phase 9 §5.2 step 1: the shared-core boundary is enforced by ESLint (no file moved, no behaviour change)
+======================================================================================================
+
+owner: "تمام اكمل" (continue) after Phase 9 was published. Claude (as reviewer) chose the first step of the build order (§9 step 1) because it is application-only, needs no GO, touches no production behaviour, and makes the Phase 9 boundary verifiable from today.
+deviation from §5.2 as written — declared: §5.2 said "move the SHARE files into src/core/". The publishing path (GitHub web upload, one directory per commit) cannot move or delete files, so the physical move waits for a git-push path or the workspaces step (§9 step 5). The boundary itself — the thing that catches leaks — is what this commit ships: an ESLint override on the shared files.
+
+commit (main, git log, UTC):
+  61cb418  2026-09-02 20:27:03  eslint.config.mjs — one override block: files = the 69 shared modules in src/lib; rule @typescript-eslint/no-restricted-imports (error) with two pattern groups: (1) next, next/*, react-dom, react-dom/*, server-only, @/components/*, @/app/*, @/lib/supabase/*, ./supabase/*; (2) every src/lib module that stays behind the API (SERVER / REWRITE / DROP — 49 modules, both "@/lib/x" and "./x" spellings). allowTypeImports: true on both groups (type imports are erased at compile time and carry no code).  [deploy]
+rollback point: e254b2f (one file)
+scope: lint configuration only. No source file changed; no cache/SW/images/SQL/Supabase; next build output unaffected (Next 16 does not run ESLint during build).
+
+gates on the tree byte-identical to 61cb418 (working tree = e254b2f + this file; fresh clone of main after upload: cmp eslint.config.mjs → identical):
+  npx tsc --noEmit   : exit 0
+  npx eslint src     : 0 errors, 15 warnings (pre-existing)
+  npx next build     : exit 0 ("Compiled successfully")
+  negative test      : appending `import { cookies } from "next/headers"` to src/lib/when.ts → eslint reports the boundary error (then reverted) — the rule fires
+deploy: /api/build == 61cb418 read from the owner's Chrome tab at ≈20:29 UTC (container egress to loopztv.com is blocked; the Claude pane was not used this round)
+
+CORRECTION to PHASE_9_EXPO_READINESS.md §2.1 (my error, found while enforcing the boundary):
+  the classifier (evidence/P9-classify-e254b2f.py) looked only at external markers (next/*, DOM, env, supabase, "use client/server") and MISSED two things: (a) imports between src/lib modules, (b) side-effect imports written as `import "server-only"` (its regex required `from`).
+  Result: of the 85 files reported as SHARE, 16 are not shareable today —
+    14 import VALUES from SERVER modules (data.ts / tmdb.ts / omdb.ts / titleAliases.ts / locale.ts / site.ts) or a server-only package: artists · libState · librarySmart · localize · news (fast-xml-parser, RSS on the server) · periodStats · reports · sections · seo (→ site.ts, DOM) · smartLists · suggest · titleNews · topChart · trailers  = 4,729 lines
+     2 declare `import "server-only"`: appleTrailers · xLink = 189 lines
+  Corrected matrix (118 files · 39,939 lines): SHARE 69 / 14,874 · SERVER 32 / 22,806 · REWRITE 16 / 2,204 · DROP 1 / 55.
+  Remaining declared edges inside the 69: 8 files import TYPES only from server/component modules (calendar · libraryStatus · newsLine · progress · recommend → data/tmdb types; features · homePrefs · profilePrefs → IconName from components/Icon) — allowed by the rule, to be split into core types before the physical move; siteOrigin.ts reads process.env.NEXT_PUBLIC_SITE_URL (Expo reads EXPO_PUBLIC_*; a one-line adapter later).
+  The API design (§4), architecture (§5), feature matrix (§6) and build order (§9) do not change: the 14 reclassified files are exactly the "orchestration behind the API" the design already assumes.
+smoke: not applicable (no runtime change); production HTML for / and /show/1399 not re-measured — nothing in the served code changed (build output identical by construction: the only changed file is not part of the bundle).

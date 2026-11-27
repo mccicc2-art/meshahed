@@ -1,0 +1,25 @@
+D-896 — LOOPZ-AUD-0074 (Arabic tail): the trailer is one TMDB call instead of two sequential ones (include_video_language=ar,en)
+=================================================================================================================================
+
+owner: "اكمل و أجل تحديث الملفات" (continue; defer the project-file update) after the images phase closed. Claude (as reviewer) chose the next item with the largest remaining measured latency inside the app: the Arabic reader's trailer = two sequential /videos calls (ar-SA, then en-US when no Arabic video — the common case), still +250…+360 ms after the hero even after D-889 (§9 ar rows). 0076 was measured first and set aside (see below).
+
+commit (main, git log, UTC):
+  e254b2f  2026-09-02 18:24:06  src/lib/tmdb.ts — readVideosOnce(): en UI = one call as before; ar UI = one call with include_video_language=ar,en, then split by iso_639_1 (ar first, else en). getTrailer and getTrailerKeys both use it; preference order and the 8-item cap unchanged. Video gains optional iso_639_1.  [deploy]
+rollback point: 54bb5fd (one file)
+scope: one TMDB query parameter for the Arabic UI; the data-cache key changes for that call (a new entry per title in ar) — declared. No SQL/SW/images/Supabase.
+
+gates on e254b2f, clean working tree (git status empty after `git reset --hard origin/main`):
+  npx tsc --noEmit   : exit 0
+  npx eslint src     : 0 errors, 15 warnings (pre-existing)
+  npx next build     : exit 0 ("Compiled successfully")
+deploy: /api/build == e254b2f read from the Claude pane at 18:25:59 UTC
+
+Before/After (pane, lang=ar cookie, cold titles, RSC stream markers; trailer − hero in ms)
+  BEFORE (after D-889, §9/§10 ar rows): +248 / +359 / +327 / +295 (TV) · +244 / +363 (movies) — the second /videos call
+  AFTER e254b2f (6 fresh titles: /show/71912 · 95396 · 108978 · 136315 · /movie/569094 · 438631): trailer − hero = 0 / 0 / 0 / 0 / 0 / 0, and every one of the six carries a videoKey (the English fallback still resolves inside the single call)
+  en UI: unchanged by construction (one call, no parameter)
+  first bytes 376–404 on three rows = the usual post-deploy cold starts (precede data)
+not measured: a title that has an Arabic trailer (preference verified by code path only: iso_639_1 === "ar" first) · TMDB semantics of include_video_language with videos lacking a language (excluded as before).
+
+0076 (duplicated inline SVG in /people) — measured before deciding, no change:
+  /people HTML 488 KB decoded: 122 <svg> / 16 unique = 38 KB decoded; gzip of the full document 40 KB vs 37 KB with every <svg> removed vs 38 KB with one copy of each → the duplication costs ≈ 2 KB on the wire (br is similar). A sprite refactor of the one icon set (110 icons) would add the full sprite to every page. Proposed: 0076 = WONT_FIX (measured ≈ 2 KB wire); owner decides.
