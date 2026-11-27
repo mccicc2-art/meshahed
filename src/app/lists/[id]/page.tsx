@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
@@ -27,7 +26,6 @@ import { shapeListMembers } from "@/lib/listMembers";
 import { getDict } from "@/core/i18n";
 import { getLibState, type TitleState } from "@/lib/libState";
 import { localizeRows } from "@/lib/localize";
-import { buttonClass } from "@/components/ui/Button";
 import { awardWinners } from "@/lib/tmdb";
 import { ruleToQuery } from "@/lib/smartLists";
 import { resolveSmartItems } from "@/lib/listItems";
