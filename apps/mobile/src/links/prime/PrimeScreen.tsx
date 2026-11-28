@@ -6,7 +6,7 @@ import { Text } from "../../ui";
 import { Icon } from "../../icons";
 import { LinkingCover, PlatformScreen, type PlatformDriver, type PlatformLoginProps } from "../netflix/NetflixScreen";
 import { mark } from "../../perfMarks";
-import { PRIME_HOME, PrimeWeb, type PrimePageState, type PrimeReady, type PrimeSeen, type PrimeWebRef } from "./bridge";
+import { PRIME_HOME, PRIME_SIGNIN, PrimeWeb, type PrimePageState, type PrimeReady, type PrimeSeen, type PrimeWebRef } from "./bridge";
 import { buildPrime, clearPrimeLocal, linkPrime, readPrime, readPrimeLocal, unlinkPrime, usePrimeAdded, writePrimeLocal } from "./sync";
 import { requestPrimeSignOut, requestPrimeSync, usePrimeSync } from "./PrimeSyncHost";
 
@@ -47,7 +47,8 @@ export function PrimeScreen() {
 }
 
 /**
- * صفحةُ دخول برايم كاملةَ الشاشة — ومَن لم يسجّل دخوله يدخل من زرّ «تسجيل الدخول» فيها (صفحةُ أمازون نفسُها).
+ * صفحةُ دخول برايم كاملةَ الشاشة. تُفتح على الرئيسية ليدخل صاحبُ الجلسة القائمة مباشرةً، ومَن ظهرت له بلا دخولٍ نُقل إلى دخول
+ * أمازون نفسِه (`PRIME_SIGNIN`): زرُّ الدخول في واجهة برايم مخبوءٌ خلف صورة الحساب، وقد تاه فيه أحمد على هاتفه (٢٨ نوفمبر).
  * ⚖️ **الملفُّ يُختار في صفحة برايم**: صفحةُ «من يشاهد؟» من الموقع، والجسرُ يقول `gate` حتى يُختار — ثمّ `ready` بالملفّ المختار.
  */
 /** كلمةٌ يقبلها القياس (`[\w.-]{1,16}`): المسارُ والمضيفُ بلا رموزٍ أخرى */
@@ -66,10 +67,20 @@ function PrimeLogin({ d, onClose, onFound }: PlatformLoginProps) {
     mark("nfx.sync", Math.max(0, Date.now() - started.current), { kind: "prime.login", result, ...extra });
   }, []);
 
+  /* النقلُ إلى الدخول محدودٌ (ثلاثُ مرّاتٍ، بينها عشرُ ثوانٍ): مَن رجع من صفحة أمازون دون دخولٍ يُعاد إليها، ولا تدور الصفحةُ في حلقةٍ إن رفضت أمازون */
+  const toSignIn = useRef({ n: 0, at: 0 });
   const onPageState = useCallback(
     (s: PrimePageState, path: string, seen: PrimeSeen | null) => {
       if (done.current) return;
       note(s, { why: seen ? `f${seen.pf}i${seen.id}k${seen.pick}` : "-", go: word(path) });
+      /* المسارُ يبدأ بـ«/» على نطاق برايم وحده (على أمازون يأتي اسمَ المضيف) — فصفحةُ أمازون نفسُها لا تُنقل */
+      const g = toSignIn.current;
+      if (s !== "signed-out" || !path.startsWith("/") || path.startsWith("/auth-redirect")) return;
+      if (g.n >= 3 || Date.now() - g.at < 10_000) return;
+      g.n += 1;
+      g.at = Date.now();
+      note("signin", { count: g.n });
+      web.current?.go(PRIME_SIGNIN);
     },
     [note],
   );

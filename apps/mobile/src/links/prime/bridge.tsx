@@ -16,6 +16,8 @@ import { DESKTOP_UA } from "../netflix/bridge";
  * ⚖️ وكيلُ المستخدم سطحُ مكتبٍ كالمنصّات الثلاث: الفحصُ قيس على Chrome المكتب. ⚠️ لم يُقَس بعدُ داخل متصفّح الجوّال.
  */
 export const PRIME_HOME = `${PRIME_ORIGIN}/`;
+/** رابطُ الدخول كما في زرّ «تسجيل الدخول» على صفحة برايم بلا دخول (قِيس ٢٨ نوفمبر): يمضي إلى `amazon.com/ap/signin` ثمّ يعود إلى الرئيسية */
+export const PRIME_SIGNIN = `${PRIME_ORIGIN}/auth-redirect?signin=1&returnUrl=%2F`;
 
 export type PrimeReady = { profileId: string; name: string };
 export type PrimePageState = "signed-out" | "gate" | "ready";
