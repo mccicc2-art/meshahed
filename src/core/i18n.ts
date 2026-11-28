@@ -3935,6 +3935,23 @@ const ar = {
   shahidPickOpening: "نفتح شاهد بالملف الذي اخترته…",
   shahidPickInShahid: "اختر ملفك في صفحة شاهد",
   shahidNoProfiles: "ما وصلنا لملفات حسابك. افتح تطبيق شاهد واختر ملفاً مرة، ثم ارجع هنا.",
+  /* 🆕 المهمّة ٦٠٤ — برايم فيديو: ما يختلف عن نتفليكس وOSN+ وشاهد. الاسمُ اسمُ منتجٍ لا يُترجم */
+  primeName: "Prime Video",
+  primeConsentLead: "يتسجّل ما تشاهده في Prime Video في مكتبتك وحده.",
+  primeConsent1Title: "تدخل من صفحة Prime Video نفسها",
+  primeConsent1Sub: "كلمة مرورك تُكتب عند أمازون، ولوبز لا يراها ولا يحفظها.",
+  primeContinue: "تابع إلى Prime Video",
+  primeImportLaterNote: "يمكنك الاستيراد لاحقاً من صفحة Prime Video.",
+  primeStoppedSub: "خرجت Prime Video من حسابك على هذا الجهاز. ما دخل مكتبتك باقٍ.",
+  primeProfileSub: "طلبت Prime Video اختيار الملف الشخصي قبل قراءة السجلّ، فتوقّفت المزامنة.",
+  primeLoginHint: "ادخل بحساب أمازون، ثم اختر ملفك",
+  primeSocialBlocked: "جوجل وأبل لا يسمحان بالدخول من داخل التطبيقات. ادخل ببريد حساب أمازون أو رقم جوالك.",
+  primeAdded: (episodes: number, movies: number) =>
+    episodes && movies
+      ? `أُضيفت من Prime Video ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")} و${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
+      : movies
+        ? `أُضيف من Prime Video ${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
+        : `أُضيفت من Prime Video ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")}`,
   shahidAdded: (episodes: number, movies: number) =>
     episodes && movies
       ? `أُضيفت من شاهد ${arCount(episodes, "حلقة واحدة", "حلقتان", "حلقات", "حلقة", "حلقة")} و${arCount(movies, "فيلم واحد", "فيلمان", "أفلام", "فيلماً", "فيلم")}`
@@ -6942,6 +6959,22 @@ const en: Dict = {
   shahidPickOpening: "Opening Shahid with the profile you picked…",
   shahidPickInShahid: "Pick your profile on the Shahid page",
   shahidNoProfiles: "We couldn't reach your profiles. Open the Shahid app, pick a profile once, then come back here.",
+  primeName: "Prime Video",
+  primeConsentLead: "What you watch on Prime Video is added to your library on its own.",
+  primeConsent1Title: "You sign in on Prime Video's own page",
+  primeConsent1Sub: "Your password is typed at Amazon. Loopz never sees or stores it.",
+  primeContinue: "Continue to Prime Video",
+  primeImportLaterNote: "You can import later from the Prime Video page.",
+  primeStoppedSub: "Prime Video signed you out on this device. Everything already in your library stays.",
+  primeProfileSub: "Prime Video asked to pick a profile before reading your history, so syncing stopped.",
+  primeLoginHint: "Sign in with your Amazon account, then pick your profile",
+  primeSocialBlocked: "Google and Apple don't allow signing in from inside apps. Use your Amazon email or phone.",
+  primeAdded: (episodes: number, movies: number) =>
+    episodes && movies
+      ? `Added from Prime Video: ${episodes} episode${episodes === 1 ? "" : "s"} and ${movies} movie${movies === 1 ? "" : "s"}`
+      : movies
+        ? `Added from Prime Video: ${movies} movie${movies === 1 ? "" : "s"}`
+        : `Added from Prime Video: ${episodes} episode${episodes === 1 ? "" : "s"}`,
   shahidAdded: (episodes: number, movies: number) =>
     episodes && movies
       ? `Added from Shahid: ${enCount(episodes, "episode", "episodes")} and ${enCount(movies, "movie", "movies")}`

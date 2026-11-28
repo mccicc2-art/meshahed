@@ -215,10 +215,13 @@ const OSN_PLUS_DAY = "#D600B2";
 /** 🆕 المهمّة ٥٦٧ — أخضرُ شاهد كما قيس في shahid.mbc.net (`bg-shahidGreen` ‎#00CC99)، وأغمقُ على أبيض `daylight` كي يُقرأ (أحمد «١أ») */
 const SHAHID_GREEN = "#00CC99";
 const SHAHID_GREEN_DAY = "#00996F";
+/** 🆕 المهمّة ٦٠٤ — أزرقُ برايم فيديو (‎#00A8E1)، وأغمقُ على أبيض `daylight` كي يُقرأ (أحمد «١أ»: «prime video» نصّاً بلونهم) */
+const PRIME_BLUE = "#00A8E1";
+const PRIME_BLUE_DAY = "#0079A6";
 
 export function PlatformMark({ platform = "netflix", size = 56, state = "idle" }: { platform?: PlatformKind; size?: number; state?: "idle" | "on" | "waiting" | "paused" }) {
   const { tokens, themeId } = useApp();
-  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : platform === "shahid" ? 0.24 : 0.17)));
+  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : platform === "shahid" ? 0.24 : platform === "prime" ? 0.2 : 0.17)));
   return (
     <View
       style={{
@@ -233,7 +236,17 @@ export function PlatformMark({ platform = "netflix", size = 56, state = "idle" }
         opacity: state === "paused" ? 0.55 : 1,
       }}
     >
-      {platform === "shahid" ? (
+      {platform === "prime" ? (
+        /* 🆕 المهمّة ٦٠٤ — «prime» وتحتها «video» بأزرقهم — كتابةٌ لا شعار (لا شعارَ بلا إذن) */
+        <View style={{ alignItems: "center" }}>
+          <Text size={fs} weight="800" color={themeId === "daylight" ? PRIME_BLUE_DAY : PRIME_BLUE} style={{ writingDirection: "ltr", lineHeight: Math.round(fs * 1.05) }} numberOfLines={1}>
+            prime
+          </Text>
+          <Text size={Math.max(6, Math.round(fs * 0.72))} weight="800" color={themeId === "daylight" ? PRIME_BLUE_DAY : PRIME_BLUE} style={{ writingDirection: "ltr", lineHeight: Math.round(fs * 0.8) }} numberOfLines={1}>
+            video
+          </Text>
+        </View>
+      ) : platform === "shahid" ? (
         /* 🆕 المهمّة ٥٦٧ — «شاهد» بالعربيّة بأخضرهم (أحمد «١أ») — كتابةٌ لا شعار (لا شعارَ بلا إذن) */
         <Text size={fs} weight="800" color={themeId === "daylight" ? SHAHID_GREEN_DAY : SHAHID_GREEN} numberOfLines={1}>
           شاهد

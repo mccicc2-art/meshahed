@@ -501,7 +501,7 @@ function SignalItem({ s, meId, onOpen, pending }: { s: SignalRow; meId: string; 
 
 /** سؤالُ الجرس بشكل إشارة «من أجهزتك» — كي يجيب عنه `useStremioAnswer` نفسُه */
 function askSignal(r: LinkSignalRow): StremioSignal | null {
-  if (r.signalId == null || !r.tmdbId || !r.mediaType || r.source === "netflix" || r.source === "osn" || r.source === "shahid") return null;
+  if (r.signalId == null || !r.tmdbId || !r.mediaType || r.source === "netflix" || r.source === "osn" || r.source === "shahid" || r.source === "prime") return null;
   return { id: r.signalId, kind: r.mediaType, tmdb_id: r.tmdbId, title: r.title ?? "", image_path: null, season: r.season, episode: r.episode, seen_at: r.at, source: r.source, rate: null };
 }
 
@@ -516,7 +516,7 @@ function LinkItem({ r, onOpen, onAnswer }: { r: LinkSignalRow; onOpen: (path: st
   const router = useRouter();
   const ask = r.kind === "link_ask" ? askSignal(r) : null;
   const href = linkSignalHref(r);
-  const platform = r.source === "netflix" || r.source === "osn" || r.source === "shahid" ? r.source : null;
+  const platform = r.source === "netflix" || r.source === "osn" || r.source === "shahid" || r.source === "prime" ? r.source : null;
   const open = () => {
     haptic.pick();
     if (platform) router.push({ pathname: "/settings/[section]", params: { section: platform } });
@@ -531,7 +531,7 @@ function LinkItem({ r, onOpen, onAnswer }: { r: LinkSignalRow; onOpen: (path: st
         accessibilityRole={platform || href ? "link" : undefined}
         style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed ? 0.7 : 1 })}
       >
-        {platform ? <PlatformMark platform={platform} size={40} /> : r.source !== "netflix" && r.source !== "osn" && r.source !== "shahid" ? <DeviceMark kind={r.source} size={40} /> : null}
+        {platform ? <PlatformMark platform={platform} size={40} /> : r.source !== "netflix" && r.source !== "osn" && r.source !== "shahid" && r.source !== "prime" ? <DeviceMark kind={r.source} size={40} /> : null}
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <Text size={14} style={{ lineHeight: 20 }}>{text}</Text>
           <Text size={12} muted>{timeAgo(r.at, t)}</Text>

@@ -96,5 +96,7 @@ export function sourceName(s: WatchSource | null, t: ReturnType<typeof getDict>,
   if (s === "osn") return "OSN+";
   /* 🆕 المهمّة ٥٦٧ — شاهد بلغة القارئ */
   if (s === "shahid") return t.shahidName;
+  /* 🆕 المهمّة ٦٠٤ */
+  if (s === "prime") return "Prime Video";
   return s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }

@@ -146,7 +146,7 @@ export function NotificationList({
 function LinkItem({ r, locale }: { r: LinkSignalRow; locale: Locale }) {
   const t = getDict(locale);
   const href = linkSignalHref(r);
-  const mark = r.source === "netflix" || r.source === "osn" || r.source === "shahid" ? <PlatformMark platform={r.source} size={40} /> : <DeviceMark kind={r.source} size={40} />;
+  const mark = r.source === "netflix" || r.source === "osn" || r.source === "shahid" || r.source === "prime" ? <PlatformMark platform={r.source} size={40} /> : <DeviceMark kind={r.source} size={40} />;
   const text = (
     <span className="block py-3">
       <p className="text-14 leading-snug">{linkSignalText(r, t)}</p>

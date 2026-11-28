@@ -21,6 +21,7 @@ import { canLinkNetflix, canLinkNow, deviceName, linksWrite, platformName, useLi
 import { requestNetflixSync } from "./netflix/NetflixSyncHost";
 import { requestOsnSync } from "./osn/OsnSyncHost";
 import { requestShahidSync } from "./shahid/ShahidSyncHost";
+import { requestPrimeSync } from "./prime/PrimeSyncHost";
 import { PLATFORM_KINDS } from "@/core/deviceLinks";
 import { DEVICE_KINDS } from "@/core/deviceLinks";
 import type { DeviceKind, DeviceLinksState, PlatformKind } from "@/core/contracts/deviceLinks";
@@ -265,7 +266,7 @@ export function LinksScreen() {
               onClose={() => setHoldP(null)}
               onSync={() => {
                 setHoldP(null);
-                if ((holdP === "osn" ? requestOsnSync : holdP === "shahid" ? requestShahidSync : requestNetflixSync)("manual")) toast.current?.say(t.nfxSyncing);
+                if ((holdP === "osn" ? requestOsnSync : holdP === "shahid" ? requestShahidSync : holdP === "prime" ? requestPrimeSync : requestNetflixSync)("manual")) toast.current?.say(t.nfxSyncing);
               }}
               onOpen={() => {
                 setHoldP(null);

@@ -12,7 +12,7 @@ export type ActivityKind = "watch" | "rate" | "review" | "list";
 /* 🆕 `netflix` — مزامنةُ نتفليكس (هجرة ٢٦٥) */
 /* 🆕 `nuvio` — إضافةُ Stremio في Nuvio برابطه (هجرة ٢٦٧) */
 /* 🆕 `osn` — مزامنةُ OSN+ (هجرة ٢٦٨) */
-export type WatchSource = "stremio" | "nuvio" | "widget" | "import" | "auto" | "plex" | "jellyfin" | "emby" | "kodi" | "netflix" | "osn" | "shahid";
+export type WatchSource = "stremio" | "nuvio" | "widget" | "import" | "auto" | "plex" | "jellyfin" | "emby" | "kodi" | "netflix" | "osn" | "shahid" | "prime";
 
 export interface ActivityItem {
   id: string;

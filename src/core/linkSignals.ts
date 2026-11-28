@@ -10,7 +10,7 @@
  */
 import type { Dict } from "./i18n.ts";
 
-export type LinkSource = "netflix" | "osn" | "shahid" | "stremio" | "nuvio" | "plex" | "jellyfin" | "emby" | "kodi";
+export type LinkSource = "netflix" | "osn" | "shahid" | "prime" | "stremio" | "nuvio" | "plex" | "jellyfin" | "emby" | "kodi";
 export type LinkSignalKind = "link_added" | "link_ask";
 
 /** ⚠️ «OSN+» يتبعها LRM (U+200E): في جملةٍ عربيّة تُقرأ «+OSN» بلاه — «+» حرفٌ محايدٌ يلتصق بالعربيّ بعده */
@@ -19,6 +19,7 @@ export const LINK_SOURCE_NAME: Record<LinkSource, string> = {
   osn: "OSN+\u200E",
   /* 🆕 المهمّة ٥٦٧ — «شاهد» اسمٌ عربيّ: يُكتب بلغة القارئ (`linkSourceName`)، وهذا للإنجليزيّة */
   shahid: "Shahid",
+  prime: "Prime Video",
   stremio: "Stremio",
   nuvio: "Nuvio",
   plex: "Plex",

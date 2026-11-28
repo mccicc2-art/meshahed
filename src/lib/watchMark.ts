@@ -191,7 +191,7 @@ export interface SignalRow {
 }
 
 /** 🆕 T579 — منصّاتُ البثّ: سجلُّها يسمّي الحلقةَ التي شوهدت بعينها ويومَها */
-const PLATFORM_SOURCES: ReadonlySet<string> = new Set(["netflix", "osn", "shahid"]);
+const PLATFORM_SOURCES: ReadonlySet<string> = new Set(["netflix", "osn", "shahid", "prime"]);
 
 /**
  * ✓ على سؤال: حلقةٌ = «شاهدتُ حتى هنا» وتُغلق معها أسئلةُ ما قبلها في المسلسل نفسِه؛ فيلمٌ = مشاهَدٌ ويدخل المكتبة.

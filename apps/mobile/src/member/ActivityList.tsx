@@ -291,5 +291,7 @@ function sourceLabel(s: WatchSource, t: ReturnType<typeof useApp>["t"]): string 
   if (s === "osn") return "OSN+";
   /* 🆕 المهمّة ٥٦٧ — شاهد بلغة القارئ */
   if (s === "shahid") return t.shahidName;
+  /* 🆕 المهمّة ٦٠٤ — اسمُ منتجٍ لا يُترجم */
+  if (s === "prime") return "Prime Video";
   return s === "stremio" ? t.srcStremio : s === "widget" ? t.srcWidget : s === "import" ? t.srcImport : t.srcAuto;
 }

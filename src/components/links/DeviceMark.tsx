@@ -118,8 +118,8 @@ export function DeviceMark({ kind, size = 56, state = "idle" }: { kind: DeviceKi
  * (لا شعارَ بلا إذن)، «NETFLIX» بأحمرهم (يُقرأ على الداكن والفاتح)، و«OSN» بلون النصّ و«+» بوردِهم — أغمقَ على النهاريّ.
  * أوّلُ من يرسمها جرسُ الويب («أُضيفت من نتفليكس»).
  */
-export function PlatformMark({ platform, size = 56 }: { platform: "netflix" | "osn" | "shahid"; size?: number }) {
-  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : platform === "shahid" ? 0.24 : 0.17)));
+export function PlatformMark({ platform, size = 56 }: { platform: "netflix" | "osn" | "shahid" | "prime"; size?: number }) {
+  const fs = Math.max(7, Math.round(size * (platform === "osn" ? 0.2 : platform === "shahid" ? 0.24 : platform === "prime" ? 0.2 : 0.17)));
   return (
     <span
       className="relative grid shrink-0 place-items-center rounded-[var(--radius-control)] border border-border bg-surface"
@@ -127,7 +127,13 @@ export function PlatformMark({ platform, size = 56 }: { platform: "netflix" | "o
       aria-hidden
     >
       {/* 🆕 المهمّة ٥٦٧ — «شاهد» بالعربيّة بأخضرهم (‎#00CC99، أغمقُ على النهاريّ) كتطبيق الجوّال */}
-      {platform === "shahid" ? (
+      {/* 🆕 المهمّة ٦٠٤ — «prime video» نصّاً بأزرقهم (‎#00A8E1، أغمقُ على النهاريّ) — أحمد «١أ»، بلا شعار */}
+      {platform === "prime" ? (
+        <span dir="ltr" className="flex flex-col items-center font-extrabold leading-none" style={{ color: "light-dark(#0079A6, #00A8E1)" }}>
+          <span style={{ fontSize: fs }}>prime</span>
+          <span style={{ fontSize: Math.round(fs * 0.72) }}>video</span>
+        </span>
+      ) : platform === "shahid" ? (
         <span className="font-extrabold leading-none" style={{ fontSize: fs, color: "light-dark(#00996F, #00CC99)" }}>
           شاهد
         </span>

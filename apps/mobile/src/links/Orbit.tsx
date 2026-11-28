@@ -162,7 +162,7 @@ export function Orbit({
             >
               {linking === s.platform ? (
                 /* توهّجُ المنصّة الجارية بأحمرها — حلقةٌ خلف الشارة لا ظلٌّ (ظلُّ أندرويد لا يُلوَّن) */
-                <View style={{ position: "absolute", top: -6, width: TILE + 12, height: TILE + 12, borderRadius: radius.md + 6, backgroundColor: s.platform === "osn" ? "#FF00D433" : s.platform === "shahid" ? "#00CC9933" : "#E5091433" }} />
+                <View style={{ position: "absolute", top: -6, width: TILE + 12, height: TILE + 12, borderRadius: radius.md + 6, backgroundColor: s.platform === "osn" ? "#FF00D433" : s.platform === "shahid" ? "#00CC9933" : s.platform === "prime" ? "#00A8E133" : "#E5091433" }} />
               ) : null}
               <PlatformMark platform={s.platform} size={TILE} state={s.waiting ? "waiting" : "on"} />
               <DeviceLabel name={platformName(s.platform, t)} />

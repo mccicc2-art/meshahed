@@ -107,6 +107,7 @@ export const PLATFORM_ROUTE = {
   netflix: "/api/v1/me/links/netflix",
   osn: "/api/v1/me/links/osn",
   shahid: "/api/v1/me/links/shahid",
+  prime: "/api/v1/me/links/prime",
 } as const satisfies Record<PlatformKind, string>;
 /** أقصى ما يُسأل عنه في المزامنة الواحدة — ما زاد يبقى في سجلّ المنصّة لا في الرئيسيّة */
 export const ASK_MAX = 200;

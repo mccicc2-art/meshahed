@@ -50,5 +50,5 @@ export function canLinkNetflix(d: DeviceLinksState, platform: PlatformKind = "ne
 
 /** 🆕 المهمّة ٥٥٧ — اسمُ المنصّة كما يُكتب في كلِّ مكان: اسمُ منتجٍ لا يُترجم — 🆕 المهمّة ٥٦٧: إلّا «شاهد»، اسمٌ عربيٌّ بلغة القارئ */
 export function platformName(p: PlatformKind, t: { shahidName: string }): string {
-  return p === "osn" ? "OSN+" : p === "shahid" ? t.shahidName : "Netflix";
+  return p === "osn" ? "OSN+" : p === "shahid" ? t.shahidName : p === "prime" ? "Prime Video" : "Netflix";
 }

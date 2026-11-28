@@ -1734,7 +1734,7 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
   /* 🆕 هجرة ٢٦٧ — و`nuvio`: ✓ على سؤالٍ جاء من Nuvio يكتب شارتَه في السجلّ */
   /* 🆕 T579 — وسؤالُ المنصّة (`netflix` · `osn` · `shahid`): شارتُها، والحلقةُ وحدَها بيوم مشاهدتها (`markSignalWatched`) */
   const src: WatchSource =
-    sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" || sig?.source === "kodi" || sig?.source === "nuvio" || sig?.source === "netflix" || sig?.source === "osn" || sig?.source === "shahid"
+    sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" || sig?.source === "kodi" || sig?.source === "nuvio" || sig?.source === "netflix" || sig?.source === "osn" || sig?.source === "shahid" || sig?.source === "prime"
       ? sig.source
       : "stremio";
   if (!sig || sig.state !== "pending") return { marked: 0 };
@@ -6391,7 +6391,7 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
      ولا تمسّ الموجود (`ignoreDuplicates`). وغيابُه (Plex · تطبيقٌ قديم) يُبقي الكتابةَ القديمة */
   const keep = payload?.keep === true;
   /* 🆕 مصدرُ الكتابة (هجرة ٢٦٥): مزامنةُ نتفليكس تُوسم `netflix` — الشارةُ وعدُّ ما يبقى عند الفكّ. وكلُّ شيءٍ آخر `import` كما كان */
-  const source = payload?.source === "netflix" || payload?.source === "osn" || payload?.source === "shahid" ? payload.source : ("import" as const);
+  const source = payload?.source === "netflix" || payload?.source === "osn" || payload?.source === "shahid" || payload?.source === "prime" ? payload.source : ("import" as const);
   const upsertOpts = (onConflict: string) => ({ onConflict, ...(keep ? { ignoreDuplicates: true } : {}) });
 
   /* 🆕 **IMDb — ما يُعلَّم ضمناً يُحسب هنا لا عند العميل** (R58): «المسلسلُ كلُّه» (`all`، «١ ب») و«الحلقةُ وما قبلها»

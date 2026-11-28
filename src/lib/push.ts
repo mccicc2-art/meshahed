@@ -1115,7 +1115,7 @@ const ALERTS_URL = "/messages?tab=alerts";
  * مفتوح (متصفّحُها المخفيّ لا يعمل في الخلفية)، فالإشعارُ يصل لحظةَ الفتح ويبقى في مركز إشعارات الجوال. مفتاحُ «ما يُسجَّل تلقائياً»
  * (`auto`) يكتمه كأخيه «وصل من Kodi». والوسمُ واحدٌ للمنصّة: دفعةٌ ثانيةٌ تحلّ محلَّ الأولى ولا تتراكم.
  */
-export function notifyPlatformAdded(input: { to: string; source: "netflix" | "osn" | "shahid"; added: PlatformAdded }) {
+export function notifyPlatformAdded(input: { to: string; source: "netflix" | "osn" | "shahid" | "prime"; added: PlatformAdded }) {
   quiet(() =>
     deliver({
       to: input.to,
