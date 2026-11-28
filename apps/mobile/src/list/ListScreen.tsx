@@ -401,7 +401,10 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
      طرف سطرها. القائمةُ بلا غلافٍ تأخذ خلفيّةَ أوّل عمل (`cover_art` من الخادم · س٦)، والغلافُ الذي يُختار الآن يغلب فوراً.
      **الغلافُ داكنٌ في كلِّ ثيم والكتابةُ فوقه بيضاء** — حكمُ D-1506 في بطل صفحة العمل نفسُه */
   const art = d ? (d.cover?.backdrop_path ?? d.cover_art ?? null) : null;
-  const coverH = insets.top + Math.round(width * 0.72);
+  /* 🆕 T606 (q44 «أ» — أحمد: «قلّل ارتفاع الغلاف قليلاً ٢٠٪ تقريباً») — ٠٫٧٢ ⇐ ٠٫٥٨ من العرض: الشبكةُ تصعد.
+     **ولا يصعد الكلامُ تحت الشريط**: اسمٌ بسطرين ونبذةٌ بسطرين وصفُّ الحال قد تطول عن الغلاف الأقصر، فيطول الغلافُ بقدرها وحدها */
+  const [infoH, setInfoH] = useState(0);
+  const coverH = Math.max(insets.top + Math.round(width * 0.58), infoH ? insets.top + TOP_BAR_H + 8 + infoH : 0);
   /* الشريطُ فوق الغلاف شفّافٌ وأزرارُه بيضاء؛ إذا صعد الغلافُ صار شريطَ الصفحة بلونها واسمِ القائمة (الرجوعُ في مكانه دائماً — D-1624) */
   const [solid, setSolid] = useState(false);
   const listRef = useRef<FlatList<ListDetailItem>>(null);
@@ -432,7 +435,7 @@ export function ListScreen({ id, from, invite = false }: { id: string; from: Nat
         <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, top: 0, height: insets.top + 96, opacity: 0.55, transform: [{ rotate: "180deg" }] }} contentFit="fill" />
         <Image source={VEIL} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.round(coverH * 0.62) }} contentFit="fill" />
         {d ? (
-          <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: PAGE_PAD, paddingBottom: 16, gap: 6 }}>
+          <View onLayout={(e) => setInfoH(Math.ceil(e.nativeEvent.layout.height))} style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: PAGE_PAD, paddingBottom: 16, gap: 6 }}>
             <Text size={26} weight="800" color="#fff" numberOfLines={2} style={{ lineHeight: 34 }}>{d.name}</Text>
             {d.subtitle ? <Text size={14} color={WHITE_MUTED} numberOfLines={2} style={{ lineHeight: 21 }}>{d.subtitle}</Text> : null}
             {/* 🆕 T583 («٢ب ٣أ» — أحمد ٢٦ نوفمبر: «تحتها ماهي واضحة») — **صفُّ الحال صعد إلى الغلاف تحت الوصف**، ومعه علامةُ الحفظ

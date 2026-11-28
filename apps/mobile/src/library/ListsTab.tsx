@@ -20,7 +20,7 @@ import { railOff, railsHiddenFor } from "@/core/railPrefs";
 import { OneTimeHint } from "./OneTimeHint";
 import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, QueueOrderBody } from "../contracts";
 import { scrollJank } from "../scrollJank";
-import { useRtlRailPin } from "../rtlRailPin";
+import { railGrow, useRtlRailPin } from "../rtlRailPin";
 
 /**
  * ====== تبويبُ «قوائم» أصليّاً — نسخةُ `ListManager` + `listsExtra` (D-947) ======
@@ -134,7 +134,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
   const share = useCallback((l: LibraryListCard) => setSharing(l), []);
 
   /* D-1492 — صفُّ «أسماءٌ تتكرّر» افتراضيٌّ أفقيّ: العلاجُ المشترك على الآيفون بالعربيّ (D-1478)، وسحبُه يمرّ بقياس الاهتزاز كما كان */
-  const { props: groupsPin } = useRtlRailPin<LibraryAutoGroup>(scrollJank("library", "h").onScrollBeginDrag);
+  const { props: groupsPin } = useRtlRailPin<LibraryAutoGroup>(scrollJank("library", "h").onScrollBeginDrag, scrollJank("library", "h").onMomentumScrollBegin);
 
   const cols = width >= 640 ? 2 : 1;
   const cardW = cols === 1 ? "100%" : Math.floor((width - PAGE_PAD * 2 - 10) / 2);
@@ -230,40 +230,6 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
         )}
       </View>
 
-      {!railOff(offRails, "autogroups") && p.auto_groups.length > 0 ? (
-        <View>
-          <Text size={20} weight="700" style={{ marginBottom: 4 }}>{t.autoGroupsTitle}</Text>
-          <Text size={12} muted style={{ marginBottom: 12, lineHeight: 18 }}>
-            {ar ? "أسماءٌ تتكرّر في مكتبتك — محسوبةٌ من أعمالك، لا ترشيحاً." : "Names that recur across your library — counted from your titles, not recommended."}
-          </Text>
-          <FlatList
-            horizontal
-            {...scrollJank("library", "h")}
-            {...groupsPin}
-            data={p.auto_groups}
-            keyExtractor={(g) => `${g.kind}:${g.name}`}
-            showsHorizontalScrollIndicator={false}
-            style={{ marginHorizontal: -PAGE_PAD }}
-            contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 12 }}
-            renderItem={({ item: g }) => (
-              <Pressable onPress={() => (p.plus ? setGroup(g) : onOpenWeb("/plus"))} style={{ width: 92, alignItems: "center" }}>
-                <View style={{ width: 92, height: 92, borderRadius: 46, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
-                  {g.photo ? (
-                    <Image source={{ uri: profileUrl(g.photo) ?? "" }} style={{ width: 92, height: 92 }} contentFit="cover" />
-                  ) : (
-                    <Text size={24} weight="700" muted>{g.name.slice(0, 1)}</Text>
-                  )}
-                </View>
-                <Text size={12} weight="700" numberOfLines={2} style={{ marginTop: 6, textAlign: "center", lineHeight: 15 }}>{g.name}</Text>
-                <Text size={12} muted style={{ marginTop: 2 }}>
-                  {ar ? `${g.kind === "director" ? "أخرج" : "ظهر في"} ${g.items.length}` : `${g.kind === "director" ? "directed" : "in"} ${g.items.length}`}
-                </Text>
-              </Pressable>
-            )}
-          />
-        </View>
-      ) : null}
-
       {!railOff(offRails, "savedlists") && p.saved.length > 0 ? (
         <View>
           <Text size={20} weight="700" style={{ marginBottom: 12 }}>{savedTitle}</Text>
@@ -282,6 +248,42 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
               </View>
             ))}
           </View>
+        </View>
+      ) : null}
+
+      {/* 🆕 T606 (q44 «أ» — أحمد ٢٧ نوفمبر: «صور الفنانين نزّلها آخر القوائم لا تكون كذا في النصّ») — «تجتمع عندك» آخرَ التبويب
+          بعد «قوائم محفوظة»: أسماءٌ محسوبةٌ لا قوائمُ صنعتها أو حفظتها، فلا تقطع ما بينهما */}
+      {!railOff(offRails, "autogroups") && p.auto_groups.length > 0 ? (
+        <View>
+          <Text size={20} weight="700" style={{ marginBottom: 4 }}>{t.autoGroupsTitle}</Text>
+          <Text size={12} muted style={{ marginBottom: 12, lineHeight: 18 }}>
+            {ar ? "أسماءٌ تتكرّر في مكتبتك — محسوبةٌ من أعمالك، لا ترشيحاً." : "Names that recur across your library — counted from your titles, not recommended."}
+          </Text>
+          <FlatList
+            horizontal
+            {...scrollJank("library", "h")}
+            {...groupsPin}
+            data={p.auto_groups}
+            keyExtractor={(g) => `${g.kind}:${g.name}`}
+            showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -PAGE_PAD }}
+            contentContainerStyle={railGrow({ paddingHorizontal: PAGE_PAD, gap: 12 })}
+            renderItem={({ item: g }) => (
+              <Pressable onPress={() => (p.plus ? setGroup(g) : onOpenWeb("/plus"))} style={{ width: 92, alignItems: "center" }}>
+                <View style={{ width: 92, height: 92, borderRadius: 46, overflow: "hidden", backgroundColor: tokens.surface2, borderWidth: 1, borderColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
+                  {g.photo ? (
+                    <Image source={{ uri: profileUrl(g.photo) ?? "" }} style={{ width: 92, height: 92 }} contentFit="cover" />
+                  ) : (
+                    <Text size={24} weight="700" muted>{g.name.slice(0, 1)}</Text>
+                  )}
+                </View>
+                <Text size={12} weight="700" numberOfLines={2} style={{ marginTop: 6, textAlign: "center", lineHeight: 15 }}>{g.name}</Text>
+                <Text size={12} muted style={{ marginTop: 2 }}>
+                  {ar ? `${g.kind === "director" ? "أخرج" : "ظهر في"} ${g.items.length}` : `${g.kind === "director" ? "directed" : "in"} ${g.items.length}`}
+                </Text>
+              </Pressable>
+            )}
+          />
         </View>
       ) : null}
 

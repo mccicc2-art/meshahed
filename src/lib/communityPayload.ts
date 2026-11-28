@@ -147,7 +147,9 @@ export function feedRows(
         item: a,
         translated: ep ? null : (core.feedTranslations[vk] ?? null),
         replies: ep ? 0 : (core.reviewReplies.get(vk) ?? 0),
-        views: ep ? null : (core.viewCounts.get(vk) ?? null),
+        /* 🆕 T606 (q46 «أ») — **صفرٌ لا «لا رقم»**: الخادمُ لا يرسل صفَّ ما لم يُشاهَد، فكان المنشورُ الجديدُ بلا عدّاد، والتطبيقُ لا
+           يعدّ ما لا عدّادَ له (يقرؤه عدّاداً معطّلاً قبل الهجرة ٧٤) — فلا يأتيه عدٌّ من التطبيق أبداً */
+        views: ep ? null : (core.viewCounts.get(vk) ?? 0),
         i_follow_them: core.followingIds.has(a.person.id),
         lib: libOf(core, a.tmdb_id, a.media_type),
         list_social: a.listId
@@ -167,7 +169,7 @@ export function feedRows(
       likes: core.postLikes.counts[mk] ?? 0,
       liked_by_me: core.postLikes.mine.has(mk),
       replies: core.newsReplies.get(n.key) ?? 0,
-      views: core.viewCounts.get(vk) ?? null,
+      views: core.viewCounts.get(vk) ?? 0,
       lib: libOf(core, n.tmdb_id, n.media_type),
     };
   });

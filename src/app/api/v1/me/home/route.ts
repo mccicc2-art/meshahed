@@ -26,6 +26,7 @@ import { liveTour } from "@/core/tour";
 import { toLibraryListCard } from "@/lib/listCard";
 import { cacheShowStats, cacheMovieStats, cacheFollowMeta } from "@/lib/actions";
 import { buildHomeHeader, buildHomeBody, freshenFollows } from "@/lib/homeCore";
+import { weekSuggestions } from "@/lib/weekSuggest";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { routeName } from "@/lib/reqTrace";
 import { ok } from "@/core/contracts/result";
@@ -82,6 +83,15 @@ export async function GET(req: NextRequest) {
     const head = await buildHomeHeader({ followRows, summary, watchedMovies, profile, myRatings, t });
     const { watchedMovieIds, prefs, today, watchedByShow, lastWatchedOrder, rewatchSinceMap, headerStats } = head;
 
+    /* 🆕 T606 (س٤٢ «ب» — مراجعةُ الوكيل) — **مقترحاتُ الأسبوع الفارغ تبدأ مع البناء لا بعده**: لا يُعرف أنّ الأسبوعَ فارغٌ إلّا بعد البناء،
+       فتُحسب معه بميزانيّتها وتُرمى إن وُجدت حلقة — كي لا يزيد انتظارُ الرئيسيّة. الأيّامُ الأربعةَ عشرَ هي أيّامُ الشريط (`buildHomeBody`) */
+    const now0 = Date.now();
+    const weekP = weekSuggestions({
+      dates: Array.from({ length: 14 }, (_, i) => new Date(now0 + i * 86400000).toISOString().slice(0, 10)),
+      favGenres: profile?.favorite_genres ?? [],
+      prefs: (profile?.ui_state as { week?: unknown } | null | undefined)?.week,
+      known: new Set([...followRows.map((f) => `${f.media_type}-${f.tmdb_id}`), ...[...watchedMovieIds].map((id) => `movie-${id}`)]),
+    }).catch(() => null);
     const [unreadSignals, unreadShares, followStats, body, goldUntil] = await Promise.all([
       getUnreadSignals(),
       getUnreadShares(),
@@ -105,6 +115,8 @@ export async function GET(req: NextRequest) {
       /* 🆕 T334 — الذهبيُّ بقارئه المستقلّ كما في `/me` (أحمد ٦ نوفمبر بلقطة خالد: الرأسُ يقول PARTNER والذهبيُّ ممنوح) */
       createClient().then((db) => goldUntilOf(db, user.id)),
     ]);
+
+    const week = body.weekEntries.length ? null : await weekP;
 
     /* ——— آثارٌ جانبيّةٌ بعد الردّ — ما كان العميلُ الويبيُّ يكتبه ——— */
     after(async () => {
@@ -236,6 +248,7 @@ export async function GET(req: NextRequest) {
           entries: body.weekEntries.map((e) => ({ date: e.date, show_id: e.showTmdbId, title: e.title, poster_path: e.posterPath ?? null, ...(e.expected ? { expected: true } : {}) })),
           /* 🆕 D-1614 — «حلقة متوقّعة» لورقة اليوم بلغة القارئ (القاموسُ محجوز — `CAL_EXPECTED`) */
           expected_label: CAL_EXPECTED[locale === "en" ? "en" : "ar"],
+          ...(week ? { suggest: week.items, suggest_prefs: week.prefs } : {}),
         },
         towatch: { items: body.toWatchRow.map(mixed), all: body.toWatchOrdered.map(mixed) },
         upcoming: body.upcomingRow.map(mixed),

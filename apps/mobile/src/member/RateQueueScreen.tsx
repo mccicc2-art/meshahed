@@ -3,6 +3,7 @@ import { BackHandler, FlatList, LayoutAnimation, Platform, Pressable, View } fro
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, write } from "../api";
 import { useApp } from "../state";
@@ -342,8 +343,11 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
   );
   const rows = decks[deck];
 
+  /* 🆕 T606 (تسجيلُ أندرويد ٢٨ نوفمبر: الشريطُ يُلمس ولا تظهر نجمةٌ ولا يُحفظ شيء) — **إيماءاتُ المروحة تحتاج جذرَها على أندرويد**:
+     الشريطُ ورفعُ البطاقة والضغطُ المطوّل كلُّها `Gesture` من `react-native-gesture-handler`، وهذه الشاشةُ خارج كلِّ جذرٍ في التطبيق
+     (الجذورُ محلّيّةٌ في `TabSlide` و`DrawerSwipe` والورقة — لا جذرَ عامّ). الآيفون يعمل بلا جذر، وأندرويد لا يوصل لمسةً واحدة */
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: tokens.bg }}>
       <View style={{ paddingTop: insets.top }}>
         <TopBar
           title={t.rateQueueTitle}
@@ -433,6 +437,6 @@ export function RateQueueScreen({ from }: { from: NativeRoot | "web" }) {
       ) : null}
       {/* في المروحة يعلو الإشعارُ الشريطَ والرفّ — كان يغطّي الشريطَ لحظةَ تقييم البطاقة التالية */}
       <ToastHost hostRef={toast} bottom={insets.bottom + 24 + (mode === "cards" && q.data?.items.length ? 190 : 0)} />
-    </View>
+    </GestureHandlerRootView>
   );
 }

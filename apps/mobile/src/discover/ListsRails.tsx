@@ -9,7 +9,7 @@ import { Sheet } from "../library/Sheet";
 import { ListCard } from "../library/ListCard";
 import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
 import { scrollJank } from "../scrollJank";
-import { useRtlRailPin } from "../rtlRailPin";
+import { railGrow, useRtlRailPin } from "../rtlRailPin";
 import { useAppAway } from "../appActive";
 import { NewListBar } from "../newlist/NewListBar";
 
@@ -140,7 +140,7 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
 /** صفُّ قوائمٍ أفقيّ — مكوّنٌ لا دالّة (D-1492): لكلِّ صفٍّ تثبيتُه على الآيفون بالعربيّ (`useRtlRailPin`، D-1478)، والخطّافُ لا يُنادى في دالّةٍ تُستدعى لكلِّ صفّ */
 function ListsRailList({ lists, cardW, onOpenWeb }: { lists: LibraryListCard[]; cardW: number; onOpenWeb: (path: string) => void }) {
   const { t } = useApp();
-  const { props: pin } = useRtlRailPin<LibraryListCard>(scrollJank("discover", "h").onScrollBeginDrag);
+  const { props: pin } = useRtlRailPin<LibraryListCard>(scrollJank("discover", "h").onScrollBeginDrag, scrollJank("discover", "h").onMomentumScrollBegin);
   return (
     <FlatList
       horizontal
@@ -174,7 +174,7 @@ function ListsRailList({ lists, cardW, onOpenWeb }: { lists: LibraryListCard[]; 
         </View>
       )}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 10 }}
+      contentContainerStyle={railGrow({ paddingHorizontal: PAGE_PAD, gap: 10 })}
       initialNumToRender={3}
       windowSize={5}
     />

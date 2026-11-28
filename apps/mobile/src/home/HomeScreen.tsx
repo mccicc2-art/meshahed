@@ -53,6 +53,8 @@ import { SectionHeader, Rail, Column, Gap, PAGE_PAD } from "./Section";
 import type { HomePayload, HomeMixedCard, HomeViewBody, HomeQueueItem, HomeFriendCard, QueueOrderBody, ToggleEpisodeBody, TrackResult, SetDroppedBody, ShowRefBody, ToggleMovieBody, ToWatchBody, FollowBody, UnfollowBody, ShowWatchedResult, UnmarkEpisodesBody, WatchStateBody } from "../contracts";
 import { nextHomeView, sanitizeHomeView, sectionView, type HomeSection, type HomeView } from "@/core/homePrefs";
 import { reorderHomePayload, towatchQueueOf } from "./queueOrder";
+import type { WeekSuggestPrefs } from "@/core/weekSuggest";
+import type { UiStateBody } from "@/core/contracts/library";
 import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
 import { FriendsNames, FriendBadge, FriendsWhoLine, whoOf } from "./Friends";
 import { usePosterSizes } from "../posterSizes";
@@ -430,6 +432,18 @@ export function HomeScreen() {
   const holdDisc = useRef<HoldHostRef<CardItem>>(null);
   const [store] = useState(createCardStore);
   const invalidateHome = useCallback(() => void qc.invalidateQueries({ queryKey: HOME_KEY }), [qc]);
+  /* 🆕 T606 — مفتاحا «أسبوعك» الفارغ: المفتاحُ يتبدّل فوراً في الورقة، والمقترحاتُ تُعاد من الخادم بعد الحفظ */
+  const setWeekPrefs = useCallback(
+    (next: WeekSuggestPrefs) => {
+      qc.setQueryData<HomePayload>(HOME_KEY, (prev) =>
+        prev ? { ...prev, sections: { ...prev.sections, week: { ...prev.sections.week, suggest_prefs: next } } } : prev,
+      );
+      write<{ ok: boolean }>("/api/v1/me/prefs/ui-state", { week: next } satisfies UiStateBody)
+        .then(invalidateHome)
+        .catch(invalidateHome);
+    },
+    [qc, invalidateHome],
+  );
   const actLib = useCallback(
     async (a: HoldAction, item: CardItem) => {
       if (a === "review") {
@@ -645,7 +659,20 @@ export function HomeScreen() {
             )}
           </View>
         ) : null,
-      week: <WeekStrip key="week" days={s.week.days} entries={s.week.entries} expectedLabel={s.week.expected_label} onDay={(id) => openTitle("tv", id)} onCalendar={() => openWeb("/calendar")} />,
+      week: (
+        <WeekStrip
+          key="week"
+          days={s.week.days}
+          entries={s.week.entries}
+          expectedLabel={s.week.expected_label}
+          onDay={(id) => openTitle("tv", id)}
+          onCalendar={() => openWeb("/calendar")}
+          suggest={s.week.suggest}
+          suggestPrefs={s.week.suggest_prefs}
+          onTitle={openTitle}
+          onSuggestPrefs={setWeekPrefs}
+        />
+      ),
       towatch:
         s.towatch.items.length > 0 ? (
           <View key="towatch">
@@ -802,7 +829,7 @@ export function HomeScreen() {
       ) : null,
     };
     return d.prefs.order.flatMap((k) => (k === "continue" ? [map[k], stremioNode] : [map[k]])).filter(Boolean);
-  }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router, toggleView, tourBusy]);
+  }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router, toggleView, tourBusy, setWeekPrefs]);
 
   return (
     <CardStoreContext.Provider value={store}>

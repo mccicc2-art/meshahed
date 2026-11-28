@@ -21,6 +21,7 @@ import { sanitizeTourState, type TourState } from "@/core/tour";
 import { sanitizeChatBg, type ChatBg } from "@/core/chatBg";
 import { sanitizeStoredWidget } from "@/core/widgetFeedV2";
 import { sanitizeRateSkip, sanitizeRateCard } from "@/core/rateQueue";
+import { sanitizeWeekSuggest, type WeekSuggestPrefs } from "@/core/weekSuggest";
 
 /* 🆕 D-1318 — **شكلُ حالة الجولة وقواعدُها انتقلت إلى `core/tour.ts`**: التطبيقُ يقرؤها ويكتبها
    (T1) ولا يستورد من `lib`. وتُعاد تصديراً هنا فلا يتغيّر مستدعٍ واحد. */
@@ -71,6 +72,8 @@ export interface UiState {
   rateSkip: string[];
   /** 🆕 T530 — حتى متى أخفى صاحبُها بطاقةَ «بانتظار تقييمك» في الرئيسيّة (✕ = أسبوع) */
   rateCard: string | null;
+  /** 🆕 T606 — ما يظهر في «أسبوعك» حين يفرغ (السينما · لذوقك). 🔴 ويمرّ هنا كالودجت: مفتاحٌ لا يعرفه المطهِّرُ يسقط في أوّل كتابة */
+  week: WeekSuggestPrefs;
 }
 
 /** معرّف تلميح صالح — يدخل مفاتيح localStorage وعمودَ jsonb فيُقيَّد شكله */
@@ -80,7 +83,7 @@ const HINTS_CAP = 100;
 
 /** قيمة العمود (أو أي مجهول) إلى شكلٍ مضمون — الفاسد يسقط صامتاً */
 export function sanitizeUiState(value: unknown): UiState {
-  const out: UiState = { hints: [], tour: null, filters: [], tpl: [], chatBg: sanitizeChatBg(null), widget: null, rateSkip: [], rateCard: null };
+  const out: UiState = { hints: [], tour: null, filters: [], tpl: [], chatBg: sanitizeChatBg(null), widget: null, rateSkip: [], rateCard: null, week: sanitizeWeekSuggest(null) };
   if (!value || typeof value !== "object") return out;
   const v = value as Record<string, unknown>;
   if (Array.isArray(v.hints)) {
@@ -96,6 +99,7 @@ export function sanitizeUiState(value: unknown): UiState {
   out.widget = sanitizeStoredWidget(v.widget);
   out.rateSkip = sanitizeRateSkip(v.rateSkip);
   out.rateCard = sanitizeRateCard(v.rateCard);
+  out.week = sanitizeWeekSuggest(v.week);
   return out;
 }
 

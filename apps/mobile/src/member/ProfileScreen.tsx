@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useReducer } from "react";
 import { Animated, BackHandler, FlatList, I18nManager, Platform, Pressable, RefreshControl, ScrollView, Share, TextInput, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewInstance, type ViewInstance } from "react-native";
-import { useRtlRailPin } from "../rtlRailPin";
+import { railGrow, useRtlRailPin } from "../rtlRailPin";
 import { PersonaAltButton } from "../title/TitleCommunity";
 import { TabSlide, tabSwipeBlocksPress, useTabAim } from "../TabSlide";
 import { Image } from "expo-image";
-import { useFocusEffect, useNavigationContainerRef, useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useNavigationContainerRef, useRouter } from "expo-router";
 import { openStats } from "../statsDoor";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -169,17 +169,17 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
      يعود التركيزُ إلى هذا الملفّ تُفتح عليهما — **بعد حركة الرجوع** لا معها، فلا تزيد ثقلاً على لحظة الكشف. */
   const followsBack = useRef<{ dir: "followers" | "following"; y: number } | null>(null);
   const [followsY, setFollowsY] = useState(0);
+  const afterBack = useAfterBack();
   useFocusEffect(
     useCallback(() => {
       const keep = followsBack.current;
       if (!keep) return;
       followsBack.current = null;
-      const id = setTimeout(() => {
+      return afterBack(() => {
         setFollowsY(keep.y);
         setFollows(keep.dir);
-      }, REOPEN_AFTER_BACK_MS);
-      return () => clearTimeout(id);
-    }, []),
+      });
+    }, [afterBack]),
   );
   const [grid, setGrid] = useState<Grid | null>(null);
   /* 🆕 T602 (تسجيلُ أحمد ٢٧ نوفمبر: «اختار فلم … ثم اطلع يطلعني للبروفايل مو صفحة الافلام») — **ورقةُ الأفلام والمسلسلات
@@ -192,12 +192,11 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       const keep = gridBack.current;
       if (!keep) return;
       gridBack.current = null;
-      const id = setTimeout(() => {
+      return afterBack(() => {
         setGridY(keep.y);
         setGrid(keep.which);
-      }, REOPEN_AFTER_BACK_MS);
-      return () => clearTimeout(id);
-    }, []),
+      });
+    }, [afterBack]),
   );
   /* D-1326 — النغمةُ تُعلَن حيث يُعرف المعنى: نجاحٌ أخضر · معلومةٌ محايدة · والغائبُ خطأٌ كما كان */
   const [toast, setToast] = useReducer(toastReducer, null);
@@ -709,7 +708,7 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
       favorites: <Favorites d={d} posterW={posterW} onTitle={openTitle} onSort={o?.fav_list_id ? (fav) => setSorting({ fav }) : undefined} />,
       overview: <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} onSort={o ? (sec) => setSorting({ sec }) : undefined} />,
       activity: <ActivityList rows={d.activity} onTitle={openTitle} onReview={openWrittenReview} emptyText={t.profileEmptyActivity} />,
-      reviews: <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} />,
+      reviews: <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} onRead={openWrittenReview} />,
       lists: <ListsPane d={d} onList={openList} onMember={openMember} savedFlag={o ? { on: o.saved_lists, onToggle: setSaved } : undefined} />,
     } satisfies Record<ProfileTabKey, React.ReactNode>;
   }, [d, posterW, openTitle, openList, openPerson, openMember, likeReview, openReview, openWrittenReview, setSaved, t.profileEmptyActivity]);
@@ -1310,6 +1309,8 @@ function useRailLayout(posterW: number) {
 }
 /* كلُّ خانةٍ تحمل فجوتَها بعدها (ليطابق `getItemLayout` حرفاً) — فالطرفُ الأخيرُ ينقص فجوة */
 const RAIL_PAD = { paddingStart: PAGE_PAD, paddingEnd: PAGE_PAD - GAP } as const;
+/* 🆕 T606 — والصفُّ القصيرُ يبدأ من اليمين على الآيفون بالعربيّ (`railGrow`) */
+const RAIL_PAD_GROW = railGrow(RAIL_PAD);
 
 function Rail({ items, posterW, onTitle }: { items: (ProfileTitle | ProfileShow)[]; posterW: number; onTitle: (k: "tv" | "movie", id: number) => void }) {
   const { first, getItemLayout } = useRailLayout(posterW);
@@ -1335,7 +1336,7 @@ function Rail({ items, posterW, onTitle }: { items: (ProfileTitle | ProfileShow)
       maxToRenderPerBatch={first}
       windowSize={3}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={RAIL_PAD}
+      contentContainerStyle={RAIL_PAD_GROW}
       {...pinProps}
     />
   );
@@ -1440,7 +1441,7 @@ function Overview({
             maxToRenderPerBatch={rail.first}
             windowSize={3}
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={RAIL_PAD}
+            contentContainerStyle={RAIL_PAD_GROW}
             renderItem={({ item: r }) => (
               <View style={{ width: posterW + GAP }}>
                 <View style={{ width: posterW }}>
@@ -1538,11 +1539,14 @@ function ReviewsPane({
   onTitle,
   onLike,
   onComment,
+  onRead,
 }: {
   rows: ProfileReview[];
   onTitle: (k: "tv" | "movie", id: number) => void;
   onLike?: (r: ProfileReview) => void;
   onComment: (r: ProfileReview) => void;
+  /** 🆕 T606 — نصُّ المراجعة يفتحها للقراءة */
+  onRead: (k: "tv" | "movie", id: number) => void;
 }) {
   const { t, tokens, locale } = useApp();
   const [shown, setShown] = useState<ReadonlySet<string>>(() => new Set());
@@ -1592,7 +1596,17 @@ function ReviewsPane({
                   </Pressable>
                 ) : (
                   <View style={{ gap: 4 }}>
-                    <Text autoDir size={13} style={{ lineHeight: 19 }}>{r.review_alt && flipped.has(k) ? r.review_alt.text : r.review}</Text>
+                    {/* 🆕 T606 (q43 «أ» — أحمد: «إذا ضغطت على المراجعة أقدر أدخل عليها على طول») — **الكلامُ يفتح المراجعةَ للقراءة**
+                        (بلا لوحة الردّ — «٣أ» T525)، والعنوانُ والملصقُ يبقيان بابَ العمل كما كانا */}
+                    <Pressable
+                      onPress={() => {
+                        if (tabSwipeBlocksPress()) return; // D-1497 — لا يُفتح ما تحت إصبعٍ أنهى سحبةً بين التبويبات
+                        onRead(r.media_type, r.tmdb_id);
+                      }}
+                      accessibilityRole="link"
+                    >
+                      <Text autoDir size={13} style={{ lineHeight: 19 }}>{r.review_alt && flipped.has(k) ? r.review_alt.text : r.review}</Text>
+                    </Pressable>
                     {r.review_alt ? (
                       <PersonaAltButton
                         alt={r.review_alt}
@@ -1672,8 +1686,54 @@ function ListsPane({
  * صفُّ ملصقات): تُركَّب أربعةُ صفوفٍ أوّلاً والباقي عند الاقتراب، **والارتفاعُ يُحسب قبل الرسم** فلا تقفز الورقة.
  * الترتيبُ والتجميعُ والمقاسُ كما كانت حرفاً. ⚠️ لم يُقَس على جهاز — الحَكَمُ تسجيلٌ بعده.
  */
-/** حركةُ الرجوع ٢٠٠ms (`_layout.tsx`) — الورقةُ تُفتح بعدها بهامش */
+/** حركةُ الرجوع ٢٠٠ms على أندرويد (`_layout.tsx`) — الورقةُ تُفتح بعدها بهامش */
 const REOPEN_AFTER_BACK_MS = 260;
+/** 🆕 T606 — على الآيفون حركةُ الرجوع أطول (~٣٥٠ms، وأطولُ بالسحب)، فالموعدُ الاحتياطيُّ أبعد */
+const REOPEN_FALLBACK_IOS_MS = 700;
+
+/**
+ * 🆕 T606 (أحمد ٢٨ نوفمبر: «ما ترجع الأفلام إلّا إذا لمست الشاشة») — **الورقةُ تُفتح حين تنتهي حركةُ الرجوع فعلاً**.
+ * كانت تُفتح بعد ٢٦٠ms ثابتة، والآيفون ما زال في حركة الرجوع (٣٥٠ms، وأطولُ بالسحب) فيرفض عرضَ `Modal` ويؤجّله إلى أوّل لمسة.
+ * الآن ننتظر `transitionEnd` (الشاشةُ ظاهرةٌ لا مغادرة)، ومعه موعدٌ احتياطيّ لرجوعٍ بالسحب أُلغي أو حدثٍ لم يصل — **مرّةً واحدة**.
+ * يعيد دالّةَ التنظيف لـ`useFocusEffect`.
+ */
+function useAfterBack() {
+  const navigation = useNavigation();
+  /* 🆕 (مراجعةُ وكيل الآيفون) — **الرجوعُ بالسحب يُنهي حركتَه قبل أن تعود الشاشةُ مركَّزة**: `transitionEnd` يصل من `onAppear` قبل
+     التركيز، فلا يجد مستمعاً أُضيف عند التركيز. فمستمعٌ دائمٌ من التركيب يسجّل وقتَ آخر نهاية، وعند التركيز إن كانت قريبةً فُتحت الورقة */
+  const lastEnd = useRef(0);
+  useEffect(
+    () =>
+      navigation.addListener("transitionEnd" as never, ((e: { data?: { closing?: boolean } }) => {
+        if (!e?.data?.closing) lastEnd.current = Date.now();
+      }) as never),
+    [navigation],
+  );
+  return useCallback(
+    (open: () => void) => {
+      let done = false;
+      let nudge: ReturnType<typeof setTimeout> | null = null;
+      const run = () => {
+        if (done) return;
+        done = true;
+        open();
+      };
+      /* هامشٌ قصيرٌ بعد النهاية: الطبقةُ الأصليّة تُسلَّم بعد الحدث بلحظة */
+      if (Date.now() - lastEnd.current < 400) nudge = setTimeout(run, 60);
+      const unsub = navigation.addListener("transitionEnd" as never, ((e: { data?: { closing?: boolean } }) => {
+        if (!e?.data?.closing && !nudge) nudge = setTimeout(run, 60);
+      }) as never);
+      const id = setTimeout(run, Platform.OS === "ios" ? REOPEN_FALLBACK_IOS_MS : REOPEN_AFTER_BACK_MS);
+      return () => {
+        done = true;
+        unsub();
+        clearTimeout(id);
+        if (nudge) clearTimeout(nudge);
+      };
+    },
+    [navigation],
+  );
+}
 const GRID_HEAD_H = 34;
 type GridRow = { t: "head"; key: string; label: string } | { t: "row"; key: string; items: (ProfileTitle | ProfileShow)[] };
 

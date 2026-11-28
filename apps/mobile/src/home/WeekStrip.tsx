@@ -9,7 +9,9 @@ import { haptic } from "../haptics";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { PAGE_PAD, latinTitleFit } from "./Section";
-import type { HomeWeekDay, HomeWeekEntry } from "../contracts";
+import type { HomeWeekDay, HomeWeekEntry, HomeWeekSuggest } from "../contracts";
+import { Toggle } from "../settings/ui";
+import type { WeekSuggestPrefs } from "@/core/weekSuggest";
 
 /**
  * شريطُ الأسبوع — `WeekStrip.tsx` الويبيّة (Phase 11-H · H2) في أصله: ١٤ يوماً تُمرَّر (D-491)، اليومُ الأوّلُ بلون التمييز،
@@ -33,9 +35,44 @@ const DAY_PAD = 6;
 const MAX_POSTERS = 3;
 const ROW_LH = 20;
 
-export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: { days: HomeWeekDay[]; entries: HomeWeekEntry[]; expectedLabel?: string; onDay: (showId: number) => void; onCalendar: () => void }) {
+export function WeekStrip({
+  days,
+  entries,
+  expectedLabel,
+  onDay,
+  onCalendar,
+  suggest,
+  suggestPrefs,
+  onTitle,
+  onSuggestPrefs,
+}: {
+  days: HomeWeekDay[];
+  entries: HomeWeekEntry[];
+  expectedLabel?: string;
+  onDay: (showId: number) => void;
+  onCalendar: () => void;
+  /** 🆕 T606 — مقترحاتُ الأسبوع الفارغ (الخادمُ يرسلها حين لا حلقاتَ وحدَه) */
+  suggest?: HomeWeekSuggest[];
+  suggestPrefs?: WeekSuggestPrefs;
+  onTitle?: (kind: "tv" | "movie", id: number) => void;
+  onSuggestPrefs?: (next: WeekSuggestPrefs) => void;
+}) {
   const { t, tokens } = useApp();
   const [sheetDay, setSheetDay] = useState<HomeWeekDay | null>(null);
+  /* الورقةُ تعمل على مسوّدة، والحفظُ (ومعه إعادةُ جلب الرئيسيّة) مرّةً واحدة عند إغلاقها — لا مع كلِّ لمسة (مراجعةُ الوكيل) */
+  const [draft, setDraft] = useState<WeekSuggestPrefs | null>(null);
+  const closePrefs = () => {
+    if (draft && suggestPrefs && (draft.cinema !== suggestPrefs.cinema || draft.taste !== suggestPrefs.taste)) onSuggestPrefs?.(draft);
+    setDraft(null);
+  };
+  /* 🆕 T606 (س٤٢ «ب» — أحمد ٢٨ نوفمبر: «عشان ما يكون الأسبوع فاضي… مع إمكانية تحديد ما يظهر») — **المقترحُ للأسبوع الفارغ وحدَه**،
+     كلٌّ في يومه بإطارٍ أصفرَ متقطّعٍ وسطرٍ صغير («في السينما» · «يُعرض» · «يبدأ») فلا يُخلط بأعمالك. والورقةُ تختار المصدرين */
+  const sugByDay = new Map<string, HomeWeekSuggest[]>();
+  if (!entries.length) for (const x of suggest ?? []) {
+    if (!sugByDay.has(x.date)) sugByDay.set(x.date, []);
+    sugByDay.get(x.date)!.push(x);
+  }
+  const suggesting = !entries.length && !!suggestPrefs;
   const gradId = `wk${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const byDay = new Map<string, HomeWeekEntry[]>();
   for (const e of entries) {
@@ -52,13 +89,53 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
           <Text size={16} muted>›</Text>
         </Pressable>
         {entries.length === 0 ? (
-          <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{t.weekNothing}</Text>
+          <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{sugByDay.size ? t.weekSuggestLine : t.weekNothing}</Text>
+        ) : null}
+        {suggesting && onSuggestPrefs ? (
+          <Pressable
+            onPress={() => { haptic.pick(); if (suggestPrefs) setDraft(suggestPrefs); }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t.weekSuggestPrefs}
+            style={({ pressed }) => ({ marginStart: "auto", width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
+          >
+            <Icon name="sliders" size={16} color={tokens.muted} />
+          </Pressable>
         ) : null}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 6, alignItems: "stretch" }}>
         {days.map((d, i) => {
           const list = byDay.get(d.date) ?? [];
           const numColor = i === 0 ? tokens.accent : tokens.fg;
+          const sug = sugByDay.get(d.date);
+          if (sug?.length) {
+            return (
+              <View key={d.date} style={{ borderRadius: 14, borderWidth: 1, borderColor: tokens.accent + "8C", borderStyle: "dashed", padding: DAY_PAD, gap: 4, alignItems: "center" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, height: ROW_LH }}>
+                  <Text size={12} muted numberOfLines={1} style={{ lineHeight: ROW_LH }}>{d.weekday}</Text>
+                  <Text size={15} weight="700" color={numColor} style={{ lineHeight: ROW_LH, fontVariant: ["tabular-nums"] }}>{d.day_num}</Text>
+                </View>
+                <View style={{ flexDirection: "row", gap: 6 }}>
+                  {sug.slice(0, 2).map((x) => {
+                    const url = posterFor(x.poster_path, POSTER_W);
+                    return (
+                      <Pressable
+                        key={`${x.kind}-${x.id}`}
+                        onPress={() => onTitle?.(x.kind, x.id)}
+                        accessibilityRole="link"
+                        accessibilityLabel={`${d.weekday} ${d.day_num} · ${x.title} · ${t.weekSuggestTag[x.tag]}`}
+                        style={({ pressed }) => [tile, { opacity: pressed ? 0.8 : 1 }]}
+                      >
+                        {url ? <Image source={{ uri: url }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : <Icon name={x.kind === "tv" ? "tv" : "film"} size={18} color={tokens.muted} />}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                {/* سببُ اليوم: كلمةٌ واحدةٌ إن اتّفقا، وإلّا كلمتان بترتيب الملصقين */}
+                <Text size={10} weight="700" color={tokens.accent} numberOfLines={1}>{[...new Set(sug.slice(0, 2).map((x) => t.weekSuggestTag[x.tag]))].join(" · ")}</Text>
+              </View>
+            );
+          }
           if (list.length === 0) {
             /* اليومُ الفارغ ضيّقٌ باهت: اسمُه ورقمُه فقط — الفراغُ معلومة (D-491) ولا يأخذ عرضاً */
             return (
@@ -122,6 +199,16 @@ export function WeekStrip({ days, entries, expectedLabel, onDay, onCalendar }: {
         })}
       </ScrollView>
 
+      {/* 🆕 T606 — ما يظهر في الأسبوع الفارغ: مفتاحان، وكلُّ لمسةٍ تُحفظ فوراً (`onSuggestPrefs`) */}
+      {draft && onSuggestPrefs ? (
+        <Sheet title={t.weekSuggestPrefs} onClose={closePrefs}>
+          <View style={{ gap: 8 }}>
+            <Text size={12} muted>{t.weekSuggestPrefsHint}</Text>
+            <Toggle icon="film" label={t.weekSuggestCinema} hint={t.weekSuggestCinemaHint} checked={draft.cinema} onChange={() => setDraft({ ...draft, cinema: !draft.cinema })} />
+            <Toggle icon="sparkle-star" label={t.weekSuggestTaste} hint={t.weekSuggestTasteHint} checked={draft.taste} onChange={() => setDraft({ ...draft, taste: !draft.taste })} />
+          </View>
+        </Sheet>
+      ) : null}
       {/* ورقةُ اليوم (D-1587) — صفوفُ التقويم نفسُها: ملصقٌ · الاسم · «حلقة جديدة» · › */}
       {sheetDay ? (
         <Sheet title={`${sheetDay.weekday} ${sheetDay.day_num}`} onClose={() => setSheetDay(null)}>

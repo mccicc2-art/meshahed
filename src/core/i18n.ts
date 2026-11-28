@@ -3002,6 +3002,15 @@ const ar = {
   weekTitle: "أسبوعك",
   weekSub: "حلقات أعمالك في الأسبوعين القادمين.",
   weekNothing: "ما فيه حلقات قادمة هذا الأسبوع.",
+  /* 🆕 T606 — «أسبوعك» حين يفرغ: مقترحاتٌ في أيّامها (س٤٢ «ب») */
+  weekSuggestLine: "ما فيه حلقات لك · هذا ما يقترب",
+  weekSuggestTag: { cinema: "في السينما", release: "يُعرض", starts: "يبدأ" } as Record<"cinema" | "release" | "starts", string>,
+  weekSuggestPrefs: "ما يظهر في أسبوعك",
+  weekSuggestPrefsHint: "حين لا تكون لك حلقاتٌ في الأسبوعين",
+  weekSuggestCinema: "ما ينزل في السينما",
+  weekSuggestCinemaHint: "أفلامٌ تنزل صالاتِ السعوديّة في يومها",
+  weekSuggestTaste: "القادمُ لذوقك",
+  weekSuggestTasteHint: "أفلامٌ ومسلسلاتٌ تبدأ من الأنواع التي تحبّها",
   /* 🆕 **تقويمُ أعمالك** (D-828) — بابُ شريط الأسبوع، وعمقُه.
      ⚠️ **و«حلقة جديدة» بلا رقم**: رقمُها نداءُ TMDB لكلِّ صفّ (D-437)،
      **والغائبُ يغيب ولا يُخمَّن** (D-063). */
@@ -6199,6 +6208,14 @@ const en: Dict = {
   weekTitle: "Your week",
   weekSub: "Episodes from your shows over the next two weeks.",
   weekNothing: "No episodes due this week.",
+  weekSuggestLine: "No episodes for you · coming up",
+  weekSuggestTag: { cinema: "In cinemas", release: "Out", starts: "Starts" } as Record<"cinema" | "release" | "starts", string>,
+  weekSuggestPrefs: "What shows in your week",
+  weekSuggestPrefsHint: "When you have no episodes in the next two weeks",
+  weekSuggestCinema: "New in cinemas",
+  weekSuggestCinemaHint: "Films opening in Saudi cinemas, on their day",
+  weekSuggestTaste: "Coming up for your taste",
+  weekSuggestTasteHint: "New films and shows from the genres you like",
   smartListLabel: "Smart list",
   smartListUpdate: (name: string) => `Update “${name}”`,
   smartListUpdated: "Smart list rule updated",

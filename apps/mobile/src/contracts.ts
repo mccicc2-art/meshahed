@@ -112,6 +112,7 @@ export type {
   HomeTrendCard,
   HomeWeekDay,
   HomeWeekEntry,
+  HomeWeekSuggest,
   HomeQueueItem,
   HomeToWatchQueueCard,
   HomeViewBody,

@@ -95,6 +95,7 @@ import { DM_MAX, sanitizeDmPolicy, type DmPolicy } from "@/core/dmPolicy";
 import { CHAT_BG_CHOICES_MAX, chatBgNeedsPlus, effectiveChatBg, sanitizeChatBg, type ChatBg } from "@/core/chatBg";
 import { sanitizeStoredWidget } from "@/core/widgetFeedV2";
 import { addRateSkip, sanitizeRateCard } from "@/core/rateQueue";
+import { sanitizeWeekSuggest } from "@/core/weekSuggest";
 import type { ChatBgChoice, ChatBgPayload, ChatBgPostersPayload } from "@/core/contracts/settings";
 import { searchGifs, type GifHit } from "@/lib/gif";
 import { IMPORT_CAPS, type ImportPayload, type ImportRun, type ResolveRequest, type ResolveResult } from "@/core/importer";
@@ -741,6 +742,8 @@ export async function updateUiState(patch: {
   addRateSkip?: string;
   /** 🆕 T530 — إخفاءُ بطاقة «بانتظار تقييمك» في الرئيسيّة حتى هذا التاريخ */
   rateCard?: string;
+  /** 🆕 T606 — ما يظهر في «أسبوعك» حين يفرغ — يستبدل المخزَّن بعد تطهيره */
+  week?: unknown;
 }): Promise<{ ok: boolean; needsPlus?: true }> {
   try {
     const { supabase, user } = await requireUser("uistate", 30, 60_000);
@@ -788,6 +791,7 @@ export async function updateUiState(patch: {
       /* 🆕 T530 — التخطّي اتحادٌ (جهازان يتخطّيان معاً لا يمحو أحدُهما الآخر)، والإخفاءُ يستبدل */
       rateSkip: patch.addRateSkip !== undefined ? addRateSkip(current.rateSkip, patch.addRateSkip) : current.rateSkip,
       rateCard: patch.rateCard !== undefined ? sanitizeRateCard(patch.rateCard) : current.rateCard,
+      week: patch.week !== undefined ? sanitizeWeekSuggest(patch.week) : current.week,
     };
     await supabase.from("profiles").update({ ui_state: next }).eq("id", user.id);
     return { ok: true };
@@ -4453,7 +4457,8 @@ export async function toggleReviewLike(
   if (error?.code === "23505") return;
   if (error) fail(error);
   /* 🆕 D-1563 — شخصيّاتُ لوبز AI لا تُنبَّه: لا أحدَ وراءها يقرأ الجرس */
-  if (!liked && !isPersonaId(reviewUserId))
+  /* 🆕 T606 (س٤٧) — إعجابُك بمراجعتك لا يُنبّهك (بعد الهجرة ٢٧٧ التي تسمح به) */
+  if (!liked && !isPersonaId(reviewUserId) && reviewUserId !== user.id)
     notifySignal({ to: reviewUserId, kind: "like_review", actorId: user.id, tmdbId, mediaType, dedupe: `like_review:${user.id}:${reviewUserId}:${mediaType}:${tmdbId}` });
   // لا تجديد للرئيسية: الإعجاب يُنقر من صفحات العمل والناس، وكلاهما لا
   // يرسم بيانات الرئيسية — تجديدُ أغلى صفحةٍ مع كل قلب كان هدراً صافياً
@@ -5271,7 +5276,7 @@ export async function toggleListReviewLike(
   /* A-37 — كأختها: إعجابٌ موجودٌ أصلاً ليس خطأً */
   if (error?.code === "23505") return;
   if (error) fail(error);
-  if (!liked)
+  if (!liked && reviewUserId !== user.id)
     notifySignal({ to: reviewUserId, kind: "like_list_review", actorId: user.id, listId, dedupe: `like_list_review:${user.id}:${reviewUserId}:${listId}` });
   revalidatePath(`/lists/${listId}`);
 }

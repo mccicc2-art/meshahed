@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, Share, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, Share, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -81,6 +81,9 @@ async function fetchCommunity() {
 export function prefetchCommunity(): void {
   void queryClient.prefetchQuery({ queryKey: COMMUNITY_KEY, queryFn: fetchCommunity, staleTime: 60_000 });
 }
+
+/** T606 — أعلى المراجعات إعجاباً: ثلاثٌ في صفحة الأعضاء، والبقيّةُ في «الكل» */
+const REVIEWS_PREVIEW = 3;
 
 export function CommunityScreen() {
   const { t, tokens } = useApp();
@@ -451,6 +454,7 @@ export function CommunityScreen() {
  * الصفِّ نفسِه «الأحدث · الأكثر تفاعلاً» خياران ظاهران (الخطُّ تحت المختار) — D-1234؛ كانا سطراً ثانياً مع العدد.
  * «أعمالي» تكتب الكوكيَ نفسَه الذي كان مفتاحَ الأدوات (D-306) — فمن كان مفعّلاً يجدها مختارة.
  */
+
 function TalkHead({
   kind = "talk",
   mine,
@@ -964,7 +968,6 @@ function ListsRow({ cards, doors }: { cards: CommunityListCard[]; doors: CardDoo
 /** اللوحةُ بترتيب أحمد (T603 ثمّ D-289/D-291): الأكثر · مميّزون · أعلى التعليقات · العملُ الذي يدور حوله الكلام · القوائم · الصاعدون */
 function Board({ d, doors, acts, onAll }: { d: CommunityPayload; doors: CardDoors; acts: CommunityActs; onAll: (s: BoardSection) => void }) {
   const { t, tokens, locale } = useApp();
-  const { width } = useWindowDimensions();
   const b = d.board;
   const gap = <View style={{ height: 26 }} />;
   /* 🆕 D-1608 — الشخصيّاتُ بشكل صفِّ اللوحة (`LeaderCard` نفسُها) — والسطران تحت الاسم عددُ مراجعاتها وأنواعُها («٣ أ») */
@@ -995,16 +998,13 @@ function Board({ d, doors, acts, onAll }: { d: CommunityPayload; doors: CardDoor
       {b.reviews?.length ? (
         <>
           <SectionHead icon="heart-filled" color={TONE.reviews} title={t.peopleBoardTopReview} onAll={() => onAll("reviews")} />
-          {/* 🆕 T603 — صفٌّ يُمرَّر كالأعضاء (التصميمُ الأوّل): عشرٌ عموديّةٌ كانت تدفع ما بعدها شاشتين */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }} style={{ marginHorizontal: -PAGE_PAD }}>
-            <View style={{ width: PAGE_PAD - 10 }} />
-            {b.reviews.map((r) => (
-              <View key={`${r.id}-${r.mediaType}-${r.tmdbId}`} style={{ width: Math.min(320, width - PAGE_PAD * 2 - 24) }}>
-                <TopReviewCard r={r} doors={doors} />
-              </View>
+          {/* 🆕 T606 (q36 «أ» — أحمد ٢٨ نوفمبر: «المراجعات تظهر في الأعضاء بطريقة عموديّة مثل القديمة») — **عموديّةٌ: ثلاثٌ ثمّ «الكل»**.
+              الخادمُ يرسل عشراً للصفّ (T603)، والعشرُ العموديّةُ كانت تدفع ما بعدها شاشتين — فالصفحةُ تعرض ثلاثاً و«الكل» يفتح البقيّة */}
+          <View style={{ gap: 10 }}>
+            {b.reviews.slice(0, REVIEWS_PREVIEW).map((r) => (
+              <TopReviewCard key={`${r.id}-${r.mediaType}-${r.tmdbId}`} r={r} doors={doors} />
             ))}
-            <View style={{ width: PAGE_PAD - 10 }} />
-          </ScrollView>
+          </View>
           {gap}
         </>
       ) : null}

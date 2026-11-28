@@ -14,7 +14,7 @@ import { num } from "@/core/i18n";
 import { ageBadge, ageInfo, ageA11y, type AgeBadge } from "@/core/ageRating";
 import type { CreateListBody, FavoriteBody, ListToggleItemBody, TitleExtrasPayload } from "../contracts";
 import { haptic } from "../haptics";
-import { useRtlRailPin } from "../rtlRailPin";
+import { railGrow, useRtlRailPin } from "../rtlRailPin";
 import { SYSTEM_FONT_CAP } from "../fontScale";
 
 /**
@@ -524,7 +524,7 @@ function RelatedRail({ title, subtitle, items, onOpen }: { title: string; subtit
           </Pressable>
         )}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}
+        contentContainerStyle={railGrow({ gap: 12, paddingHorizontal: 16 })}
         style={{ marginHorizontal: -16 }}
       />
     </View>

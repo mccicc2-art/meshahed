@@ -87,7 +87,7 @@ export type LibraryPayload = {
  * `POST /api/v1/me/prefs/ui-state` — تعليمُ تلميحاتٍ مقروءةً (اتّحادٌ في الخادم)، **و🆕 تقدّمُ الجولة**
  * (D-1318). كلاهما اختياريٌّ: طلبٌ يحمل أحدَهما لا يمسّ الآخر.
  */
-export type UiStateBody = { addHints?: string[]; tour?: TourState };
+export type UiStateBody = { addHints?: string[]; tour?: TourState; /** 🆕 T606 */ week?: { cinema: boolean; taste: boolean } };
 
 /** 🆕 D-947 — `GET /api/v1/me/library/artists`: رفُّ الفنّانين (`getArtistShelf(60)`) */
 export type LibraryArtist = {

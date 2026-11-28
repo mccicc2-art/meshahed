@@ -2,7 +2,7 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { afterInteractions } from "../afterInteractions";
 import { Image } from "expo-image";
-import { IOS_RTL, useRtlRailPin } from "../rtlRailPin";
+import { IOS_RTL, railGrow, useRtlRailPin } from "../rtlRailPin";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
@@ -1174,7 +1174,7 @@ const CardsRail = memo(function CardsRail({
     [ranked, notes, onOpen, onHold],
   );
   /* D-1471/D-1478 — التثبيتُ على أوّل بطاقة: الخطّافُ المشترك (`rtlRailPin.ts`)، ولوحُه يثبّته حين ينشط (`pinDiscoverRails`) */
-  const { pin, props: pinProps } = useRtlRailPin<CuratedCard & { note?: string | null }>(RAIL_JANK.onScrollBeginDrag);
+  const { pin, props: pinProps } = useRtlRailPin<CuratedCard & { note?: string | null }>(RAIL_JANK.onScrollBeginDrag, RAIL_JANK.onMomentumScrollBegin);
   const pane = React.useContext(RailPane);
   useEffect(() => {
     if (!IOS_RTL) return;
@@ -1214,7 +1214,7 @@ const CardsRail = memo(function CardsRail({
         renderItem={renderItem}
         getItemLayout={cardLayout}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}
+        contentContainerStyle={railGrow({ paddingHorizontal: PAGE_PAD, gap: GAP })}
         initialNumToRender={5}
         /* 🆕 D-1219 — نافذةُ ثلاث شاشاتٍ لا خمس: الصفُّ الأفقيُّ كان يركّب ~١٥ بطاقةً لا يُرى منها إلّا ثلاث، و«اكتشف»
            تحمل ~١١٠ بطاقةً مركّبةً في لوحين (`live` في D-1218a) — وفكُّ التجميد يمرّ عليها كلِّها. العرضُ ثابت

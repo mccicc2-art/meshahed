@@ -50,7 +50,8 @@ import { themeById, themeScheme } from "@/core/themes";
 /* 🆕 T602 (q32 «أ» · q27) — **لا كلامَ فوق صورةٍ مزدحمة**: الحجابُ صلبٌ تحت عمود الكلام كلِّه (٠–٥٠٪) ثمّ يذوب حتى ٧٠٪،
    والكلامُ لا يتجاوز نصفَ البطاقة — كان «أفلام ديفيد فينشر» يذوب في شعار ALIEN لأنّ نصفَ الاسم فوق حجابٍ شبهِ شفّاف.
    والغلافُ المختار في جهة النهاية بعرض الملصقات (٧٢٪) لا تحت البطاقة كلِّها: الحجابُ مقيسٌ على الملصقات، فكان الغلافُ
-   الكامل يُظهر صورتَه تحت الاسم. الصورةُ المعتمدة في الاستوديو: «البطاقةُ نفسها بلا زحمة». */
+   الكامل يُظهر صورتَه تحت الاسم. الصورةُ المعتمدة في الاستوديو: «البطاقةُ نفسها بلا زحمة».
+   ↪️ T606 — الحجابُ صار يذوب في ٥٠–٥٥٪ (لا ٧٠٪)، والملصقان والغلافُ في النصف الحرّ (٥٠٪): ما بين ٥٠ و٧٢ كان يخفي الملصقَ الأوّل. */
 const VEIL_DARK = require("../../assets/list-veil-dark.png");
 /* T602 — ١٧٦ لا ١٦٨: الاسمُ بثلاثة أسطر مع سطر الصاحب يبلغها، فتبقى بطاقاتُ الصفّ بقامةٍ واحدة */
 const MIN_H = 176;
@@ -116,9 +117,12 @@ export function ListCard({
   const posters = card.posters.map((p) => posterFor(p, 96)).filter(Boolean) as string[];
   /* 🆕 T474 — **ملصقُ الحدث يأخذ أوضحَ خانة** (الأخيرةُ في جهة النهاية، أبعدُ ما يكون عن الحجاب) — `ListCardShell` الويب حرفاً */
   const ev = card.event;
+  /* 🆕 T606 (q37 «أ» — أحمد ٢٨ نوفمبر: «البوستر يبدأ يسار والمفروض يمين») — **ملصقان في النصف الحرّ لا ثلاثةٌ على ٧٢٪**: حجابُ R334
+     صلبٌ تحت عمود الكلام حتى منتصف البطاقة، فكان الملصقُ الأوّلُ (وهو في جهة البداية) مختفياً تحته ويُرى ملصقان من النهاية.
+     الآن ملصقان كاملان يبدآن بجانب الكلام، والحدثُ ثانيهما (الأبعدُ عن الحجاب كما كان) */
   const slots: (string | null)[] = ev
-    ? [...posters.slice(0, 2), (ev.poster ? posterFor(ev.poster, 96) : null) ?? posters[2] ?? null]
-    : posters.slice(0, 3);
+    ? [posters[0] ?? null, (ev.poster ? posterFor(ev.poster, 96) : null) ?? posters[1] ?? null]
+    : posters.slice(0, 2);
   const play =
     card.playlist === null ? null : (
       <PlayPill palette={c} on={!!card.playlist} label={t.listPlaylist} disabled={busy || !onPlaylist} onToggle={(on) => onPlaylist?.(on)} />
@@ -214,16 +218,16 @@ export function ListCard({
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      {/* الأرضيّة: الغلافُ كاملاً، وإلّا الملصقاتُ الثلاثة من جهة النهاية (`w-[72%]`) */}
+      {/* الأرضيّة: الغلافُ أو الملصقان في النصف الحرّ من جهة النهاية (T606) — كلاهما يبدأ حيث ينتهي الحجابُ الصلب */}
       {card.cover ? (
-        <Image source={{ uri: card.cover }} style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "72%" }} contentFit="cover" transition={150} />
+        <Image source={{ uri: card.cover }} style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "50%" }} contentFit="cover" transition={150} />
       ) : slots.length > 0 ? (
-        <View style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "72%", flexDirection: "row", justifyContent: "flex-end" }}>
+        <View style={{ position: "absolute", top: 0, bottom: 0, end: 0, width: "50%", flexDirection: "row", justifyContent: "flex-start" }}>
           {slots.map((uri, i) =>
             ev && i === slots.length - 1 ? (
               /* 🆕 T474 — خانةُ الحدث بتكبيرٍ متوسّط (نموذجُ أحمد): ٧٢٪ من عرض الملصق ملتصقاً بالقاع، وفوقه الملصقُ نفسُه مموّهاً
                  معتماً يحمل الشارةَ الصفراء — فلا تغطّي الشارةُ وجهاً */
-              <View key={i} style={slots.length >= 3 ? { flex: 1, height: "100%" } : { width: "33.34%", height: "100%" }}>
+              <View key={i} style={{ width: "50%", height: "100%" }}>
                 {uri ? (
                   <View style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}>
                     <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={12} cachePolicy="memory-disk" />
@@ -234,8 +238,8 @@ export function ListCard({
                 <EventBadge text={ev.badge} bg={c.accent} fg={c.onAccent} />
               </View>
             ) : uri ? (
-              /* 🆕 T602 — ملصقٌ أو اثنان بعرض ثلثٍ كالثلاثة، ملتصقان بالنهاية: كان الواحدُ يُمَطّ على ٧٢٪ فيُقصّ وجهُه */
-              <Image key={i} source={{ uri }} style={slots.length >= 3 ? { flex: 1, height: "100%" } : { width: "33.34%", height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
+              /* كلُّ ملصقٍ نصفُ الشريحة (ربعُ البطاقة) — والواحدُ يبقى بعرضه بجانب الكلام لا يُمَطّ فيُقصّ وجهُه */
+              <Image key={i} source={{ uri }} style={{ width: "50%", height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" />
             ) : null,
           )}
         </View>
@@ -257,7 +261,7 @@ export function ListCard({
           ) : null}
           {/* 🆕 T454 — **الكلماتُ تملأ السطرَ الأوّلَ قبل أن تنزل** (`simple`) وسقفُ العرض ٦٤٪ (أحمد: «خل تو تطلع فوق
               وطلعها كاملة»): أندرويد يوازن السطرين افتراضاً (`highQuality`) فنزلت «to» وقُصّت «Doomsday» عند ٥٨٪ */}
-          <Text size={15} weight="700" color={c.fg} numberOfLines={3} textBreakStrategy="simple" style={{ flex: 1, maxWidth: "52%", lineHeight: 20 }}>
+          <Text size={15} weight="700" color={c.fg} numberOfLines={3} textBreakStrategy="simple" style={{ flex: 1, maxWidth: "46%", lineHeight: 20 }}>
             {card.name}
           </Text>
           {/* 🆕 D-952 — رمزُ الفلاتر (`sliders`) قبل المشاركة: الويبُ يضع «عدّل الشرط»
@@ -268,19 +272,10 @@ export function ListCard({
               onPress={onEdit.onPress}
               hitSlop={8}
               accessibilityLabel={onEdit.label}
-              style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: -6 }}
+              style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: -6, backgroundColor: c.bg + "CC" }}
             >
-              <Icon name="sliders" size={16} color={c.muted} />
-            </Pressable>
-          ) : null}
-          {onShare ? (
-            <Pressable
-              onPress={onShare}
-              hitSlop={8}
-              accessibilityLabel={t.listShare}
-              style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: -6, marginEnd: -6 }}
-            >
-              <Icon name="share" size={16} color={c.muted} />
+              {/* T606 — صار فوق الملصقات (الحجابُ ينتهي عند ٥٥٪)، فله دائرتُه الداكنة كالحفظ والمشاركة */}
+              <Icon name="sliders" size={16} color={c.fg} />
             </Pressable>
           ) : null}
         </View>
@@ -366,6 +361,20 @@ export function ListCard({
           </View>
         ) : null}
       </View>
+      {/* 🆕 T606 (q44 «أ» — لقطةُ أحمد ٢٧ نوفمبر: «تعديل مكان المشاركة بحيث يكون متناسقاً مع أماكنها في التطبيق») — **المشاركةُ في زاوية
+          النهاية العليا على دائرةٍ داكنة**، كإشارة الحفظ في الزاوية السفلى: كانت تلي الاسمَ فتقع وسط البطاقة فوق الملصقات بلا أرضيّة.
+          وفي بطاقة الحدث تنزل تحت شارته الصفراء (الشارةُ أعلى خانة النهاية) فلا تغطّيها */}
+      {onShare ? (
+        <Pressable
+          onPress={onShare}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={t.listShare}
+          style={{ position: "absolute", top: ev ? 38 : 10, end: 10, width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: c.bg + "CC" }}
+        >
+          <Icon name="share" size={15} color={c.fg} />
+        </Pressable>
+      ) : null}
     </Pressable>
   );
 }

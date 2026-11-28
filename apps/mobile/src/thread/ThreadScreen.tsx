@@ -1091,9 +1091,10 @@ function Head({
           <Icon name="comment" size={15} color={tokens.muted} />
           {talk.count > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(talk.count, locale)}</Text> : null}
         </Pressable>
-        <View style={[pad, { gap: 4 }]} accessibilityLabel={views > 0 ? `${t.postViewsHint}: ${views}` : undefined}>
-          <Icon name="chart" size={14} color={views > 0 ? tokens.muted : tokens.muted + "59"} />
-          {views > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(views, locale)}</Text> : null}
+        {/* 🆕 T606 (س٤٦ «أ») — كبطاقة الخطّ: العدّادُ ظاهرٌ وأقلُّه واحد (صاحبُ المنشور رآه) */}
+        <View style={[pad, { gap: 4 }]} accessibilityLabel={`${t.postViewsHint}: ${Math.max(1, views)}`}>
+          <Icon name="chart" size={14} color={tokens.muted} />
+          <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(Math.max(1, views), locale)}</Text>
         </View>
         <Pressable onPress={onShare} hitSlop={4} accessibilityRole="button" accessibilityLabel={t.shareLinkLabel} style={pad}>
           <Icon name="share" size={16} color={tokens.muted} />

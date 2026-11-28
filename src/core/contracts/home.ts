@@ -117,6 +117,8 @@ export type HomeWeekDay = { date: string; weekday: string; day_num: string };
 /** 🆕 D-1587 — `poster_path` لورقة اليوم (يومٌ بأكثر من عمل): اختياريٌّ فخادمٌ أقدم لا يكسر التطبيق — الصفُّ يُرسم برمز العمل */
 /** 🆕 D-1614 — `expected`: موعدٌ متوقَّعٌ من الإيقاع الأسبوعيّ لا معلَن — يُرسم باهتاً. غائبٌ من خادمٍ أقدم */
 export type HomeWeekEntry = { date: string; show_id: number; title: string; poster_path?: string | null; expected?: boolean };
+/** 🆕 T606 — مقترحٌ في «أسبوعك» حين يفرغ: فيلمٌ في السينما (`cinema`)، أو فيلمٌ يُعرض (`release`)، أو مسلسلٌ يبدأ (`starts`) */
+export type HomeWeekSuggest = { date: string; kind: "tv" | "movie"; id: number; title: string; poster_path: string | null; tag: "cinema" | "release" | "starts" };
 
 /** بطاقةُ عملٍ في صفوف «للمشاهدة» و«القادم» (`MixedItem`) */
 export type HomeMixedCard = {
@@ -244,7 +246,15 @@ export type HomePayload = {
   sections: {
     continue: HomeContinueCard[];
     /** 🆕 D-1614 — `expected_label` «حلقة متوقّعة» لورقة اليوم — غائبٌ من خادمٍ أقدم */
-    week: { days: HomeWeekDay[]; entries: HomeWeekEntry[]; expected_label?: string };
+    week: {
+      days: HomeWeekDay[];
+      entries: HomeWeekEntry[];
+      expected_label?: string;
+      /** 🆕 T606 — يُرسل حين يفرغ الأسبوعُ وحدَه؛ قارئٌ قديمٌ يتجاهله */
+      suggest?: HomeWeekSuggest[];
+      /** 🆕 T606 — ما اختار صاحبُ الحساب أن يظهر (السينما · لذوقك) — للورقة التي تغيّره */
+      suggest_prefs?: { cinema: boolean; taste: boolean };
+    };
     /** الصفُّ (١٦) والعددُ الكامل — «الكل» في الورقة يسرد الكامل */
     towatch: { items: HomeMixedCard[]; all: HomeMixedCard[] };
     upcoming: HomeMixedCard[];

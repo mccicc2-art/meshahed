@@ -166,9 +166,11 @@ function Tail({ row, acts, onList, share }: { row: CommunityPostRow; acts: CardA
         {replies > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(replies, locale)}</Text> : null}
       </Pressable>
       {views != null ? (
-        <View style={[pad, { gap: 4 }]} accessibilityLabel={views > 0 ? `${t.postViewsHint}: ${views}` : undefined}>
-          <Icon name="chart" size={14} color={views > 0 ? tokens.muted : tokens.muted + "59"} />
-          {views > 0 ? <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(views, locale)}</Text> : null}
+        /* 🆕 T606 (q46 «أ» — أحمد: «دائماً أظهر فيها عدد مرّات المشاهدة… والجديد يبدأ من 1») — العدّادُ ظاهرٌ دائماً، وأقلُّه واحد:
+           صاحبُ المنشور رآه وإن لم يُعدّ (لا يمرّ منشورُه في خطّه دائماً) */
+        <View style={[pad, { gap: 4 }]} accessibilityLabel={`${t.postViewsHint}: ${Math.max(1, views)}`}>
+          <Icon name="chart" size={14} color={tokens.muted} />
+          <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>{num(Math.max(1, views), locale)}</Text>
         </View>
       ) : null}
       {share ? (

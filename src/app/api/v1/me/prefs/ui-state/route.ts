@@ -21,6 +21,7 @@ export const POST = bodyRoute<UiStateBody, { ok: boolean }>(
     updateUiState({
       ...(Array.isArray(b.addHints) ? { addHints: b.addHints.map(String).slice(0, 8) } : {}),
       ...(b.tour && typeof b.tour === "object" ? { tour: b.tour } : {}),
+      ...(b.week && typeof b.week === "object" ? { week: b.week } : {}),
     }).then((r) => ({ ok: r.ok })),
   () => ["me:library"],
 );
