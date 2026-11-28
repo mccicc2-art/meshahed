@@ -10,7 +10,9 @@ import type { ListReviewLikeBody } from "@/core/contracts/library";
  */
 export const POST = bodyRoute<ListReviewLikeBody, { liked: boolean }>(
   async (b) => {
-    await toggleListReviewLike(String(b.reviewUserId ?? ""), String(b.listId ?? ""), !!b.liked);
+    /* T611 — `liked` في الجسم **الحالُ المطلوبة** (التطبيقُ يرسل `!liked_by_me`)، ودالّةُ الويب تأخذ **الحالَ القائمة** («أعجبتُ ⇒ احذف»):
+       كان يُمرَّر كما هو فيُحذف الإعجابُ بدل أن يُكتب، فلا يُحفظ قلبُ رأيٍ في صفحة القائمة أبداً. يُقلب هنا مرّةً واحدة */
+    await toggleListReviewLike(String(b.reviewUserId ?? ""), String(b.listId ?? ""), !b.liked);
     return { liked: !!b.liked };
   },
   (b) => [listTag(String(b.listId ?? ""))],
