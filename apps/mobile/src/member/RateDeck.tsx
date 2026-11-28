@@ -131,6 +131,14 @@ export function RateDeck({
   const [score, setScore] = useState(0);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
+  /* A-85 (المدقّق ٢٧ نوفمبر) — مؤقّتُ هبوط النجمة يُحفظ ليُلغى إن غادر المستخدمُ الشاشةَ قبل انقضائه، فلا يُحدَّث ما أُزيل */
+  const landTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (landTimer.current) clearTimeout(landTimer.current);
+    },
+    [],
+  );
   const [fly, setFly] = useState<{ r: RateQueueItem; kind: FlyKind; v: number; fx: number; fy: number; id: number }[]>([]);
   const flyId = useRef(0);
   const launch = useCallback((r: RateQueueItem, kind: FlyKind, v = 0, fx = 0, fy = 0) => {
@@ -225,8 +233,9 @@ export function RateDeck({
       if (ok) {
         haptic.success();
         /* النجمةُ تُرى على البطاقة لحظةً ثمّ تهبط إلى الرفّ */
-        setTimeout(
+        landTimer.current = setTimeout(
           () => {
+            landTimer.current = null;
             launch(top, "rate", v);
             onRated(top, v);
             setScore(0);

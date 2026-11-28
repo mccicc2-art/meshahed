@@ -294,6 +294,9 @@ export const ShahidWeb = forwardRef<ShahidWebRef, Props>(function ShahidWeb({ ur
   const onMessage = useCallback(
     (e: WebViewMessageEvent) => {
       let m: { t?: string; id?: number; status?: number; body?: string; state?: ShahidPageState; path?: string; profileId?: string; name?: string; d?: ShahidSeen; list?: ShahidProfile[]; src?: string };
+      /* A-84 (المدقّق ٢٧ نوفمبر) — المتصفّحُ يفتح الآن صفحاتٍ ليست من شاهد (المهمّة ٥٦٨)، فلا يُقبل ردٌّ إلّا من صفحةٍ على نطاقات شاهد:
+         ما يصل من غيرها لا يُجيب طلباً ولا يغيّر حالة الربط */
+      if (!SHAHID_HOSTS.test(e.nativeEvent.url ?? "")) return;
       try {
         m = JSON.parse(e.nativeEvent.data);
       } catch {

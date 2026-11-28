@@ -574,7 +574,7 @@ type StoryCard = { uri: string | null; ready: boolean; failed: boolean; busy: bo
  * (وصفةُ `useShareReport`)؛ والمشاركةُ الملفُّ نفسُه الذي تراه، لا رسمٌ ثانٍ.
  */
 function useStoryCard(enabled: boolean, scope: StoryScope): StoryCard {
-  const { locale } = useApp();
+  const { t } = useApp();
   const [uri, setUri] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -601,13 +601,13 @@ function useStoryCard(enabled: boolean, scope: StoryScope): StoryCard {
     setBusy(true);
     try {
       const Sharing = await import("expo-sharing");
-      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: "image/png", UTI: "public.png", dialogTitle: locale === "en" ? "Share your stats" : "شارك إحصائياتك" });
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: "image/png", UTI: "public.png", dialogTitle: t.storyShareTitle });
     } catch {
       /* أُغلقت ورقةُ المشاركة أو غابت الوحدة — لا شيءَ يُقال فوق قصّة */
     } finally {
       setBusy(false);
     }
-  }, [uri, busy, locale]);
+  }, [uri, busy, t]);
   /* 🆕 الحصاد — صورةُ الصفحة نفسِها تُرسم حين تُطلب (لا قبلها: أربعُ صورٍ لا يشاركها أكثرُ الناس) ثمّ تُشارَك */
   const sharePage = useCallback(
     async (page: string) => {
@@ -618,14 +618,14 @@ function useStoryCard(enabled: boolean, scope: StoryScope): StoryCard {
         const file = new File(Paths.cache, `loopz-story-${page}-${Date.now()}.png`);
         await downloadTo(`/api/v1/me/report/image?p=year&page=${page}`, file);
         const Sharing = await import("expo-sharing");
-        if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "image/png", UTI: "public.png", dialogTitle: locale === "en" ? "Share" : "شارك" });
+        if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "image/png", UTI: "public.png", dialogTitle: t.storySharePage });
       } catch {
         /* لم تُرسم أو أُغلقت الورقة — لا شيءَ يُقال فوق قصّة */
       } finally {
         setBusy(false);
       }
     },
-    [busy, locale],
+    [busy, t],
   );
   return useMemo(() => ({ uri, ready: !!uri, failed, busy, share, sharePage }), [uri, failed, busy, share, sharePage]);
 }

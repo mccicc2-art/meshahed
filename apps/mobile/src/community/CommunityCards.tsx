@@ -784,6 +784,36 @@ export function LeaderCard({ p, mode, rank, doors, follow = null, stats = null, 
   );
 }
 
+/**
+ * 🆕 T619 (س٦١ «ب» — أحمد ٢٨ نوفمبر: «مازال المجتمع يحتاج تحسين»، واختار «الوجوه أوّلاً») — **وجهُ العضو دائرةً في صفٍّ يُمرَّر**:
+ * المميّزون بحلقة الميداليّة للثلاثة الأوائل وعددِ آرائهم كلِّه، والصاعدون بحلقةٍ خضراء وزيادتِهم في سبعة أيّام. الضغطةُ تفتح الملف
+ * (فيه زرُّ المتابعة) — أخفُّ من بطاقة الصفّ بزرّها، ويُرى نحو خمسة بدل ثلاثٍ ونصف.
+ */
+export function FaceCell({ p, mode, rank, doors }: { p: CommunityLeaderRow; mode: "featured" | "rising"; rank: number; doors: CardDoors }) {
+  const { t, tokens } = useApp();
+  const who = displayNameOf(p, t.anonymousUser);
+  const path = profileHref(p);
+  const rising = mode === "rising";
+  const ring = rising ? tokens.success : rank === 1 ? tokens.accent : rank === 2 ? "#C8CCD4" : rank === 3 ? "#B77B45" : "transparent";
+  const delta = p.total - p.prevTotal;
+  /* الرقمُ قاعدةُ بطاقة الصفّ نفسُها (`LeaderCard` · `pill`): آراؤه حين لا مشاركاتٍ له وإلّا تفاعلاته */
+  const stat = rising ? `↑ ${t.peopleBoardActions(delta)}` : p.posts <= 0 ? t.peopleBoardReviews(p.reviews) : t.peopleBoardActions(p.total);
+  return (
+    <Pressable onPress={() => path && doors.onWeb(path)} disabled={!path} accessibilityRole="link" accessibilityLabel={`${who} · ${stat}`} style={{ width: FACE_W, alignItems: "center", gap: 4 }}>
+      <View style={{ padding: 2, borderRadius: 999, borderWidth: 2, borderColor: ring }}>
+        <Avatar uri={p.hide_name ? null : p.avatar_url} size={54} />
+      </View>
+      <Text size={12} weight="700" numberOfLines={1} style={{ maxWidth: FACE_W }}>{who}</Text>
+      {/* يصغر الرقمُ حتى ٨٠٪ قبل أن يُقصّ: «↑ ٦ تفاعلات» بخطٍّ كبير يتجاوز الخانة */}
+      <Text size={11} weight="700" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} color={rising ? tokens.success : tokens.accent} style={{ maxWidth: FACE_W, fontVariant: ["tabular-nums"] }}>
+        {stat}
+      </Text>
+    </Pressable>
+  );
+}
+export const FACE_W = 72;
+
+
 /** أعلى التعليقات إعجاباً — `TopReviews` الويب: الغلافُ خلفها، والوجهُ في البداية، والملصقُ في النهاية */
 export function TopReviewCard({ r, doors }: { r: CommunityTopReview; doors: CardDoors }) {
   const { t, tokens } = useApp();

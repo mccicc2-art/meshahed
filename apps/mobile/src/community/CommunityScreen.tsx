@@ -24,7 +24,7 @@ import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { usePullRefresh } from "../pullRefresh";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
 import { ListCard, useListCardW } from "../library/ListCard";
-import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type RoomPin } from "./CommunityCards";
+import { FaceCell, FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type RoomPin } from "./CommunityCards";
 import { PERSONA_BOARD, personaLang, personaOf, personaReviewsLabel } from "@/core/personas";
 import { TalkSearch } from "./TalkSearch";
 import { num } from "@/core/i18n";
@@ -955,6 +955,19 @@ function LeaderRow({ rows, mode, doors, acts, ids }: { rows: CommunityLeaderRow[
   );
 }
 
+/** 🆕 T619 — صفُّ الوجوه (س٦١ «ب»): يلامس حافّتي الشاشة كصفّ القوائم، ويُرى منه خمسةٌ ونصف */
+function FaceRow({ rows, mode, doors }: { rows: CommunityLeaderRow[]; mode: "featured" | "rising"; doors: CardDoors }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginHorizontal: -PAGE_PAD }}>
+      <View style={{ width: PAGE_PAD - 8 }} />
+      {rows.map((p, i) => (
+        <FaceCell key={p.id} p={p} mode={mode} rank={i + 1} doors={doors} />
+      ))}
+      <View style={{ width: PAGE_PAD - 8 }} />
+    </ScrollView>
+  );
+}
+
 function ListsRow({ cards, doors }: { cards: CommunityListCard[]; doors: CardDoors }) {
   const { t } = useApp();
   const listW = useListCardW();
@@ -990,7 +1003,7 @@ function ListsRow({ cards, doors }: { cards: CommunityListCard[]; doors: CardDoo
   );
 }
 
-/** اللوحةُ بترتيب أحمد (T603 ثمّ D-289/D-291): الأكثر · مميّزون · أعلى التعليقات · العملُ الذي يدور حوله الكلام · القوائم · الصاعدون */
+/** اللوحةُ بترتيب أحمد (T603 ثمّ D-289/D-291، و T619): الأكثر · مميّزون · الصاعدون · أعلى التعليقات · العملُ الذي يدور حوله الكلام · القوائم */
 function Board({ d, doors, acts, onAll }: { d: CommunityPayload; doors: CardDoors; acts: CommunityActs; onAll: (s: BoardSection) => void }) {
   const { t, tokens, locale } = useApp();
   const b = d.board;
@@ -1016,7 +1029,15 @@ function Board({ d, doors, acts, onAll }: { d: CommunityPayload; doors: CardDoor
       {b.featured?.length ? (
         <>
           <SectionHead icon="sparkle-star" color={TONE.featured} title={t.peopleBoardFeatured} onAll={() => onAll("featured")} />
-          <LeaderRow rows={b.featured} mode="featured" doors={doors} acts={acts} ids={personaIds} />
+          {/* 🆕 T619 (س٦١ «ب») — **الوجوهُ أوّلاً**: دوائرُ تُمرَّر بدل بطاقاتٍ بزرّ، والصاعدون تحتها مباشرةً (كانوا بعد القوائم) */}
+          <FaceRow rows={b.featured} mode="featured" doors={doors} />
+          {gap}
+        </>
+      ) : null}
+      {b.rising?.length ? (
+        <>
+          <SectionHead icon="trending" color={TONE.rising} title={t.peopleBoardRising} onAll={() => onAll("rising")} />
+          <FaceRow rows={b.rising} mode="rising" doors={doors} />
           {gap}
         </>
       ) : null}
@@ -1047,17 +1068,10 @@ function Board({ d, doors, acts, onAll }: { d: CommunityPayload; doors: CardDoor
           {gap}
         </>
       ) : null}
-      {b.rising?.length ? (
-        <>
-          <SectionHead icon="trending" color={TONE.rising} title={t.peopleBoardRising} onAll={() => onAll("rising")} />
-          <Grid rows={b.rising} mode="rising" doors={doors} />
-        </>
-      ) : null}
       {personaRows.length ? (
         /* 🆕 D-1608 — **آخرُ قسم: شخصيات لوبز AI** (أحمد ٣١ أكتوبر: «الأعضاء فقط» ثمّ «في آخر قسم») — بابُ متابعتها، ومراجعاتُها
            تظهر في «النشاط» بعدها (D-1605). **والمتابعةُ على حافّة الوجه هنا في اللوحة** خلافاً لأقسامها: القسمُ خمسةٌ لا «كلَّ» لها */
         <>
-          {b.rising?.length ? gap : null}
           <SectionHead icon="sparkle-star" color={tokens.accent} title={PERSONA_BOARD.title[lang]} />
           <Text size={12} muted style={{ marginTop: -6, marginBottom: 10 }}>{PERSONA_BOARD.hint[lang]}</Text>
           {/* 🆕 D-1608b — **صفٌّ واحدٌ يُمرَّر** (أحمد ٣١ أكتوبر: «خلها صف واحد و تمرر فيه») بدل شبكة ٣+٢: نصفُ الارتفاع ولا خانةَ

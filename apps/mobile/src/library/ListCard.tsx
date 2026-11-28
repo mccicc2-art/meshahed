@@ -65,10 +65,14 @@ export function useListCardW() {
   return Math.min(LIST_CARD_W, width - 56);
 }
 const PAD = 14;
-/* T608 — **ملصقان بعرض ٧٢** في شريطٍ ثابتٍ ١٤٤ من جهة النهاية (لا نسبةٌ من البطاقة): الشريطُ نفسُه في بطاقة ٣٣٠ وبطاقة الشاشة الكاملة،
+/* T608 — **ملصقان بعرض ٧٢** (وثلاثةٌ في «مكتبتي»، T619) في شريطٍ ثابتٍ من جهة النهاية (لا نسبةٌ من البطاقة): الشريطُ نفسُه في بطاقة ٣٣٠ وبطاقة الشاشة الكاملة،
    فيبقى الملصقُ بقامته ولا يتمطّط في المكتبة. والكلامُ لا يدخل الشريط (حشوةُ النهاية) فلا تقع الأرقامُ فوق الملصق */
-const POSTER_W = 72;
-const STRIP = POSTER_W * 2;
+const POSTER_W2 = 72;
+/* 🆕 T619 (س٦٠ «ج» — أحمد ٢٨ نوفمبر: «أساسنا أفضل لكن أحتاج تكون ٣ بوسترات بدل ٢») — في «مكتبتي» البطاقةُ بعرض الشاشة، فثلاثةٌ بعرض ٦٤
+   (شريطٌ ١٩٢) ويبقى للكلام نحو ١٤٠؛ وتحت ٤٠٠ (آيفون ٣٩٠ · أندرويد ٣٦٠–٣٨٤) بعرض ٥٦ كي يبقى لعنقود ♥ 💬 ★ نحو ١٥٠ فلا تُقصّ النجمة
+   (مراجعةُ أندرويد). الصفوفُ (٣٣٠) تبقى بملصقين بعرض ٧٢ كما اعتمد في س٥٧ «ب» */
+const POSTER_W3 = 64;
+const POSTER_W3_NARROW = 56;
 /* الحجابُ ٢٠٠ عرضاً: صلبٌ في نصفه ويذوب في ١٠ — يوضع فيذوب على أوّل ١٠ من الشريط (حافّةٌ ناعمةٌ بين الكلام والملصق) */
 const VEIL_W = 200;
 
@@ -108,6 +112,7 @@ export function ListCard({
   onRate,
   busy,
   onError,
+  three = false,
 }: {
   card: ListCardData;
   onPress: () => void;
@@ -121,8 +126,13 @@ export function ListCard({
   busy?: boolean;
   /** 🆕 249 — رسالةُ الفشل حين يتراجع ♥ أو الحفظ: السطحُ الذي يملك مضيفَ الرسائل يمرّرها، وغيابُها تراجعٌ صامت */
   onError?: (e: unknown) => void;
+  /** 🆕 T619 — ثلاثةُ ملصقاتٍ بعرض ٦٤ (بطاقةُ «مكتبتي» بعرض الشاشة) */
+  three?: boolean;
 }) {
   const { t, tokens, locale, themeId } = useApp();
+  const { width: winW } = useWindowDimensions();
+  const POSTER_W = three ? (winW >= 400 ? POSTER_W3 : POSTER_W3_NARROW) : POSTER_W2;
+  const STRIP = POSTER_W * (three ? 3 : 2);
   const light = themeScheme(themeById(themeId)) === "light";
   /* D-1257 — داخلُ البطاقة يلبس لوحةَ الثيم الداكن الرسميّ حين تكون الصفحةُ فاتحة */
   const c: Tokens = light ? tokensOf(null) : tokens;
@@ -136,9 +146,12 @@ export function ListCard({
   /* 🆕 T606 (q37 «أ» — أحمد ٢٨ نوفمبر: «البوستر يبدأ يسار والمفروض يمين») — **ملصقان في النصف الحرّ لا ثلاثةٌ على ٧٢٪**: حجابُ R334
      صلبٌ تحت عمود الكلام حتى منتصف البطاقة، فكان الملصقُ الأوّلُ (وهو في جهة البداية) مختفياً تحته ويُرى ملصقان من النهاية.
      الآن ملصقان كاملان يبدآن بجانب الكلام، والحدثُ ثانيهما (الأبعدُ عن الحجاب كما كان) */
+  const evPoster = ev ? (ev.poster ? posterFor(ev.poster, 100) : null) : null;
   const slots: (string | null)[] = ev
-    ? [posters[0] ?? null, (ev.poster ? posterFor(ev.poster, 100) : null) ?? posters[1] ?? null]
-    : posters.slice(0, 2);
+    ? three
+      ? [posters[0] ?? null, posters[1] ?? null, evPoster ?? posters[2] ?? null]
+      : [posters[0] ?? null, evPoster ?? posters[1] ?? null]
+    : posters.slice(0, three ? 3 : 2);
   /* T608 — الشريطُ موجودٌ حين يكون غلافٌ أو ملصقٌ واحدٌ على الأقلّ؛ وإلّا فالكلامُ يأخذ البطاقةَ كلَّها */
   const strip = !!card.cover || slots.some(Boolean) || !!ev;
   /* T608 — القامةُ ثابتة، فالسطورُ تُحسب بحجم الخطّ: درجةُ Loopz × خطُّ الجهاز (بسقفه) — فوق ١٫٠٥ يقصر العنوانُ والوصفُ كي لا

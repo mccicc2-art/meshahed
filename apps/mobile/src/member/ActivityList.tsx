@@ -41,6 +41,7 @@ export function ActivityList({
   scope: scopeIn,
   onRemove,
   onMoveDay,
+  bare = false,
 }: {
   rows: ProfileActivity[];
   onTitle: (k: "tv" | "movie", id: number) => void;
@@ -58,6 +59,12 @@ export function ActivityList({
   onRemove?: (item: ActivityItem) => Promise<boolean>;
   /** 🆕 D-1505 — «غيّر يوم المشاهدة»: إزاحةُ أيّام (سالبةٌ إلى الماضي) — سجلُّك وحدَه، كـ`onRemove` */
   onMoveDay?: (item: ActivityItem, shiftDays: number) => Promise<boolean>;
+  /**
+   * 🆕 T619 (س٦٣ «أ» — أحمد ٢٨ نوفمبر: «فيه أشياء مكرّرة، وكثرة الخيارات في الشريط آراء تقييمات… سيّئة») — **نشاطُ الملفّ بلا خيارات**:
+   * «آراء» و«تقييمات» تكرّر تبويبَ «المراجعات» نفسَه، فتسقط النطاقاتُ كلُّها ويبقى «الكل» والشريط. وعنوانُ الأسبوع الأوّل يسقط
+   * (الشريطُ فوقه يقول تاريخَه) ويبقى سطرُ حصيلته، و«افتح المراجعة ›» يسقط (الصفُّ كلُّه يُضغط). سجلُّك (`MyActivityScreen`) لا يمرّره.
+   */
+  bare?: boolean;
 }) {
   const { t, tokens, locale } = useApp();
   const [scopeOwn, setScope] = useState<Scope>(initialScope);
@@ -136,10 +143,10 @@ export function ActivityList({
   /* 🆕 T526 — أسابيعُ بعناوينها وحصيلتها (`groupWeeks`) — أسابيعُ تقويميّةٌ من الأحد (ق٢أ) */
   const weeks = groupWeeks(shown, true, t, locale, today);
   /* سطرُ «افتح المراجعة» في نشاط الملفّ وحدَه («في اكتفتي الملف يبقى أ»)؛ سجلُّك يكتفي بأنّ الصفَّ يُضغط («١ب») */
-  const openHint = !onRemove;
+  const openHint = !onRemove && !bare;
   return (
-    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: scopeIn ? 6 : 14 }}>
-      {scopeIn ? null : (
+    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: scopeIn || bare ? 6 : 14 }}>
+      {scopeIn || bare ? null : (
         /* «ت٥أ» (أحمد ٢٦ نوفمبر): النطاقاتُ عائلةُ المقسّم بخطٍّ أصفر تتمرّر — لا كبسولات */
         <Segmented
           scroll
@@ -161,10 +168,11 @@ export function ActivityList({
         <Text muted style={{ textAlign: "center", paddingVertical: 40, paddingHorizontal: PAGE_PAD }}>{emptyText}</Text>
       ) : (
         weeks.map((w) => (
-          <View key={w.index} style={{ marginTop: 18 }}>
+          <View key={w.index} style={{ marginTop: bare && w.index === stripWeek ? 12 : 18 }}>
+            {/* T619 — يسقط عنوانُ الأسبوع الذي يعرضه الشريطُ وحده (لا «أوّلُ أسبوعٍ في القائمة»: من لم يشاهد هذا الأسبوع أوّلُ أسابيعه الماضي) */}
             {strip && day ? null : (
               <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: tokens.divider }}>
-                <Text size={16} weight="800">{w.label}</Text>
+                {bare && w.index === stripWeek && strip && watched.length ? null : <Text size={16} weight="800">{w.label}</Text>}
                 <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{totalsLine(w.totals, t)}</Text>
               </View>
             )}

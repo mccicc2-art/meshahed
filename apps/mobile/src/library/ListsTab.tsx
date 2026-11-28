@@ -165,7 +165,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
 
   /* المفاتيحُ تصل كاملةً (`library:autogroups`) وتُقصر على تبويبها كما في الصفحة (`railsHiddenFor`) */
   const offRails = railsHiddenFor(new Set(hiddenRails), "library");
-  const savedTitle = p.saved_count > 0 ? `${t.savedListsSection} · ${p.saved_count}` : t.savedListsSection;
+  const savedShown = railOff(offRails, "savedlists") ? [] : p.saved;
 
   return (
     <ScrollView refreshControl={refreshControl} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16} {...scrollJank("library", "v", "lists")}>
@@ -177,7 +177,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
         {/* T608 (q55 — أحمد: «احذف هذي العبارة لأنها موجودة إذا ضغطت قائمة ذكية») — سقط سطرُ الشرح تحت الزرّ */}
         <NewListBar from="library" style={{ marginBottom: 16 }} />
 
-        {p.lists.length === 0 && !p.to_watch ? (
+        {p.lists.length === 0 && !p.to_watch && !savedShown.length ? (
           <Text size={14} muted style={{ textAlign: "center", paddingVertical: 64 }}>{t.listsEmpty}</Text>
         ) : (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
@@ -200,6 +200,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
                   busy={busyId === "towatch"}
                   onPlaylist={(on) => void setToWatch(on)}
                   onPress={() => setReorder(true)}
+                  three={cols === 1}
                 />
               </View>
             ) : null}
@@ -207,6 +208,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
               <View key={l.id} style={{ width: cardW }}>
                 <ListCard
                   card={toCard(l)}
+                  three={cols === 1}
                   busy={busyId === l.id}
                   onError={fail}
                   onPress={() => onOpenWeb(`/lists/${l.id}`)}
@@ -224,18 +226,13 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
                 />
               </View>
             ))}
-          </View>
-        )}
-      </View>
-
-      {!railOff(offRails, "savedlists") && p.saved.length > 0 ? (
-        <View>
-          <Text size={20} weight="700" style={{ marginBottom: 12 }}>{savedTitle}</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            {p.saved.map((l) => (
+            {/* 🆕 T619 (س٦٠ — أحمد: «احذف كلمة قوائم محفوظة… خلّها ورا بعض عادي بدون مسافة كبيرة») — المحفوظةُ تلي قوائمك في الشبكة نفسِها
+                بلا عنوانٍ ولا فاصلٍ كبير: إشارةُ الحفظ الصفراء والصاحبُ في كلِّ بطاقةٍ يقولان إنّها لغيرك */}
+            {savedShown.map((l) => (
               <View key={l.id} style={{ width: cardW }}>
                 <ListCard
                   card={toCard(l)}
+                  three={cols === 1}
                   busy={busyId === l.id}
                   onError={fail}
                   onPress={() => onOpenWeb(`/lists/${l.id}`)}
@@ -246,11 +243,11 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
               </View>
             ))}
           </View>
-        </View>
-      ) : null}
+        )}
+      </View>
 
       {/* 🆕 T606 (q44 «أ» — أحمد ٢٧ نوفمبر: «صور الفنانين نزّلها آخر القوائم لا تكون كذا في النصّ») — «تجتمع عندك» آخرَ التبويب
-          بعد «قوائم محفوظة»: أسماءٌ محسوبةٌ لا قوائمُ صنعتها أو حفظتها، فلا تقطع ما بينهما */}
+          بعد قوائمك والمحفوظة: أسماءٌ محسوبةٌ لا قوائمُ صنعتها أو حفظتها، فلا تقطع ما بينهما */}
       {!railOff(offRails, "autogroups") && p.auto_groups.length > 0 ? (
         <View>
           <Text size={20} weight="700" style={{ marginBottom: 4 }}>{t.autoGroupsTitle}</Text>

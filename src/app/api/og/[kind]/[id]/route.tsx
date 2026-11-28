@@ -117,13 +117,17 @@ async function invite(code: string, l: "ar" | "en", ip: string) {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ kind: string; id: string }> }) {
   const { kind, id } = await params;
   const l = lang(req);
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
+  /* A-88 (المدقّق ٢٨ نوفمبر) — كلُّ معرّفٍ لم يُخزَّن بعد يكلّف جلباً من TMDB وقراءاتٍ ورسماً، فلكلِّ عنوانٍ حدٌّ في الدقيقة
+     كما في المعاينات العامّة الأخرى؛ والمخزَّنُ عند الحافّة لا يصل إلى هنا فلا يمسّه الحدّ */
+  if (limited(`v1:og:${ip}`, 60, 60_000)) return new Response("too many requests", { status: 429, headers: { "retry-after": "60" } });
   let el: React.ReactElement | null = null;
   if (kind === "tv" || kind === "movie") {
     const n = Number(id);
     if (Number.isInteger(n) && n > 0) el = await work(kind, n, l);
   } else if (kind === "u") el = await profile(decodeURIComponent(id), l);
   else if (kind === "list") el = await list(id, l);
-  else if (kind === "invite") el = await invite(id, l, req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon");
+  else if (kind === "invite") el = await invite(id, l, ip);
   if (!el) return new Response("not found", { status: 404 });
   return new ImageResponse(el, {
     ...PREVIEW,

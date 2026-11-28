@@ -141,7 +141,8 @@ export async function GET(req: NextRequest) {
         reviews: off("topreviews") ? null : core.topReviews,
         talked_about: off("talked") || !core.talkedAbout ? null : roomOut(core, core.talkedAbout, t, locale),
         lists: off("savedlists") ? null : core.savedLists.map((c) => listOut(c, locale)),
-        rising: off("rising") ? null : boardRows(core.rising, "rising", BOARD_PREVIEW),
+        /* T619 (س٦١ «ب») — الصاعدون صفُّ وجوهٍ يُمرَّر كالمميّزين، فيصلون بعدد الصفّ لا ثلاثةً */
+        rising: off("rising") ? null : boardRows(core.rising, "rising", boardRowsN),
         /* 🆕 D-1608 — آخرَ اللوحة، ولا مفتاحَ إطفاءٍ له (ليس صفّاً من صفوف الأدوات) */
         personas: core.personaBoard,
         empty: core.peopleEmpty,

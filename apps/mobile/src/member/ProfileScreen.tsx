@@ -707,7 +707,8 @@ export function ProfileScreen({ username, from }: { username: string; from: Nati
     return {
       favorites: <Favorites d={d} posterW={posterW} onTitle={openTitle} onSort={o?.fav_list_id ? (fav) => setSorting({ fav }) : undefined} />,
       overview: <Overview d={d} posterW={posterW} onTitle={openTitle} onList={openList} onPerson={openPerson} onSort={o ? (sec) => setSorting({ sec }) : undefined} />,
-      activity: <ActivityList rows={d.activity} onTitle={openTitle} onReview={openWrittenReview} emptyText={t.profileEmptyActivity} />,
+      /* T619 (س٦٣ «أ») — بلا خيارات: المراجعاتُ والتقييماتُ في تبويبها */
+      activity: <ActivityList rows={d.activity} onTitle={openTitle} onReview={openWrittenReview} emptyText={t.profileEmptyActivity} bare />,
       reviews: <ReviewsPane rows={d.reviews} onTitle={openTitle} onLike={d.viewer.signed_in ? likeReview : undefined} onComment={openReview} onRead={openWrittenReview} />,
       lists: <ListsPane d={d} onList={openList} onMember={openMember} savedFlag={o ? { on: o.saved_lists, onToggle: setSaved } : undefined} />,
     } satisfies Record<ProfileTabKey, React.ReactNode>;

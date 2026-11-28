@@ -3002,6 +3002,9 @@ const ar = {
   /* 🆕 **مفاتيحُ «شارك تقريرك»** (D-810) — **وثلاثتُها تُقرأ من صفٍّ
      واحدٍ في ذيل التقرير**، فتُكتب متجاورةً هنا. */
   shareReportTitle: "شارك تقريرك",
+  /* A-85 — عنوانا ورقة المشاركة في قصّة الإحصاءات بالجوال (كانا مكتوبين في الملفّ) */
+  storyShareTitle: "شارك إحصائياتك",
+  storySharePage: "شارك",
   shareReportSub: "صورةٌ فيها رقمُك وأكثرُ ما شاهدت",
   shareBusy: "جارٍ التوليد…",
   weekTitle: "أسبوعك",
@@ -6209,6 +6212,8 @@ const en: Dict = {
   shareNoRatings: "No ratings yet",
   shareFailed: "Could not build the card \u2014 try again shortly.",
   shareReportTitle: "Share your report",
+  storyShareTitle: "Share your stats",
+  storySharePage: "Share",
   shareReportSub: "An image with your number and what you watched most",
   shareBusy: "Building\u2026",
   weekTitle: "Your week",
