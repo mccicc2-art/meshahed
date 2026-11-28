@@ -287,6 +287,20 @@ export function nextUnwatchedEpisode(
 }
 
 /**
+ * 🆕 T612 — **أبعدُ حلقةٍ شوهدت على المنصّة** (أحمد ٢٨ نوفمبر: «دام اني شفت الثانية والثالثة خل كل شيء قبلها اني شفته» — «١أ ٢أ»):
+ * سجلُّ المنصّة يحفظ ما شوهد أخيراً لا كلَّ ما شوهد، فأبعدُ حلقةٍ فيه (الموسمُ ثمّ الرقم) تصير «حتى هنا» (`upTo`) **بيومها هي**
+ * — فما قبلها لا يقع في يوم المزامنة. والخاصّةُ (الموسم ٠) لا «قبلَ» لها، فلا تكون هي الأبعد.
+ */
+export function farthestEpisode(eps: readonly ImportEpisode[]): ImportEpisode | null {
+  let far: ImportEpisode | null = null;
+  for (const ep of eps) {
+    if (!Number.isInteger(ep.s) || !Number.isInteger(ep.e) || ep.s < 1 || ep.e < 1) continue;
+    if (!far || ep.s > far.s || (ep.s === far.s && ep.e > far.e)) far = ep;
+  }
+  return far ? { s: far.s, e: far.e, ...(far.at ? { at: far.at } : {}) } : null;
+}
+
+/**
  * 🆕 **ما يُعلَّم ضمناً من مسلسلٍ مستورد** — «كلُّه» (`all`) و«حتى هنا» (`upTo`) ومدى MyAnimeList (`spans`) — **على الخادم وبتفاصيل TMDB**
  * (R58: العميلُ لا يُؤتمن على قائمة الحلقات). وحدةٌ نقيّةٌ ليُختبر فيها القراران — **هنا لا في `importBuild`**: تقرأ تفاصيلَ TMDB، والتطبيقُ يحمل `importBuild` ولا يحمل هذا الملفّ:
  * - **التاريخ** («٣ أ»): كلُّ حلقةٍ بتاريخ **أبكرِ** تقييمٍ يغطّيها — من قيّم الحلقة الخامسة في مايو والثالثة في أبريل

@@ -5,6 +5,7 @@ import { getMovieFor } from "@/lib/tmdb";
 /** لغةُ TMDB صراحةً — `null`/غيابُها = لغةُ الطلب كما كانت */
 type TmdbLang = "ar-SA" | "en-US";
 import { tagSource, type WatchSource } from "@/lib/watchSource";
+import { PLATFORM_KINDS } from "@/core/deviceLinks";
 
 /**
  * ====== 🆕 التعليمُ على الخادم — «شاهدتُ حتى هنا» والفيلمُ إلى المكتبة (هجرة ٢٣٧) ======
@@ -98,6 +99,10 @@ export async function markWatchedUpTo(
   source?: WatchSource,
   /** 🆕 T367 — لغةُ العضو حين لا يحملها الطلب (تطبيقٌ مربوطٌ يسجّل بلا سؤال) — منها اسمُ المسلسل وملصقُه في المكتبة */
   lang?: TmdbLang | null,
+  /** 🆕 T612 — يومُ ما يُعلَّم (سؤالُ المنصّة: يومُ الحلقة على المنصّة) — وغيابُه الآن كما كان */
+  at?: string | null,
+  /** 🆕 T612 — أيّامٌ بعينها لحلقاتٍ منها (`"S-E"` → ISO): أسئلةُ المنصّة المنتظرةُ قبلها، كلٌّ بيومه */
+  dates?: ReadonlyMap<string, string>,
 ): Promise<number> {
   /* 🔴 A-15 (المدقّق ٢٢ أكتوبر) — **الرقمان من العميل، فالحدُّ هنا لا عند من نادى**: منشورُ القلم يمرّر الموسمَ والحلقةَ
      خارجَ حارسِ عموده (٠–٢٠٠ / ١–٥٠٠٠ يحرس الكتابةَ لا هذه الحلقة)، ورقمٌ كبيرٌ كان يدور حلقةً بلا سقف. الحدّان حدّا
@@ -118,11 +123,11 @@ export async function markWatchedUpTo(
     .match({ user_id: userId, show_tmdb_id: tmdbId })
     .limit(20_000);
   const have = new Set((seen ?? []).map((r) => `${r.season_number}-${r.episode_number}`));
-  const now = new Date().toISOString();
+  const now = at && !Number.isNaN(Date.parse(at)) ? new Date(at).toISOString() : new Date().toISOString();
   const rows = want
     .filter((w) => !have.has(`${w.s}-${w.e}`))
     .slice(0, 5000)
-    .map((w) => ({ user_id: userId, show_tmdb_id: tmdbId, season_number: w.s, episode_number: w.e, runtime, watched_at: now }));
+    .map((w) => ({ user_id: userId, show_tmdb_id: tmdbId, season_number: w.s, episode_number: w.e, runtime, watched_at: dates?.get(`${w.s}-${w.e}`) ?? now }));
   if (rows.length) {
     const { data: added, error } = await supabase
       .from("watched_episodes")
@@ -190,8 +195,8 @@ export interface SignalRow {
   seen_at?: string | null;
 }
 
-/** 🆕 T579 — منصّاتُ البثّ: سجلُّها يسمّي الحلقةَ التي شوهدت بعينها ويومَها */
-const PLATFORM_SOURCES: ReadonlySet<string> = new Set(["netflix", "osn", "shahid", "prime"]);
+/** 🆕 T579 — منصّاتُ البثّ: سجلُّها يسمّي الحلقةَ التي شوهدت بعينها ويومَها. 🆕 T612 — من قائمتها (`PLATFORM_KINDS`): المستقبليّةُ معها */
+const PLATFORM_SOURCES: ReadonlySet<string> = new Set<string>(PLATFORM_KINDS);
 
 /**
  * ✓ على سؤال: حلقةٌ = «شاهدتُ حتى هنا» وتُغلق معها أسئلةُ ما قبلها في المسلسل نفسِه؛ فيلمٌ = مشاهَدٌ ويدخل المكتبة.
@@ -200,13 +205,14 @@ const PLATFORM_SOURCES: ReadonlySet<string> = new Set(["netflix", "osn", "shahid
  */
 export async function markSignalWatched(supabase: Db, userId: string, sig: SignalRow, src: WatchSource, lang?: TmdbLang | null): Promise<number> {
   let marked = 0;
-  /* 🆕 T579 — **سؤالُ المنصّة يعلّم الحلقةَ نفسَها بيوم مشاهدتها** كما كان الاستيرادُ سيكتبها — لا «حتى هنا»: الملفُّ مشتركٌ، وما قبلها
-     في السجلّ سؤالٌ له جوابُه (قد يكون الآخرُ شاهده) */
   const at = sig.seen_at && !Number.isNaN(Date.parse(sig.seen_at)) ? new Date(sig.seen_at).toISOString() : new Date().toISOString();
-  if (PLATFORM_SOURCES.has(src) && sig.media_type === "tv" && sig.season != null && sig.episode != null) {
-    marked = await markEpisodeAt(supabase, userId, sig.tmdb_id, sig.season, sig.episode, at, src, lang);
-  } else if (sig.media_type === "tv" && sig.season != null && sig.episode != null) {
-    marked = await markWatchedUpTo(supabase, userId, sig.tmdb_id, sig.season, sig.episode, undefined, src, lang);
+  const platform = PLATFORM_SOURCES.has(src);
+  if (sig.media_type === "tv" && sig.season != null && sig.episode != null) {
+    /* 🆕 T612 — **✓ على سؤال المنصّة صار «شاهدتُ حتى هنا» كأخيه** (أحمد ٢٨ نوفمبر «٣أ»؛ كان T579 يعلّم الحلقةَ وحدَها): أسئلةُ
+       المنصّة المنتظرةُ قبلها في المسلسل نفسِه تُكتب **كلٌّ بيومه** (البطاقةُ تجمع حلقاتِ العمل، ويُجاب عنها بأيِّ ترتيب)، وما بقي من
+       «حتى هنا» بيوم هذه الحلقة — فلا يقع شيءٌ منه في يوم الجواب. وحدودُ `markWatchedUpTo` كلُّها على الجميع */
+    const dates = platform && sig.season > 0 ? await pendingPlatformDates(supabase, userId, sig) : undefined;
+    marked = await markWatchedUpTo(supabase, userId, sig.tmdb_id, sig.season, sig.episode, undefined, src, lang, platform ? at : null, dates);
     /* ما قبلها في المسلسل نفسِه أُجيب عنه بهذا الجواب — الخاصّةُ (الموسم ٠) وحدَها كما في `markWatchedUpTo` */
     if (sig.season > 0) {
       await supabase
@@ -232,24 +238,23 @@ export async function markSignalWatched(supabase: Db, userId: string, sig: Signa
 }
 
 /**
- * 🆕 T579 — حلقةٌ واحدةٌ بيومها (سؤالُ المنصّة): حدودُ A-15 نفسُها، وموسمٌ لا يعرفه TMDB لا يُعلَّم، والمسلسلُ يُتابَع، والشارةُ على
- * ما أُدرج وحده. ما كان مشاهَداً يبقى بتاريخه (`ignoreDuplicates`).
+ * 🆕 T612 — **أيّامُ أسئلة المنصّة المنتظرة حتى هذه الحلقة** (سؤالٌ جمع حلقاتٍ من العمل نفسِه): `"S-E"` → يومُ مشاهدتها على المنصّة.
+ * لا كتابةَ هنا — `markWatchedUpTo` يكتب بحدوده (A-15، ما عُرض، ما كان مشاهَداً يبقى بتاريخه).
  */
-async function markEpisodeAt(supabase: Db, userId: string, tmdbId: number, season: number, episode: number, at: string, source: WatchSource, lang?: TmdbLang | null): Promise<number> {
-  if (!Number.isInteger(season) || season < 0 || season > 1000 || !Number.isInteger(episode) || episode < 1 || episode > 20_000) return 0;
-  const { getTvFor } = await import("@/lib/tmdb");
-  const { airedPerSeason } = await import("@/core/progress");
-  const tv = await getTvFor(tmdbId, lang);
-  if (season !== 0 && !airedPerSeason(tv).has(season)) return 0;
-  const runtime = tv.episode_run_time?.[0] ?? null;
-  const { data: added, error } = await supabase
-    .from("watched_episodes")
-    .upsert({ user_id: userId, show_tmdb_id: tmdbId, season_number: season, episode_number: episode, runtime, watched_at: at }, { onConflict: "user_id,show_tmdb_id,season_number,episode_number", ignoreDuplicates: true })
-    .select("id");
-  if (error) failed(error);
-  await tagSource(supabase, "watched_episodes", added as { id: number }[] | null, source);
-  await ensureShowFollowed(supabase, userId, tmdbId, tv.name ?? null, tv.poster_path ?? null);
-  return (added as unknown[] | null)?.length ?? 0;
+async function pendingPlatformDates(supabase: Db, userId: string, sig: SignalRow): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (sig.season == null || sig.episode == null) return out;
+  const { data: rows } = await supabase
+    .from("watch_signals")
+    .select("season, episode, seen_at")
+    .match({ user_id: userId, media_type: "tv", tmdb_id: sig.tmdb_id, state: "pending" })
+    .in("source", [...PLATFORM_SOURCES])
+    .gt("season", 0)
+    .or(`season.lt.${sig.season},and(season.eq.${sig.season},episode.lte.${sig.episode})`)
+    .limit(500);
+  for (const r of (rows ?? []) as { season: number | null; episode: number | null; seen_at: string | null }[])
+    if (r.season != null && r.episode != null && r.seen_at && !Number.isNaN(Date.parse(r.seen_at))) out.set(`${r.season}-${r.episode}`, new Date(r.seen_at).toISOString());
+  return out;
 }
 
 /** يُغلق السؤالَ بجوابه — ما دام منتظراً */

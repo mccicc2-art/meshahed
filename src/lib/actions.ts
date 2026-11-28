@@ -6,6 +6,7 @@ import { requalify } from "@/lib/referral";
 import { closeSignal, ensureMovieInLibrary, ensureShowFollowed, markSignalWatched, markWatchedUpTo, safeImagePath } from "@/lib/watchMark";
 import type { MoveWatchDayBody } from "@/core/contracts/track";
 import { isPersonaId } from "@/core/personas";
+import { isPlatformKind } from "@/core/deviceLinks";
 import { movieOut } from "@/core/release";
 import { avatarStoragePath } from "@/core/avatarPath";
 import { revalidatePath } from "next/cache";
@@ -1736,7 +1737,7 @@ export async function answerWatchSignal(input: { id: number; watched: boolean })
   const sig = row as { id: number; source?: string | null; media_type: string; tmdb_id: number; season: number | null; episode: number | null; state: string; seen_at?: string | null } | null;
   /* 🆕 هجرة ٢٣٥ — شارةُ السجلّ تقول من أين جاء السؤال (Stremio أو سيرفرُ البيت)، والغيابُ Stremio كما كان */
   /* 🆕 هجرة ٢٦٧ — و`nuvio`: ✓ على سؤالٍ جاء من Nuvio يكتب شارتَه في السجلّ */
-  /* 🆕 T579 — وسؤالُ المنصّة (`netflix` · `osn` · `shahid`): شارتُها، والحلقةُ وحدَها بيوم مشاهدتها (`markSignalWatched`) */
+  /* 🆕 T579 — وسؤالُ المنصّة (`netflix` · `osn` · `shahid` · `prime`): شارتُها، و«حتى هنا» بيوم مشاهدتها (T612، `markSignalWatched`) */
   const src: WatchSource =
     sig?.source === "plex" || sig?.source === "jellyfin" || sig?.source === "emby" || sig?.source === "kodi" || sig?.source === "nuvio" || sig?.source === "netflix" || sig?.source === "osn" || sig?.source === "shahid" || sig?.source === "prime"
       ? sig.source
@@ -6396,14 +6397,23 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
      ولا تمسّ الموجود (`ignoreDuplicates`). وغيابُه (Plex · تطبيقٌ قديم) يُبقي الكتابةَ القديمة */
   const keep = payload?.keep === true;
   /* 🆕 مصدرُ الكتابة (هجرة ٢٦٥): مزامنةُ نتفليكس تُوسم `netflix` — الشارةُ وعدُّ ما يبقى عند الفكّ. وكلُّ شيءٍ آخر `import` كما كان */
-  const source = payload?.source === "netflix" || payload?.source === "osn" || payload?.source === "shahid" || payload?.source === "prime" ? payload.source : ("import" as const);
+  /* 🆕 T612 — والمنصّاتُ من قائمتها (`PLATFORM_KINDS`): كلُّ منصّةٍ تُضاف هناك تُوسم هنا دون تعديل */
+  const source = isPlatformKind(payload?.source) ? payload.source : ("import" as const);
   const upsertOpts = (onConflict: string) => ({ onConflict, ...(keep ? { ignoreDuplicates: true } : {}) });
 
   /* 🆕 **IMDb — ما يُعلَّم ضمناً يُحسب هنا لا عند العميل** (R58): «المسلسلُ كلُّه» (`all`، «١ ب») و«الحلقةُ وما قبلها»
      (`upTo`، «٢ أ») يحتاجان مواسمَ العمل كما يعرفها TMDB اليوم — فتُجلب تفاصيلُه مرّةً لكلِّ مسلسلٍ منها (خمسةٌ في
      الدفعة بحدٍّ أقصى، متوازية). وفشلُ جلبٍ يُسقط الضمنيَّ لذلك المسلسل وحدَه — الصريحُ يُكتب كما هو. */
   const { getTv } = await import("@/lib/tmdb");
-  const { airedEpisodeCount, impliedEpisodes } = await import("@/core/progress");
+  const { airedEpisodeCount, impliedEpisodes, farthestEpisode } = await import("@/core/progress");
+  /* 🆕 T612 — **من المنصّة: أبعدُ حلقةٍ شاهدها تعلّم كلَّ ما قبلها** (أحمد ٢٨ نوفمبر «١أ ٢أ ٤ب»، وكلُّ منصّةٍ مستقبليّة): سجلُّها يحفظ
+     الأخيرَ وحدَه، فتصير أبعدُ حلقةٍ في الدفعة «حتى هنا» (`upTo`) — يحسبها الخادمُ بتفاصيل TMDB كما يحسب IMDb، **بيومها هي** فلا
+     يتضخّم يومُ المزامنة، وما كان مشاهَداً يبقى بتاريخه. والصريحُ بيومه. وما استُورد قبل هذا لا يُمسّ («٤ب») */
+  if (source !== "import")
+    for (const sh of shows) {
+      const far = farthestEpisode(Array.isArray(sh.episodes) ? sh.episodes : []);
+      if (far) sh.upTo = [...(Array.isArray(sh.upTo) ? sh.upTo : []), far];
+    }
   const tvOf = new Map<number, Awaited<ReturnType<typeof getTv>>>();
   await Promise.all(
     shows

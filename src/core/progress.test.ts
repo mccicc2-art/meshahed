@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { airedEpisodeCount, airedPerSeason, isAbsoluteNumbering, lastAiredOf, missingAiredEpisodes } from "./progress.ts";
+import { airedEpisodeCount, airedPerSeason, farthestEpisode, impliedEpisodes, isAbsoluteNumbering, lastAiredOf, missingAiredEpisodes } from "./progress.ts";
 
 /**
  * D-1253 — الحلقةُ تُحسب معروضةً متى حلّ تاريخُها، لا حين ينقلها TMDB من `next` إلى `last`.
@@ -100,4 +100,42 @@ test("ترقيمٌ مختلفٌ بين القائمة والحاسب لا يول
   });
   /* الحاسبُ يتوقّع ١١٥٦–١١٥٧ والقائمةُ مرقّمةٌ ١–٢: فيها من المعروض ما يساوي العدّ ⇒ لا شيء يُضاف */
   assert.deepEqual(missingAiredEpisodes(tv, 2, [row(1, "2026-09-19"), row(2, "2026-09-26")], "2026-10-03"), []);
+});
+
+/**
+ * 🆕 T612 — المنصّةُ: أبعدُ حلقةٍ شوهدت تعلّم ما قبلها بيومها (أحمد ٢٨ نوفمبر: «دام اني شفت الثانية والثالثة خل كل شيء قبلها اني شفته»).
+ * الحالةُ حالةُ «خواتم القوة» على برايم: الثانيةُ والثالثةُ من الموسم الثالث ⇐ الموسمان الأوّلان والأولى من الثالث بيوم الثالثة.
+ */
+test("T612 — farthestEpisode picks the farthest season then episode, skips specials, keeps its day", () => {
+  assert.equal(farthestEpisode([]), null);
+  assert.equal(farthestEpisode([{ s: 0, e: 4, at: "2026-11-01T00:00:00.000Z" }]), null);
+  assert.deepEqual(
+    farthestEpisode([
+      { s: 3, e: 2, at: "2026-11-27T20:00:00.000Z" },
+      { s: 3, e: 3, at: "2026-11-28T07:00:00.000Z" },
+      { s: 2, e: 8, at: "2026-11-29T07:00:00.000Z" },
+      { s: 0, e: 9 },
+    ]),
+    { s: 3, e: 3, at: "2026-11-28T07:00:00.000Z" },
+  );
+  assert.deepEqual(farthestEpisode([{ s: 1, e: 5 }]), { s: 1, e: 5 });
+});
+
+test("T612 — the farthest platform episode implies every aired episode before it, dated at it", () => {
+  const tv = show({
+    number_of_episodes: 24,
+    seasons: [
+      { season_number: 1, episode_count: 8 },
+      { season_number: 2, episode_count: 8 },
+      { season_number: 3, episode_count: 8 },
+    ],
+    last_episode_to_air: ep(3, 8, "2026-11-11"),
+    next_episode_to_air: null,
+  });
+  const at = "2026-11-28T07:00:00.000Z";
+  const far = farthestEpisode([{ s: 3, e: 2, at: "2026-11-27T20:00:00.000Z" }, { s: 3, e: 3, at }]);
+  const got = impliedEpisodes(tv, { upTo: far ? [far] : [] });
+  assert.equal(got.length, 19);
+  assert.ok(got.every((x) => x.at === at));
+  assert.ok(got.some((x) => x.s === 1 && x.e === 1) && got.some((x) => x.s === 3 && x.e === 3) && !got.some((x) => x.s === 3 && x.e === 4));
 });
