@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       section === "featured"
         ? boardRows(core.featured, "featured", BOARD_ALL)
         : section === "top" || section === "rising"
-          ? boardRows(core.board, section, BOARD_ALL)
+          ? boardRows(section === "rising" ? core.rising : core.board, section, BOARD_ALL)
           : null;
     const payload: CommunityPeopleAllPayload = {
       section,

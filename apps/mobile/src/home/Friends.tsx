@@ -33,30 +33,20 @@ function Face({ uri, size, ring }: { uri: string | null; size: number; ring: str
 }
 
 /**
- * 🆕 D-1445 — **شارةُ الملصق: ماذا فعل صديقُك بالعمل** (أحمد ١٦ أكتوبر: «كيف الواحد يفرّق بين اللي قيّم واللي شاهد بس والحلقة»،
- * «يهمّني تقييمه وأنه شاهد»، واختار الشارةَ على الملصق): وجهُ أحدثِ صديقٍ ثمّ ★ تقييمُه (ذهبيّ) · ✓ خلّصه (أخضر) ·
- * ▶ آخرُ موسمٍ وحلقة (أبيض). الحالُ من الخادم (`friendBadge` نفسُها في الويب)؛ لا حالَ ⇒ لا شارة.
- * فوق الزاوية العليا المقابلة لعلامة «عندك» في `PosterCard`، فلا تتزاحمان.
+ * 🆕 D-1445 — **ماذا فعل صديقُك بالعمل** (أحمد ١٦ أكتوبر: «كيف الواحد يفرّق بين اللي قيّم واللي شاهد بس والحلقة»، «يهمّني تقييمه
+ * وأنه شاهد»): حالُ أحدثِ صديقٍ له حال — ★ تقييمُه (ذهبيّ) · ✓ خلّصه (أخضر) · ▶ آخرُ موسمٍ وحلقة. الحالُ من الخادم (`friendBadge`
+ * نفسُها في الويب)؛ لا حالَ ⇒ لا شيء.
+ * ↪️ T608 (q53 «أ» — لقطةُ أحمد ٢٨ نوفمبر: «احذفها من زاوية البوستر لأن صورة الشخص تحت يكفي، يسار اسم الشخص في نفس الصف تحط
+ * العلامة») — **ينقض موضعَ D-1445 لا مضمونَه**: الحالُ خرج من زاوية الملصق إلى سطر الأسماء بعد الاسم، فالملصقُ نظيفٌ والوجهُ لا يتكرّر.
  */
-export function FriendBadge({ card }: { card: HomeFriendCard }) {
-  const { tokens } = useApp();
+function friendStatus(card: Pick<HomeFriendCard, "people">): { label: string; tone: "accent" | "success" | "fg" } | null {
   const who = (card.people ?? []).find((p) => friendBadge(p.state));
   const b = who ? friendBadge(who.state) : null;
-  if (!who || !b) return null;
-  const color = b.kind === "rated" || b.kind === "ep_rated" ? tokens.accent : b.kind === "done" ? tokens.success : "#fff";
+  if (!b) return null;
   /* 🆕 D-1503 — «★ ٩ · E3»: تقييمُه للحلقة التي وصلها */
   const label =
     b.kind === "rated" ? `★ ${b.rating}` : b.kind === "ep_rated" ? `★ ${b.rating} · E${b.episode}` : b.kind === "done" ? "✓" : b.episode ? `▶ S${b.season} · E${b.episode}` : `▶ S${b.season}`;
-  return (
-    <View
-      pointerEvents="none"
-      accessibilityLabel={`${who.name} · ${label}`}
-      style={{ position: "absolute", top: 7, end: 7, flexDirection: "row", alignItems: "center", gap: 5, paddingStart: 3, paddingEnd: 8, height: 26, borderRadius: 13, borderWidth: 1, borderColor: color, backgroundColor: "rgba(0,0,0,0.72)" }}
-    >
-      <Face uri={who.avatar_url} size={19} ring="transparent" />
-      <Text size={12} weight="700" color={color} style={{ writingDirection: "ltr" }}>{label}</Text>
-    </View>
-  );
+  return { label, tone: b.kind === "rated" || b.kind === "ep_rated" ? "accent" : b.kind === "done" ? "success" : "fg" };
 }
 
 /** ما يقوله السطر: اسمٌ · اسمان · أو صورتان و«+ن» */
@@ -78,10 +68,11 @@ export function FriendsWhoLine({ card, onProfile, onNames }: { card: HomeFriendC
   const shown = people.slice(0, 2);
   const rest = total - shown.length;
   const single = people.length === 1 && others === 0;
+  const status = friendStatus(card);
   const label = people.length === 0 ? t.friendsCount(others) : rest > 0 ? `+${rest}` : shown.map((p) => p.name).join(sep);
   const press = people.length === 0 ? undefined : single && people[0].username ? () => onProfile(people[0].username!) : single ? undefined : () => onNames(card);
   return (
-    <Pressable onPress={press} disabled={!press} hitSlop={{ top: 4, bottom: 8 }} accessibilityRole={press ? "button" : undefined} accessibilityLabel={people.length ? [...people.map((p) => p.name), others ? t.andOthers(others) : ""].filter(Boolean).join(sep) : label} style={{ height: WHO_H, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 2 }}>
+    <Pressable onPress={press} disabled={!press} hitSlop={{ top: 4, bottom: 8 }} accessibilityRole={press ? "button" : undefined} accessibilityLabel={`${people.length ? [...people.map((p) => p.name), others ? t.andOthers(others) : ""].filter(Boolean).join(sep) : label}${status ? ` · ${status.label}` : ""}`} style={{ height: WHO_H, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 2, overflow: "hidden" }}>
       {shown.length > 0 ? (
         <View style={{ flexDirection: "row" }}>
           {shown.map((p, i) => (
@@ -93,7 +84,13 @@ export function FriendsWhoLine({ card, onProfile, onNames }: { card: HomeFriendC
       ) : (
         <Icon name="people" size={14} color={tokens.muted} />
       )}
-      <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1 }}>{label}</Text>
+      <Text size={12} muted numberOfLines={1} style={{ flexShrink: 1, minWidth: status ? 28 : 0 }}>{label}</Text>
+      {/* T608 — الحالُ بعد الاسم في الصفّ نفسِه. الملصقُ ضيّق (~٩٥)، فكلاهما يتقلّص في سطرٍ واحد والاسمُ يبقى منه ٢٨ — لا يفيض إلى البطاقة التالية */}
+      {status ? (
+        <Text size={12} weight="700" numberOfLines={1} color={status.tone === "accent" ? tokens.accent : status.tone === "success" ? tokens.success : tokens.fg} style={{ flexShrink: 1, writingDirection: "ltr" }}>
+          {status.label}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }

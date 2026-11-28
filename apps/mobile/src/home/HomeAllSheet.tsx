@@ -15,7 +15,7 @@ import { ReorderBody } from "../library/ReorderSheet";
 import { PosterCard, type CardItem } from "../library/PosterCard";
 import { ListCard } from "../library/ListCard";
 import { MediaRow } from "./Cards";
-import { FriendBadge, FriendsNames, FriendsWhoLine, WHO_H, whoOf } from "./Friends";
+import { FriendsNames, FriendsWhoLine, WHO_H, whoOf } from "./Friends";
 import type { HomeExtrasPayload, HomeFriendCard, HomePayload, HomeQueueItem, QueueOrderBody, ToggleMovieBody, TrackResult } from "../contracts";
 
 /**
@@ -256,7 +256,6 @@ export function HomeAllSheet({
                 <View style={{ width: cell }}>
                   <View>
                     <PosterCard item={p.item} width={cell} onPress={p.onPress} marquee={false} />
-                    {p.friend ? <FriendBadge card={p.friend} /> : null}
                     {p.queued ? <QueueMarks rank={p.queued.rank} onCheck={() => void watchQueued(p.queued!.id, p.item.title)} /> : null}
                   </View>
                   {p.friend ? <FriendsWhoLine card={p.friend} onProfile={(u) => { onClose(); onProfile(u); }} onNames={setWho} /> : null}

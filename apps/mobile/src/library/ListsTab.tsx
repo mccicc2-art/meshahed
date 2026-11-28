@@ -174,10 +174,8 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 
       <View>
         {/* 🆕 T450 — **الإطارُ نفسُه (D-1018/D-1212) صار `NewListBar`** ويدفع صفحةَ «قائمة جديدة» مقيّدةً بمكتبتك بدل ورقتَي
             «اسمٍ وحده» والشروط — والإطارُ ذاتُه في «اكتشف ← القوائم» من الكتالوج كلِّه */}
+        {/* T608 (q55 — أحمد: «احذف هذي العبارة لأنها موجودة إذا ضغطت قائمة ذكية») — سقط سطرُ الشرح تحت الزرّ */}
         <NewListBar from="library" style={{ marginBottom: 16 }} />
-        {!p.has_smart ? (
-          <Text size={12} muted style={{ marginTop: -8, marginBottom: 16, lineHeight: 18 }}>{t.smartListHint}</Text>
-        ) : null}
 
         {p.lists.length === 0 && !p.to_watch ? (
           <Text size={14} muted style={{ textAlign: "center", paddingVertical: 64 }}>{t.listsEmpty}</Text>

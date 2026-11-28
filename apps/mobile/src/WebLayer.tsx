@@ -926,7 +926,7 @@ export function WebLayer() {
       session.attach(null);
       shell.attach(null);
       shell.attachPost(null);
-      session.clear();
+      session.clear("web");
     };
   }, []);
   /**

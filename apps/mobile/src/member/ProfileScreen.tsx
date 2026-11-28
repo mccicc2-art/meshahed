@@ -23,7 +23,7 @@ import { IdentityBadges, identityFlags } from "../IdentityBadges";
 import { CoverArt, HomeCover, StatsCard, VEIL, type StatCell } from "../home/HomeHeader";
 import { FollowsSheet } from "../home/FollowsSheet";
 import { PosterCard, type CardItem } from "../library/PosterCard";
-import { ListCard, PlayPill } from "../library/ListCard";
+import { ListCard, PlayPill, useListCardW } from "../library/ListCard";
 import { ReorderSheet } from "../library/ReorderSheet";
 import { Sheet } from "../library/Sheet";
 import { DropMenu, measureAnchor, type Anchor } from "../library/HoldMenu";
@@ -1387,6 +1387,7 @@ function Overview({
   onSort?: (sec: SortSec) => void;
 }) {
   const { t, tokens } = useApp();
+  const listW = useListCardW();
   const router = useRouter(); // D-1488 — بطاقةُ «خصّص ملفك»
   const meta = profileSectionMeta(t);
   const rail = useRailLayout(posterW);
@@ -1422,7 +1423,7 @@ function Overview({
         return o.lists.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}>
             {cap(o.lists).map((l) => (
-              <View key={l.id} style={{ width: 280 }}>
+              <View key={l.id} style={{ width: listW }}>
                 <ListCard card={listCardOf(l, t)} onPress={() => onList(l.id)} />
               </View>
             ))}
@@ -1560,14 +1561,15 @@ function ReviewsPane({
   const list = view === "written" ? split.written : split.ratings;
   if (!rows.length) return <Empty text={t.profileEmptyReviews} />;
   return (
-    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 14 }}>
+    /* T608 (q48 «قلّل هامش المسافة بينه و بين الخيارات بالأعلى») — ٤ لا ١٤: المقسّمُ يلي شريطَ التبويبات مباشرةً */
+    <View style={{ paddingHorizontal: PAGE_PAD, paddingTop: 4 }}>
       {/* رقاقتا «النشاط» نفسُهما (`Chip`) — لا عائلةَ ثالثة */}
       {/* «ت٥أ» (أحمد ٢٦ نوفمبر): عائلةُ المقسّم بخطٍّ أصفر لا كبسولات */}
       <View style={{ marginBottom: 4 }}>
         <Segmented
           items={(["written", "ratings"] as const).map((v) => ({
             id: v,
-            label: `${v === "written" ? t.tabReviews : t.reviewsRatingsOnly} ${num((v === "written" ? split.written : split.ratings).length, locale)}`,
+            label: `${v === "written" ? t.reviewsWritten : t.reviewsRatingsOnly} ${num((v === "written" ? split.written : split.ratings).length, locale)}`,
           }))}
           value={view}
           onChange={(v) => (v === view ? undefined : (haptic.pick(), setAsked(v as typeof view)))}

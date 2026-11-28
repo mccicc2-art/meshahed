@@ -89,7 +89,7 @@ export async function api<T>(
     const json = (await res.json().catch(() => null)) as Envelope<T> | null;
     if (!json || "error" in json) {
       if (res.status === 401 && auth && attempt < 2) {
-        session.clear();
+        session.clear("401");
         const fresh = await session.request();
         if (fresh) continue;
       }
@@ -193,7 +193,7 @@ export async function downloadTo(path: string, dest: File): Promise<File> {
     } catch (e) {
       const status = Number(/\b([45]\d\d)\b/.exec(e instanceof Error ? e.message : "")?.[1] ?? 0);
       if (status === 401 && attempt < 2) {
-        session.clear();
+        session.clear("401");
         const fresh = await session.request();
         if (fresh) continue;
       }
@@ -214,7 +214,7 @@ export async function postForm<T>(path: string, form: FormData): Promise<T> {
     const json = (await res.json().catch(() => null)) as Envelope<T> | null;
     if (!json || "error" in json) {
       if (res.status === 401 && attempt < 2) {
-        session.clear();
+        session.clear("401");
         const fresh = await session.request();
         if (fresh) continue;
       }

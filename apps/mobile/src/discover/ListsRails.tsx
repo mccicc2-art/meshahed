@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FlatList, Pressable, View, useWindowDimensions } from "react-native";
+import { FlatList, Pressable, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { Sheet } from "../library/Sheet";
-import { ListCard } from "../library/ListCard";
+import { LIST_CARD_H, ListCard, useListCardW } from "../library/ListCard";
 import type { DiscoverListsPayload, LibraryListCard } from "../contracts";
 import { scrollJank } from "../scrollJank";
 import { railGrow, useRtlRailPin } from "../rtlRailPin";
@@ -26,7 +26,6 @@ import { NewListBar } from "../newlist/NewListBar";
  * «الكل» على الصفّ يكفي.
  */
 const PAGE_PAD = 16;
-const CARD_W = 260;
 
 /** D-1085 — خيارُ الاستعلام الواحد، يشاركه `prefetchDiscover` */
 export const listsQuery = {
@@ -37,8 +36,8 @@ export const listsQuery = {
 
 export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void }) {
   const { t, tokens, me } = useApp();
-  const { width } = useWindowDimensions();
-  const cardW = Math.min(CARD_W, width - PAGE_PAD * 2 - 24);
+  /* T608 (q57) — العرضُ ثابتُ البطاقة المشترك (٣٣٠ لا ٢٦٠) ويُقصّ على الشاشة الضيّقة */
+  const cardW = useListCardW();
   /* 🆕 D-996 — «الكلّ» للعالم ورقةٌ أصليّة (كان باباً إلى `/news?tab=lists&fr=`): الردُّ يحمل
      مجموعاتِ العالم كاملةً، فالورقةُ تعرضها شبكةً بالبطاقة نفسِها ولا تطلب شيئاً */
   const [allOf, setAllOf] = useState<{ name: string; sets: LibraryListCard[] } | null>(null);
@@ -79,7 +78,7 @@ export function ListsRails({ onOpenWeb }: { onOpenWeb: (path: string) => void })
       {!p ? (
         <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: PAGE_PAD }}>
           {[0, 1].map((i) => (
-            <View key={i} style={{ width: cardW, height: 176, borderRadius: 14, backgroundColor: tokens.surface2 }} />
+            <View key={i} style={{ width: cardW, height: LIST_CARD_H, borderRadius: 14, backgroundColor: tokens.surface2 }} />
           ))}
         </View>
       ) : (

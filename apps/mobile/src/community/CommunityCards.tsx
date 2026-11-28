@@ -185,8 +185,8 @@ function Tail({ row, acts, onList, share }: { row: CommunityPostRow; acts: CardA
 /** 🆕 D-1448 — `dark`: لا أخَ ملوّناً لملصقه الداكن (`poster_dark` من الخادم) ⇒ إطارٌ رفيعٌ بلون النصّ فلا يذوب في الخلفيّة */
 function RowPoster({ path, kind, lib, dark = false, onPress, small = false }: { path: string | null; kind: "tv" | "movie"; lib: CommunityPostRow["lib"]; dark?: boolean; onPress: () => void; small?: boolean }) {
   const { tokens } = useApp();
-  /* T602 — `small`: ملصقُ اللافتة تحت الرأي (٥٦) */
-  const w = small ? 56 : POSTER_W;
+  /* T602 — `small`: ملصقُ اللافتة تحت الرأي — ↪️ T608 (q56) ٦٤ لا ٥٦، يأخذ الزيادةَ من هامش اللافتة */
+  const w = small ? 64 : POSTER_W;
   const uri = posterFor(path, w);
   return (
     <Pressable onPress={onPress} accessibilityRole="link" style={{ width: w, aspectRatio: 2 / 3, borderRadius: radius.poster, overflow: "hidden", backgroundColor: tokens.surface2, alignSelf: "flex-start", borderWidth: dark ? 1 : 0, borderColor: tokens.fg + "59" }}>
@@ -393,7 +393,9 @@ function WorkBanner({ row, onPress }: { row: Extract<CommunityPostRow, { kind: "
           </Svg>
         </View>
       ) : null}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12 }}>
+      {/* T608 (q56 — أحمد: «ارتفاع الغلاف ممتاز لا تغيّر فيه، فقط البوستر ياخذ منه شوي زيادة من فوق وتحت ويسار بالتساوي») —
+          الملصقُ ٦٤ لا ٥٦ (ارتفاعُه ٩٦)، والهامشُ ٦ فوقه وتحته وفي جهته، والكلامُ يبقى على ١٢ من البداية: ٩٦ + ٦×٢ = ٨٤ + ١٢×٢ فلا تتغيّر قامةُ اللافتة */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 6, paddingStart: 12, paddingEnd: 6 }}>
         <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
           {/* الاسمُ كاملاً بسطرين لا «…» (q27) */}
           <Text size={15} weight="700" numberOfLines={2} autoDir style={{ lineHeight: 20 }}>{a.title}</Text>

@@ -16,7 +16,7 @@ import { Loading, Text, type ToastTone } from "../ui";
 import { radius } from "../theme";
 import { posterFor } from "../poster";
 import { PosterCard, type CardAnchor, type CardItem } from "../library/PosterCard";
-import { ListCard } from "../library/ListCard";
+import { ListCard, useListCardW } from "../library/ListCard";
 import { OneTimeHint } from "../library/OneTimeHint";
 import { useTourAnchor } from "../tour/anchors";
 import { tourStore } from "../tour/store";
@@ -56,7 +56,7 @@ import { reorderHomePayload, towatchQueueOf } from "./queueOrder";
 import type { WeekSuggestPrefs } from "@/core/weekSuggest";
 import type { UiStateBody } from "@/core/contracts/library";
 import { HomeAllSheet, type AllSection } from "./HomeAllSheet";
-import { FriendsNames, FriendBadge, FriendsWhoLine, whoOf } from "./Friends";
+import { FriendsNames, FriendsWhoLine, whoOf } from "./Friends";
 import { usePosterSizes } from "../posterSizes";
 import { refreshWidgets } from "../widget/feed";
 import { widgetBus } from "../widget/bus";
@@ -94,6 +94,7 @@ function titleInHome(d: HomePayload | undefined, id: number): string | null {
 
 export function HomeScreen() {
   const { t, tokens, me } = useApp();
+  const listW = useListCardW();
   const router = useRouter();
   const qc = useQueryClient();
   const insets = useSafeAreaInsets();
@@ -757,7 +758,7 @@ export function HomeScreen() {
               {s.lists.cards.map((c, i) => (
                 <React.Fragment key={c.id}>
                   {s.lists.towatch_card && s.lists.towatch_at === i ? <ToWatchQueueCard count={s.lists.towatch_card.count} posters={s.lists.towatch_card.posters} on={s.lists.towatch_card.on} busy={toWatchBusy} onPress={() => { haptic.pick(); setQueueRow("towatchlist"); }} onToggle={(on) => void setToWatch(on)} /> : null}
-                  <View style={{ width: 280 }}>
+                  <View style={{ width: listW }}>
                     {/* الوصفةُ نفسُها في `ListsRails` (اكتشف) — بطاقةُ القائمة الواحدة في كلِّ سطح */}
                     <ListCard
                       onError={onError}
@@ -797,10 +798,8 @@ export function HomeScreen() {
                 const it = asItem({ key: `fw-${r.kind}-${r.id}`, kind: r.kind, id: r.id, title: r.title, poster_path: r.poster_path, watched: r.watched });
                 return (
                   <View key={it.key} style={{ width: posterW }}>
-                    <View>
-                      <PosterCard item={it} width={posterW} onPress={pressItem} onHold={holdDiscOpen} />
-                      <FriendBadge card={r} />
-                    </View>
+                    {/* T608 (q53) — حالُ الصديق في سطر الأسماء تحت الملصق، لا على زاويته */}
+                    <PosterCard item={it} width={posterW} onPress={pressItem} onHold={holdDiscOpen} />
                     <FriendsWhoLine card={r} onProfile={(u) => openProfile(router, u, "home")} onNames={setWho} />
                   </View>
                 );
@@ -829,7 +828,7 @@ export function HomeScreen() {
       ) : null,
     };
     return d.prefs.order.flatMap((k) => (k === "continue" ? [map[k], stremioNode] : [map[k]])).filter(Boolean);
-  }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router, toggleView, tourBusy, setWeekPrefs]);
+  }, [d, stremioNode, extras.data, view, posterW, contSize, cap, asItem, pressItem, openTitle, openList, openWeb, t, tokens, backdropOf, markNext, markListNext, busyKeys, setToWatch, toWatchBusy, holdLibOpen, holdDiscOpen, router, toggleView, tourBusy, setWeekPrefs, listW]);
 
   return (
     <CardStoreContext.Provider value={store}>
@@ -983,8 +982,9 @@ export function HomeScreen() {
  */
 function ToWatchQueueCard({ count, posters, on, busy, onPress, onToggle }: { count: number; posters: (string | null)[]; on: boolean; busy: boolean; onPress: () => void; onToggle: (on: boolean) => void }) {
   const { t } = useApp();
+  const listW = useListCardW();
   return (
-    <View style={{ width: 280 }}>
+    <View style={{ width: listW }}>
       <ListCard
         card={{
           id: "towatch",

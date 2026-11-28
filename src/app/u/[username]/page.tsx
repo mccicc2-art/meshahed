@@ -1635,7 +1635,7 @@ export default async function PublicProfilePage({
                 aria-current={reviewView === v ? "page" : undefined}
                 className={segmentedItem(reviewView === v)}
               >
-                {v === "written" ? t.tabReviews : t.reviewsRatingsOnly}{" "}
+                {v === "written" ? t.reviewsWritten : t.reviewsRatingsOnly}{" "}
                 <span className="tabular-nums opacity-80">
                   {num((v === "written" ? reviewSplit.written : reviewSplit.ratings).length, locale)}
                 </span>

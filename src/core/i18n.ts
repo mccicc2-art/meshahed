@@ -1271,7 +1271,8 @@ const ar = {
    * «٩ تفاعلات».** **والمراجعةُ تُكتب ولا تُترك ممكنة** (D-219).
    */
   peopleBoardVsLast: (now: number, prev: number) =>
-    `${num(now, "ar")} هذا الأسبوع · ${num(prev, "ar")} الأسبوع الماضي`,
+    /* T608 (س٥٩) — نافذةٌ متدحرجة: آخرُ سبعة أيام والسبعةُ قبلها، لا «هذا الأسبوع» الذي يبدأ السبت */
+    `${num(now, "ar")} في آخر ٧ أيام · ${num(prev, "ar")} قبلها`,
   /* **وصار جمعاً لأن العدد صار ثلاثة** (D-264): عنوانٌ مفرَدٌ فوق ثلاث
      بطاقات **اسمٌ بقي بعد أن تغيّر ما يسمّيه** (D-257). */
   peopleBoardTopReview: "أعلى التعليقات إعجاباً",
@@ -2725,7 +2726,10 @@ const ar = {
   activityTabRatings: "تقييمات",
   activityTabReviews: "آراء",
   /* 🆕 T525 — رقاقةُ تبويب «المراجعات» في ملفّ الشخص: النجومُ بلا نصّ («يقدر الشخص يضغط يظهر التقييمات فقط») */
-  reviewsRatingsOnly: "تقييمات فقط",
+  /* 🆕 T608 (q48 — أحمد ٢٨ نوفمبر: «التعليقات اسمها المراجعات و التقييمات احذف كلمة فقط») — مفتاحٌ للملفّ وحده:
+     `tabReviews` تبويبُ صفحة العمل في الويب ويبقى «التعليقات» */
+  reviewsWritten: "المراجعات",
+  reviewsRatingsOnly: "التقييمات",
   activityThisWeek: "هذا الأسبوع",
   activityCount: (n: number) =>
     n === 1
@@ -2935,7 +2939,8 @@ const ar = {
   listPlaylistOnState: "تُعرض",
   listPlaylistOnToast: "صارت تظهر في «تابِع المشاهدة»",
   /* 🆕 D-559 — طابورُ «للمشاهدة» بطاقةً بين قوائمك */
-  toWatchAutoNote: "تُبنى وحدها من أفلامك بلا قائمة",
+  /* T608 (q54 — صياغةُ أحمد في الاستوديو) */
+  toWatchAutoNote: "قائمة بجميع أفلامك المخطط مشاهدتها",
   /* 🆕 D-1507 — اسمُ طابور «أفلامك بلا قائمة» وحدَه (أحمد ٢١ أكتوبر «ب»): «للمشاهدة» بقي للزرّ ولصفِّ الرئيسيّة */
   movieQueue: "طابور الأفلام",
   toWatchOn: "تعمل",
@@ -4919,7 +4924,7 @@ const en: Dict = {
   // The two numbers being subtracted — the breakdown below a delta summed to
   // the total, not to the delta (D-275)
   peopleBoardVsLast: (now: number, prev: number) =>
-    `${num(now, "en")} this week · ${num(prev, "en")} last week`,
+    `${num(now, "en")} in the last 7 days · ${num(prev, "en")} the 7 before`,
   peopleBoardTopReview: "Most liked comments",
   peopleBoardSavedLists: "What people are saving",
   listsForYou: "Lists for you",
@@ -5984,7 +5989,8 @@ const en: Dict = {
   activityTabWatched: "Watched",
   activityTabRatings: "Ratings",
   activityTabReviews: "Reviews",
-  reviewsRatingsOnly: "Ratings only",
+  reviewsWritten: "Reviews",
+  reviewsRatingsOnly: "Ratings",
   activityThisWeek: "This week",
   activityCount: (n: number) =>
     `${num(n, "en")} ${n === 1 ? "activity" : "activities"}`,
@@ -6155,7 +6161,7 @@ const en: Dict = {
   listPlaylist: "Playlist in Continue Watching",
   listPlaylistOnState: "On",
   listPlaylistOnToast: "Now showing in Continue Watching",
-  toWatchAutoNote: "Built from your movies with no list",
+  toWatchAutoNote: "All the movies you plan to watch",
   movieQueue: "Movie queue",
   toWatchOn: "On",
   toWatchOff: "Off",

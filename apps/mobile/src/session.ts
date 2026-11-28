@@ -1,7 +1,7 @@
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { AppState } from "react-native";
-import { own } from "./ownSession";
+import { own, type ClearWhy } from "./ownSession";
 
 /**
  * ====== رمزُ الوصول للشاشات الأصليّة — ذاكرةٌ فقط، وطلبٌ بـnonce ======
@@ -321,7 +321,7 @@ export const session = {
     /* 🩺 T542 — يُبلَّغ قبل المسح: هل كانت الجلسةُ المملوكةُ محفوظةً لحظتَها (بعده تكون ممسوحةً دائماً) */
     const stored = own.hasStored() ? 1 : 0;
     for (const l of outListeners) l(why, stored);
-    session.clear();
+    session.clear("out");
     /* A-50 — بعد المسح: من ينتظر الآن أُجيب بـ`null`، ومن يسأل بعده يُجاب فوراً حتى يدخل أحد.
        **إلّا مسحاً جاء من الصفحة نفسِها** (`session:clear`، `toLogin=false`): من أرسله جسرٌ مركَّبٌ يسمع، وقد يرسله بلا خروجٍ
        حقيقيّ (مكتبةٌ لم تُحمَّل، تجديدٌ تعثّر بالشبكة) — فالطلبُ التالي يبلغه كما كان ويستعيد الجلسةَ من الكوكي. الخروجُ
@@ -343,7 +343,8 @@ export const session = {
     /* D-1128 — «من أنا» يُفعَّل بالأثر: يُبلَغ بزواله فيتوقّف */
     if (hadSeen) emit();
   },
-  clear() {
+  /** 🩺 A-86 — `c` من محا: يُكتب سبباً في الحفظ مكانَ رمز الوصول (`own.dropAccess`) فتقرؤه علامةُ `session.restore` */
+  clear(c: ClearWhy) {
     const had = !!access;
     access = null;
     exp = 0;
@@ -356,7 +357,7 @@ export const session = {
     /* D-1141 — مسحٌ يليه طلبٌ جديدٌ فوراً (إعادةُ المحاولة عند 401): لا يعود الطلبُ الملغى نفسُه */
     inflight = null;
     /* 🆕 K4b — `401`: رمزُ الوصول المملوك يسقط أيضاً، ورمزُ تجديده يبقى فيُجدَّد في الطلب التالي */
-    own.dropAccess();
+    own.dropAccess(c);
     if (had) emit();
   },
   /**

@@ -121,6 +121,8 @@ test("لوحةُ الناس: الصاعدون بالفرق ومن لم يصعد 
   assert.deepEqual(boardRows(rows, "rising", 10).map((r) => r.id), ["b", "a"]);
   assert.deepEqual(boardRows(rows, "top", 3).map((r) => r.id), ["a", "c", "b"]);
   assert.deepEqual(boardRows(rows, "featured", 1).map((r) => r.id), ["a"]);
+  /* T608 — «المميّزون» بترتيب الدالّة لا بالرقم المعروض (صار الرقمُ كلَّ ما كتب) */
+  assert.deepEqual(boardRows(rows, "featured", 3).map((r) => r.id), ["a", "b", "c"]);
 });
 
 test("المعاملات: القارئُ المتسامحُ للصفحة والباب", () => {

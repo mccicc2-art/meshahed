@@ -3576,9 +3576,74 @@ export async function getPeopleFeatured(
       /* ⚖️ **وسقط `likes_in`** (D-312) — كأختها أعلاه */
       total: Number(r.total ?? 0),
       prevTotal: 0,
-    })));
+    }))).then(withAllTotals);
   } catch {
     return [];
+  }
+}
+
+/**
+ * 🆕 T608 (س٥٩ «أ» — أحمد ٢٨ نوفمبر: «الأعضاء المميزين يظهر جميع عدد مراجعاتهم بالكامل») — **الترتيبُ بتسعين يوماً، والرقمُ
+ * المعروض كلُّ ما كتب** (`people_all_totals`، الهجرة ٢٧٨). الصفوفُ تبقى بترتيب الدالّة (`boardRows` لا يعيد فرز «المميّزين»).
+ * وقبل الهجرة يفشل النداء فتبقى أرقامُ التسعين كما كانت — لا خطأ.
+ */
+async function withAllTotals(rows: PeopleLeaderRow[]): Promise<PeopleLeaderRow[]> {
+  if (!rows.length) return rows;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("people_all_totals", { p_ids: rows.map((r) => r.id) });
+    if (error || !data) return rows;
+    const all = new Map((data as { user_id: string; posts: number; reviews: number }[]).map((r) => [String(r.user_id), r]));
+    return rows.map((r) => {
+      const a = all.get(r.id);
+      if (!a) return r;
+      const posts = Number(a.posts ?? 0);
+      const reviews = Number(a.reviews ?? 0);
+      /* عددُ الكلِّ لا يقلّ عن نافذةٍ منه (حارسٌ إن اختلف شرطٌ بين الدالّتين) */
+      return posts + reviews >= r.total ? { ...r, posts, reviews, total: posts + reviews } : r;
+    });
+  } catch {
+    return rows;
+  }
+}
+
+/**
+ * 🆕 T608 (س٥٩ «أ» — «الصاعدين يحسب من آخر ٧ أيام وليس أسبوعي») — **نافذةٌ متدحرجة**: نشاطُ آخر سبعة أيام مقابل السبعة قبلها
+ * (`people_rising`، الهجرة ٢٧٨)، ومن زاد وحدَه. كان «الصاعدون» طرحاً من لوحة الأسبوع التقويميّ الذي يبدأ السبت (D-265)، فيُفرَّغ
+ * صباحَ كلِّ سبتٍ ويختفي القسم. `null` = الدالّةُ ليست في القاعدة بعد ⇒ يبقى الحسابُ القديم.
+ */
+export async function getPeopleRising(days = 7, limit = 20): Promise<PeopleLeaderRow[] | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("people_rising", { p_days: days, p_limit: limit });
+    if (error || !data) return null;
+    return withIdentities(
+      (
+        data as {
+          user_id: string;
+          nickname: string | null;
+          username: string | null;
+          avatar_url: string | null;
+          hide_name: boolean | null;
+          posts: number;
+          reviews: number;
+          total: number;
+          prev_total: number;
+        }[]
+      ).map((r) => ({
+        id: String(r.user_id),
+        nickname: r.nickname,
+        username: r.username,
+        avatar_url: r.avatar_url,
+        hide_name: Boolean(r.hide_name),
+        posts: Number(r.posts ?? 0),
+        reviews: Number(r.reviews ?? 0),
+        total: Number(r.total ?? 0),
+        prevTotal: Number(r.prev_total ?? 0),
+      })),
+    );
+  } catch {
+    return null;
   }
 }
 

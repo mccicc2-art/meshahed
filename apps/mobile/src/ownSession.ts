@@ -61,7 +61,12 @@ type Why = string;
 type EventName = "session.mint" | "session.renew" | "session.restore";
 /** من أين جاء رمزُ السكّ: الجسر · كوكي الويب · 🆕 K6a رمزُ الدخول نفسُه (كان يُوسَم `bridge` فيختلط بالجسر) */
 type Src = "bridge" | "cookie" | "login" | "ahead" | "wait";
-type EventExtra = { result: "ok" | "none"; why?: Why; src?: Src };
+/**
+ * 🩺 A-86 (أحمد ٢٨ نوفمبر «الخيار أ») — **من محا رمزَ الوصول المحفوظ آخرَ مرّة**: `401` ردٌّ رُفض فيه الرمز (`api.ts`) ·
+ * `web` فكُّ طبقة الويب (`WebLayer`) · `out` خروجٌ أو تبدّلُ مستخدمٍ أو جلسةٌ رُفضت (`own.clear`).
+ */
+export type ClearWhy = "401" | "web" | "out";
+type EventExtra = { result: "ok" | "none"; why?: Why; src?: Src | ClearWhy; ago?: number };
 
 let access: string | null = null;
 let exp = 0; // ثوانٍ منذ الحقبة
@@ -113,10 +118,12 @@ function readStored(): Stored | null {
 }
 
 /** A-69 — حفظُ رمز الوصول وموعده، **ومحوُهما كتابةُ فراغٍ متزامنة لا حذفٌ مؤجَّل**: حذفٌ لم يُنفَّذ بعدُ والتطبيقُ أُغلق عقب الخروج
- *  كان سيترك رمزاً صالحاً يُعاد في الإقلاع التالي، وحذفٌ متأخّرٌ كان قد يمحو رمزاً كُتب بعده. فشلُ الكتابة لا يمسّ شيئاً */
-function writeAccess(a: string | null, e = 0) {
+ *  كان سيترك رمزاً صالحاً يُعاد في الإقلاع التالي، وحذفٌ متأخّرٌ كان قد يمحو رمزاً كُتب بعده. فشلُ الكتابة لا يمسّ شيئاً.
+ *  🩺 A-86 — **المحوُ يكتب سببَه ووقتَه بدل الفراغ** (`{c, t}` بلا رمز): الإعادةُ نجحت ٧٪ فقط على الآيفون، و٥٩٪ «لا رمز» والجلسةُ
+ *  محفوظة — ولا يُعرف أكان الفراغُ مكتوباً (ومن كتبه) أم المفتاحُ مفقوداً أصلاً. النسخُ الأقدم تقرأ هذا الشكلَ «لا رمز» كما كانت */
+function writeAccess(a: string | null, e = 0, c: ClearWhy = "out") {
   try {
-    SecureStore.setItem(ACCESS_KEY, a ? JSON.stringify({ a, e }) : "");
+    SecureStore.setItem(ACCESS_KEY, a ? JSON.stringify({ a, e }) : JSON.stringify({ c, t: Date.now() }));
   } catch {
     /* لا شيء */
   }
@@ -138,10 +145,24 @@ function restoreAccess() {
   restoreTried = true;
   const t0 = Date.now();
   let why = "read";
+  /* 🩺 A-86 — «لا رمز» صار أربعة: `missing` المفتاحُ غيرُ موجود · `empty` فراغٌ كتبته نسخةٌ أقدم · `cleared` محوٌ بسببه (`src`) ومنذ كم
+     ثانية (`ago`) · `shape` نصٌّ لا يُقرأ. و`read` القراءةُ نفسُها رمت. لا شيءَ من الرمز في العلامة */
+  let extra: { src?: ClearWhy; ago?: number } = {};
+  let raw: string | null;
   try {
-    const raw = SecureStore.getItem(ACCESS_KEY);
-    const p = raw ? (JSON.parse(raw) as { a?: unknown; e?: unknown } | null) : null;
-    if (!p || typeof p.a !== "string" || typeof p.e !== "number") why = "none";
+    raw = SecureStore.getItem(ACCESS_KEY);
+  } catch {
+    report("session.restore", t0, { result: "none", why: "read" });
+    return;
+  }
+  try {
+    const p = raw ? (JSON.parse(raw) as { a?: unknown; e?: unknown; c?: unknown; t?: unknown } | null) : null;
+    if (raw === null) why = "missing";
+    else if (raw === "") why = "empty";
+    else if (p && (p.c === "401" || p.c === "web" || p.c === "out")) {
+      why = "cleared";
+      extra = { src: p.c, ...(typeof p.t === "number" ? { ago: Math.max(0, Math.round((Date.now() - p.t) / 1000)) } : {}) };
+    } else if (!p || typeof p.a !== "string" || typeof p.e !== "number") why = "shape";
     else if (p.e * 1000 - Date.now() < SKEW_MS) why = "expired";
     else if (subOf(p.a) !== s.uid) why = "owner";
     else {
@@ -154,9 +175,9 @@ function restoreAccess() {
       return;
     }
   } catch {
-    why = "read";
+    why = "shape";
   }
-  report("session.restore", t0, { result: "none", why });
+  report("session.restore", t0, { result: "none", why, ...extra });
 }
 
 function writeStored(s: Stored | null) {
@@ -448,13 +469,13 @@ export const own = {
     return readStored() !== null;
   },
   /** `401` من الخادم: رمزُ الوصول وحدَه يسقط؛ رمزُ التجديد يبقى فيُجدَّد في الطلب التالي */
-  dropAccess() {
+  dropAccess(c: ClearWhy) {
     access = null;
     exp = 0;
     /* A-69 — رمزٌ رفضه الخادم لا يُعاد من الحفظ في الطلب التالي */
     restoredToken = null;
     restoreTried = true;
-    writeAccess(null);
+    writeAccess(null, 0, c);
     cancelAhead();
   },
   /** خروجٌ أو تبدّلُ مستخدمٍ أو جلسةٌ رُفضت — **محلّيٌّ فقط**، بلا نداء خروج */
@@ -469,7 +490,7 @@ export const own = {
     restoreTried = true;
     generation++;
     writeStored(null);
-    writeAccess(null);
+    writeAccess(null, 0, "out");
     if (had) changed();
   },
   onChange(l: () => void): () => void {

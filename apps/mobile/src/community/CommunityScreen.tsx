@@ -23,7 +23,7 @@ import { useBootRoot } from "../bootRoot";
 import { useRefetchOnFocus } from "../useRefetchOnFocus";
 import { usePullRefresh } from "../pullRefresh";
 import { afterPaint, coldStartVoid, span, tabLanded } from "../perfMarks";
-import { ListCard } from "../library/ListCard";
+import { ListCard, useListCardW } from "../library/ListCard";
 import { FeedCard, LeaderCard, RoomCard, TopReviewCard, type CardActs, type CardDoors, type RoomPin } from "./CommunityCards";
 import { PERSONA_BOARD, personaLang, personaOf, personaReviewsLabel } from "@/core/personas";
 import { TalkSearch } from "./TalkSearch";
@@ -84,6 +84,8 @@ export function prefetchCommunity(): void {
 
 /** T606 — أعلى المراجعات إعجاباً: ثلاثٌ في صفحة الأعضاء، والبقيّةُ في «الكل» */
 const REVIEWS_PREVIEW = 3;
+/** T608 — مهلةُ سكون الخطّ بعد تبديل الشريحة قبل أن يعود التثبيت (تُمدَّد مع كلِّ وصولٍ للصفوف) */
+const SLICE_SETTLE_MS = 700;
 
 export function CommunityScreen() {
   const { t, tokens } = useApp();
@@ -306,11 +308,11 @@ export function CommunityScreen() {
         <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
           <Text size={15} weight="700">{t.peopleTitle}</Text>
           {/* 🆕 D-1569 — صورةُ الحساب في البداية كالرئيسيّة، وشعارُ Loopz في الطرف، والجرسُ في الرئيسيّة وحدَها (أحمد ٢٩ أكتوبر)
-              🆕 T362 — **وزرُّ الرسائل بجانب الشعار هنا** (أحمد ١٠ نوفمبر «١أ وتبقى فالرئيسية ايضا») */}
+              🆕 T362 — **وزرُّ الرسائل بجانب الشعار هنا** (أحمد ١٠ نوفمبر «١أ وتبقى فالرئيسية ايضا»)
+              ↪️ T608 (q58 — لقطةُ أحمد ٢٨ نوفمبر: «احذف علامة البحث من فوق موجودة تحت») — سقط زرُّ البحث من رأس «الأعضاء»: «بحث» في الشريط السفليّ */}
           <HeaderEdges
             from="community"
             messages
-            search={tab === "people" ? { label: t.findMembers, onPress: () => router.navigate({ pathname: "/search", params: { focus: String(Date.now()), scope: "members" } }) } : undefined}
           />
         </View>
         {/* 🆕 D-1237 — زرُّ الأدوات في طرف شريط التبويبات كما في «المكتبة» و«اكتشف» (D-1009) لا في الرأس (طلبُ أحمد
@@ -686,12 +688,30 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
     [onScroll, markSeen, fresh, sliceKey, feedView.rows],
   );
   /* تبديلُ الشريحة خطٌّ آخر: يبدأ من أعلاه — والتثبيتُ كان سيلحق بطاقةً مشتركةً بين الشريحتين إلى موضعها الجديد */
-  const lastSlice = useRef(sliceKey);
+  /* 🆕 T608 (q52 — تسجيلُ أحمد: «إذا ضغطت على الكل ينزلني تحت» · «الكل دائماً يبدأ من الأعلى») — **التثبيتُ معطَّلٌ طوال التبديل**:
+     الشريحةُ تتبدّل قبل أن تصل صفوفُها، فكان الرجوعُ إلى الأعلى يقع ثمّ يصل الخطُّ الجديد فيثبّت `maintainVisibleContentPosition`
+     على بطاقةٍ مشتركةٍ وينزل إلى موضعها. الآن «الشريحةُ المستقرّة» تتأخّر عن المختارة: ما داما مختلفين فالتثبيتُ مرفوع (من نفس الرسمة
+     التي تبدّلت فيها)، ويُعاد الرجوعُ إلى الأعلى مع كلِّ وصولٍ للصفوف، وتستقرّ بعد سكون الخطّ — وكلُّ تبديلٍ جديد يبدأ المهلةَ من أوّلها */
+  /* كلُّ تبديلٍ يُعدّ (ولو رجع إلى ما كان قبل أن يسكن الخطّ: الكل ← من أتابعهم ← الكل)، والتثبيتُ مرفوعٌ ما دام العدُّ أمامَ المستقرّ.
+     وأوّلُ وصولٍ للتفضيلات («» ← شريحة) ليس تبديلاً: هناك تقف الفتحةُ عند فاصل الجديد (D-1613) فلا تُرجَع إلى الأعلى */
+  const [prevSlice, setPrevSlice] = useState(sliceKey);
+  const [switchSeq, setSwitchSeq] = useState(0);
+  const [settledSeq, setSettledSeq] = useState(0);
+  if (prevSlice !== sliceKey) {
+    setPrevSlice(sliceKey);
+    if (prevSlice) setSwitchSeq((n) => n + 1);
+  }
+  const switching = switchSeq !== settledSeq;
   useEffect(() => {
-    if (lastSlice.current === sliceKey) return;
-    lastSlice.current = sliceKey;
+    if (!switching) return;
     feedRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [sliceKey]);
+    const raf = requestAnimationFrame(() => feedRef.current?.scrollToOffset({ offset: 0, animated: false }));
+    const done = setTimeout(() => setSettledSeq(switchSeq), SLICE_SETTLE_MS);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(done);
+    };
+  }, [switching, switchSeq, feedView.rows]);
   /* 🆕 D-1596 — **«الأقدم» صفحةً صفحة** (أحمد ٣٠ أكتوبر: «كل مانزل يعرض زيادة» — «٤ أ»): الحمولةُ الأولى تحمل آخرَ ستين، وحين
      يقترب القاعُ تُطلب ثلاثون أقدم من أقدم رأيٍ وصل (`/api/v1/community/feed?before=`) وتُلحق تحت ما يُرى. تُصفَّر مع تبديل الشريحة
      وسحب التحديث — الصفحةُ الأولى تتغيّر فيهما. صفحةٌ رشّحها «الغرباء» فارغةً تُتبَع بالتالية (حتى خمسٍ في الضغطة الواحدة) كي
@@ -743,7 +763,7 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
   }, [fresh, feedView.rows, olderNow.rows]);
   /* D-1613 — التثبيتُ على أوّل بطاقةٍ ظاهرة (١ = بعد رأس الشرائح، فالرأسُ لا يكون المرساة) — ويُرفع في سحب التحديث باليد:
      هناك يُراد الجديدُ في أعلى الشاشة لا فوقها (يُرفع لحظةَ يبدأ السحب، قبل أن يصل الردّ) */
-  const keepPlace = useMemo(() => (pulling ? undefined : { minIndexForVisible: d.prefs ? 1 : 0 }), [pulling, d.prefs]);
+  const keepPlace = useMemo(() => (pulling || switching ? undefined : { minIndexForVisible: d.prefs ? 1 : 0 }), [pulling, switching, d.prefs]);
   const empty = (text: string) => (
     <View style={{ marginTop: 8, paddingVertical: 36, paddingHorizontal: 20, borderRadius: radius.card, borderWidth: 1, borderStyle: "dashed", borderColor: tokens.border, backgroundColor: tokens.surface }}>
       <Text size={14} muted style={{ textAlign: "center", lineHeight: 21 }}>{text}</Text>
@@ -771,7 +791,11 @@ const Pane = React.memo(function Pane({ k, d, doors, acts, cardActs, live, topPa
              `topPad + 12` كالنقاشات (كانت `+ 4` قبل أن يكون للخطّ رأس)، والعددُ على يسار السطر */
           contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, paddingHorizontal: PAGE_PAD }}
           onScroll={onFeedScroll}
-          onScrollBeginDrag={() => (touched.current = true)}
+          onScrollBeginDrag={() => {
+            touched.current = true;
+            /* T608 — لمسُ الخطّ ينهي التبديل: ردٌّ متأخّرٌ لا يعيد من يقرأ إلى الأعلى */
+            if (switching) setSettledSeq(switchSeq);
+          }}
           /* الفاصلُ خارج ما رُسم بعد (أوّلُ ستّ بطاقات): قفزةٌ تقريبيّةٌ بمتوسّط الارتفاع ثمّ المحاولةُ ثانيةً — مرّتين على الأكثر */
           onScrollToIndexFailed={(info) => {
             if (jumpTries.current >= 2) return;
@@ -933,11 +957,12 @@ function LeaderRow({ rows, mode, doors, acts, ids }: { rows: CommunityLeaderRow[
 
 function ListsRow({ cards, doors }: { cards: CommunityListCard[]; doors: CardDoors }) {
   const { t } = useApp();
+  const listW = useListCardW();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }} style={{ marginHorizontal: -PAGE_PAD }}>
       <View style={{ width: PAGE_PAD - 10 }} />
       {cards.map((item) => (
-        <View key={item.id} style={{ width: 280 }}>
+        <View key={item.id} style={{ width: listW }}>
           <ListCard
             card={{
               id: item.id,

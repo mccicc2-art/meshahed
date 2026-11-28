@@ -259,6 +259,8 @@ export default async function PeoplePage({
   const amAdmin = core?.amAdmin ?? false;
   const featured = core?.featured ?? [];
   const board = core?.board ?? [];
+  /* T608 (س٥٩) — الصاعدون من آخر سبعة أيام بلا من في المميّزين (`buildCommunity`) */
+  const rising = core?.rising ?? [];
   const topReviews = core?.topReviews ?? [];
   const savedLists = core?.savedLists ?? [];
   const boardFollowing = core?.boardFollowing ?? new Set<string>();
@@ -501,7 +503,7 @@ export default async function PeoplePage({
                 {allView === "lists" && <TopSavedLists cards={savedLists} locale={locale} />}
                 {allView === "rising" && (
                   <PeopleLeaderboard
-                    rows={board}
+                    rows={rising}
                     locale={locale}
                     mode="rising"
                     limit={10}
@@ -589,7 +591,7 @@ export default async function PeoplePage({
                 {!railOff(hiddenRails, "rising") && (
                 <div className="desk:hidden">
                 <PeopleLeaderboard
-                  rows={board}
+                  rows={rising}
                   locale={locale}
                   mode="rising"
                   seeAllHref="/people?tab=people&all=rising"
@@ -607,7 +609,7 @@ export default async function PeoplePage({
                    <PeopleSideBoard rows={board} locale={locale} mode="top" seeAllHref="/people?tab=people&all=top" meId={user?.id ?? ""} following={boardFollowing} />
                  )}
                  {!railOff(hiddenRails, "rising") && (
-                   <PeopleSideBoard rows={board} locale={locale} mode="rising" seeAllHref="/people?tab=people&all=rising" meId={user?.id ?? ""} following={boardFollowing} />
+                   <PeopleSideBoard rows={rising} locale={locale} mode="rising" seeAllHref="/people?tab=people&all=rising" meId={user?.id ?? ""} following={boardFollowing} />
                  )}
                </aside>
               </div>

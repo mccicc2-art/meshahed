@@ -27,6 +27,7 @@ import {
   getListReviewSocial,
   getPeopleFeatured,
   getPeopleLeaderboard,
+  getPeopleRising,
   getPeopleTopReviews,
   getTopSavedListCards,
   getPersonaBoard,
@@ -138,12 +139,15 @@ export async function buildCommunity(o: {
       ? Promise.all([getMyRoomPins(), getGlobalRoomPins(), getAmAdmin()])
       : Promise.resolve([null, null, false] as const),
     Promise.all([
-      need("featured") ? getPeopleFeatured(90, wantAll ? BOARD_ALL : (o.preview ?? BOARD_PREVIEW)) : [],
+      /* T608 — «المميّزون» يُجلبون مع «الصاعدين» أيضاً: من في المميّزين لا يظهر في الصاعدين (س٥٩) — وفي «عرض الكل» للصاعدين
+         يُقاس بما في صفّ المميّزين في اللوحة (حتى عشرة) */
+      need("featured") || need("rising") ? getPeopleFeatured(90, wantAll ? BOARD_ALL : (o.preview ?? BOARD_PREVIEW)) : [],
       need("top") || need("rising")
         ? getPeopleLeaderboard(wantAll ? LEADERBOARD_POOL.all : LEADERBOARD_POOL.preview)
         : [],
       need("reviews") ? getPeopleTopReviews(30, wantAll ? BOARD_ALL : (o.preview ?? BOARD_PREVIEW)) : [],
       need("lists") ? getTopSavedListCards(7, wantAll ? BOARD_ALL : (o.preview ?? BOARD_PREVIEW)) : [],
+      need("rising") ? getPeopleRising(7, wantAll ? LEADERBOARD_POOL.all : LEADERBOARD_POOL.preview) : Promise.resolve(null),
     ]),
     followingIdsP,
     /* 🆕 D-1608 — آخرُ أقسام اللوحة: الشخصيّاتُ الخمس بعدد مراجعاتها — للّوحة وحدَها (لا «عرض كلّ» لخمسة) */
@@ -161,7 +165,11 @@ export async function buildCommunity(o: {
   };
   const rooms: TalkRoom[] = sortTalkRooms(roomsRaw, o.talkSort ?? "latest", pinRank);
 
-  const [featured, board, topReviews, savedLists] = peopleTab;
+  const [featured, board, topReviews, savedLists, risingRaw] = peopleTab;
+  /* 🆕 T608 (س٥٩ «أ») — **الصاعدون من آخر سبعة أيام، بلا من في المميّزين**. قبل الهجرة ٢٧٨ (`risingRaw` = null) يبقى الطرحُ
+     من لوحة الأسبوع كما كان (D-198)، والاستثناءُ يسري على الحالين */
+  const featuredIds = new Set(featured.map((r) => r.id));
+  const rising = (risingRaw ?? board).filter((r) => !featuredIds.has(r.id));
 
   /* العملُ الذي يدور حوله الكلام (D-291) — وللزائر أنشطُ غرفةٍ إجمالاً (D-630) */
   const talkedAboutWeekly = wantAll ? null : pickTalkedAboutRoom(rooms);
@@ -171,8 +179,8 @@ export async function buildCommunity(o: {
   /* يُقاس القسمُ بما يعرضه هو (D-181) */
   const peopleEmpty =
     allView === "rising"
-      ? board.every((r) => r.total - r.prevTotal <= 0)
-      : featured.length === 0 && board.length === 0 && topReviews.length === 0;
+      ? rising.every((r) => r.total - r.prevTotal <= 0)
+      : featured.length === 0 && board.length === 0 && topReviews.length === 0 && !rising.some((r) => r.total > r.prevTotal);
 
   const feedTranslations = await feedTranslationsP;
   const genNews = await genNewsP;
@@ -236,6 +244,7 @@ export async function buildCommunity(o: {
     amAdmin,
     featured,
     board,
+    rising,
     topReviews,
     savedLists,
     boardFollowing,

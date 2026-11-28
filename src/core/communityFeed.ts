@@ -236,5 +236,8 @@ export function boardRows<R extends { total: number; prevTotal: number }>(
         .sort((a, b) => b.delta - a.delta)
         .slice(0, limit)
         .map((x) => x.r)
-    : [...rows].sort((a, b) => b.total - a.total).slice(0, limit);
+    : mode === "featured"
+      ? /* T608 — «المميّزون» بترتيب الدالّة (نشاطُ ٩٠ يوماً) لا بالرقم المعروض: صار الرقمُ كلَّ ما كتب العضو (س٥٩) */
+        rows.slice(0, limit)
+      : [...rows].sort((a, b) => b.total - a.total).slice(0, limit);
 }
