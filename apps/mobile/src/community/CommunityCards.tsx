@@ -110,7 +110,7 @@ export type CardActs = Pick<CommunityActs, "like" | "signedIn" | "meId"> & {
 /**
  * 🆕 M2 — **الذيلُ** (`RowComment` + `LikeButton` + `StatChip` + `ShareTitleButton`) موزَّعاً بعرض العمود (`justify-between`):
  * - **القلبُ** رمزٌ وكلمةٌ ورقم (D-294 المنقوض: «رجّعها»)، والصفرُ لا يُرسم (D-219)، ولونُ التمييز حين أعجبك (`actionTailItem`).
- *   **ورأيُك أنت رقمٌ بلا زرّ** (لا يُعجب المرءُ بنفسه) — **وكذلك الزائر** (`readOnly`، D-221).
+ *   **الزائرُ رقمٌ بلا زرّ** (`readOnly`، D-221) — ورأيُك أنت تُعجب به منذ T610 (الهجرة ٢٧٧).
  * - **«تعليق»** رمزٌ وكلمةٌ ورقمُ الردود — وفي صفّ القائمة بابُ صفحتها (الخيطُ يسكن تبويبَ تقييماتها، D-333).
  * - **المشاهداتُ** رقمٌ يُقرأ (`StatChip`: باهتٌ على الصفر) · **المشاركةُ** رمزٌ عارٍ — ولا مشاهداتَ ولا مشاركةَ لصفِّ قائمة (D-370).
  * ⚠️ **٤٤ تُلمس** وإن رُسم الرمزُ ١٦ (`hitSlop` + حشوة، D-033).
@@ -132,9 +132,9 @@ function Tail({ row, acts, onList, share }: { row: CommunityPostRow; acts: CardA
     ) : null;
   }
   const { likes, liked } = likeOf(row);
-  /* 🆕 R58 — منشورُ النقاش يُعجَب صاحبُه به كما في الغرفة (D-1512)؛ والرأيُ لا */
-  const mine = row.kind === "comment" && row.item.person.id === acts.meId;
-  const readOnly = mine || !acts.signedIn;
+  /* 🆕 R58 — منشورُ النقاش يُعجَب صاحبُه به كما في الغرفة (D-1512)
+     ↪️ T610 (س٤٧ «ب» — أحمد: «اسمح للشخص يعمل إعجاب لنفسه»، الهجرة ٢٧٧): والرأيُ أيضاً — يُحسب كأيّ إعجاب. الزائرُ وحدَه رقمٌ بلا زرّ */
+  const readOnly = !acts.signedIn;
   const replies = row.kind === "comment" && row.item.listId ? row.list_social?.replies ?? 0 : row.replies;
   const views = row.kind === "talk" || (row.kind === "comment" && row.item.listId) ? null : row.views;
   const pad = { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingVertical: 8, paddingHorizontal: 10, minHeight: 36 };

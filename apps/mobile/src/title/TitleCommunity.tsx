@@ -296,7 +296,8 @@ export function ReviewRow({ r, onOpen, onLike }: { r: TitleCommunityPayload["rev
       <View style={{ flexDirection: "row", gap: 12 }}>
         {/* 🆕 D-1567 — **القلبُ زرٌّ هنا** حين يمرّر المستدعي `onLike` (تبويبُ مجتمع العمل؛ ومراجعتي عدٌّ لا زرّ) — قلبُ المراجعة
             نفسُه الذي يكتبه خيطُها (`community/like`)، ولونُه لونُ قلب الخيط */}
-        {onLike && !r.mine ? (
+        {/* T610 (س٤٧ «ب») — ومراجعتي زرٌّ أيضاً منذ الهجرة ٢٧٧ */}
+        {onLike ? (
           <Pressable onPress={onLike} hitSlop={10} accessibilityRole="button" accessibilityLabel={t.likesLabel} accessibilityState={{ selected: liked }} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
             <Icon name={liked ? "heart-filled" : "heart"} size={13} color={liked ? tokens.accent : tokens.muted} />
             {r.likes > 0 ? <Text size={11} color={liked ? tokens.accent : tokens.muted} style={{ fontVariant: ["tabular-nums"] }}>{num(r.likes, locale)}</Text> : null}

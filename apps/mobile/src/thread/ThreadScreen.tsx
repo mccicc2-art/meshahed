@@ -1275,7 +1275,8 @@ function Head({
               </View>
             )
           ) : null}
-          {actionBar(h.likes, h.liked_by_me, signedIn && !h.mine, h.views)}
+          {/* T610 (س٤٧ «ب») — صاحبُ الرأي يُعجب به أيضاً (الهجرة ٢٧٧) */}
+          {actionBar(h.likes, h.liked_by_me, signedIn, h.views)}
         </View>
       )}
     </View>
